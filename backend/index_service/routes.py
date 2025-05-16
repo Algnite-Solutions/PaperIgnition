@@ -1,5 +1,8 @@
 from fastapi import APIRouter, HTTPException
-from .models import DocSetList, SimilarQuery, DocSet, TextChunk, FigureChunk, TableChunk
+from .models import CustomerQuery
+from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, ChunkType,DocSetList
+
+
 from .service import index_papers, get_metadata, find_similar
 
 router = APIRouter()
@@ -35,7 +38,7 @@ async def get_metadata_route(doc_id: str):
     return metadata
 
 @router.post("/find_similar/")
-async def find_similar_route(query: SimilarQuery):
+async def find_similar_route(query: CustomerQuery):
     try:
         return find_similar(query.query, query.top_k, query.similarity_cutoff)
     except Exception as e:
