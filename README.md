@@ -5,11 +5,16 @@ This project implements a simple front/backend UI assuming LLM is hosted on a re
 ## Setup
 
 1. Install AIgnite:
-Please refer to https://github.com/Algnite-Solutions/AIgnite for installation
+Please refer to https://github.com/Algnite-Solutions/AIgnite for `pip` installation
 
 2. Provide API keys, server URL in `.env`
 
-3. Run the service:
+3. 
+```
+export PYTHONPATH=$YOUR_PAPERIGNITION_PATH
+```
+
+4. Run the service:
 For example, launch indexing server
 ```bash
 uvicorn backend.index_service.main:app --reload
