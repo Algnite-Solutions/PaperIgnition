@@ -1,0 +1,69 @@
+import { View, RichText } from '@tarojs/components'
+import React, { useEffect, useState } from 'react'
+import { useAppDispatch } from '../../store/hooks'
+import {
+  clearCurrentPaper
+} from '../../store/slices/paperSlice'
+import Taro from '@tarojs/taro'
+import { marked } from 'marked'
+import './index.scss'
+
+const PaperDetail = () => {
+  const dispatch = useAppDispatch()
+  const [parsedHtml, setParsedHtml] = useState<string>('')
+
+  const fetchPaperDetail = async (paperId: string) => {
+    try {
+      // 模拟API调用
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      const mockPaper = {
+        id: paperId,
+        markdownContent: `# 深度学习在自然语言处理中的应用
+
+## 简介
+深度学习技术已经彻底改变了自然语言处理领域。本文将探讨最新的研究进展以及未来发展方向。
+
+## 主要内容
+1. Transformer架构及其变体
+2. 预训练语言模型（如BERT、GPT系列）
+3. 多模态学习在NLP中的应用
+4. 低资源语言的NLP技术
+
+## 研究方法
+本研究采用了对比实验的方法，在多个基准测试集上评估了不同模型的性能。
+
+## 结论
+研究表明，大规模预训练模型在多种NLP任务上表现出色，但在特定领域仍然需要针对性的优化。`
+      }
+      
+      // 将Markdown转换为HTML
+      const htmlContent = marked.parse(mockPaper.markdownContent)
+      setParsedHtml(htmlContent as string)
+    } catch (err) {
+      console.error('获取论文详情失败', err)
+    }
+  }
+
+  useEffect(() => {
+    const params = Taro.getCurrentInstance().router?.params
+    if (params?.id) {
+      fetchPaperDetail(params.id as string)
+    }
+    return () => {
+      dispatch(clearCurrentPaper())
+    }
+  }, [])
+
+  return (
+    <View className='paper-detail-page'>
+      <View className='content'>
+        <View className='section markdown-content'>
+          <RichText nodes={parsedHtml} />
+        </View>
+      </View>
+    </View>
+  )
+}
+
+export default PaperDetail 
+export default PaperDetail 
