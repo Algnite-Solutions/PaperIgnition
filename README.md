@@ -22,6 +22,7 @@ uvicorn backend.index_service.main:app --reload
 
 Then, test orchestrator
 ```
+mkdir -p ./orchestrator/blogs/
 python orchestrator/run_all.py
 ```
 
