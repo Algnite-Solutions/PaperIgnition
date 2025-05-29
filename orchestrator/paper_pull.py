@@ -1,5 +1,6 @@
 from AIgnite.data.docset import DocSet, DocSetList
-from AIgnite.data.docparser import ArxivHTMLExtractor
+# from AIgnite.data.docparser_new import ArxivPDFExtractor
+
 from concurrent.futures import ProcessPoolExecutor, as_completed  
 import json
 from pathlib import Path
@@ -54,25 +55,27 @@ def test_batch_process_htmls(input_dir: str, output_dir: str, pdf_path: str, max
                 print(f"[ERROR] {e}")
 
 def dummy_paper_fetch(input_file):
-    Your_htmls_folder_path = "orchestrator/htmls/"
-    Your_output_path = "orchestrator/output/"
-    Your_pdf_folder_path = "orchestrator/pdfs/"
+    base_dir = "orchestrator/"
+    html_text_folder = os.path.join(base_dir, "htmls")
+    pdf_folder_path = os.path.join(base_dir, "pdfs")
+    image_folder_path = os.path.join(base_dir, "imgs")
+    json_output_path = os.path.join(base_dir, "jsons")
+    arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
+    os.makedirs(html_text_folder, exist_ok=True)
+    os.makedirs(pdf_folder_path, exist_ok=True)
+    os.makedirs(image_folder_path, exist_ok=True)
+    os.makedirs(json_output_path, exist_ok=True)
+    os.makedirs(os.path.dirname(arxiv_pool_path), exist_ok=True)
+    
     # Enable this block to download HTML files from arXiv
     if False:
-        with open(input_file, "r") as f:
-            html_files = []
-            for line in f:
-                html_files.append(line.strip().replace("http://ar5iv.org/pdf/", "https://ar5iv.labs.arxiv.org/html/"))
-        extractor = ArxivHTMLExtractor()
-        for html_path in html_files:
-            extractor.download_html(html_path,Your_htmls_folder_path)
+        extractor = ArxivPDFExtractor(None, pdf_folder_path, image_folder_path, arxiv_pool_path, json_output_path)
+        extractor.extract_all()
 
-        test_batch_process_htmls(Your_htmls_folder_path, Your_output_path, Your_pdf_folder_path)
-    
     papers = []
-    for filename in os.listdir(Your_output_path):
+    for filename in os.listdir(json_output_path):
         if filename.endswith(".json"):
-            file_path = os.path.join(Your_output_path, filename)
+            file_path = os.path.join(json_output_path, filename)
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 papers.append(DocSet.model_validate(data))
