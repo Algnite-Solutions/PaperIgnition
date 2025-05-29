@@ -1,0 +1,320 @@
+.paper-detail-page {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+
+  .loading, .error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 16px;
+    color: #666;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    .back {
+      font-size: 16px;
+      color: #1890ff;
+      padding: 8px 0;
+      cursor: pointer;
+      
+      &:before {
+        content: "< ";
+      }
+    }
+  }
+
+  .paper-meta {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .paper-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      color: #333;
+      display: block;
+    }
+
+    .paper-authors {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .paper-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+
+      .paper-tag {
+        font-size: 12px;
+        padding: 4px 8px;
+        background-color: #e6f7ff;
+        color: #1890ff;
+        border-radius: 4px;
+      }
+    }
+
+    .paper-date {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .paper-comments {
+      font-size: 14px;
+      color: #666;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+      display: block;
+    }
+  }
+
+  .content {
+    max-width: 100%;
+    width: 100%;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    .section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+      .section-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        display: block;
+        color: #333;
+      }
+
+      .abstract {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .tag {
+          font-size: 12px;
+          padding: 4px 8px;
+          background-color: #e6f7ff;
+          color: #1890ff;
+          border-radius: 4px;
+        }
+      }
+
+      .interpretation {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      }
+
+      .error-message {
+        font-size: 12px;
+        color: #f5222d;
+        margin-top: 8px;
+        display: block;
+      }
+    }
+
+    .markdown-content {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #333;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      word-break: break-all;
+      box-sizing: border-box;
+
+      // 标题样式
+      h1, h2, h3, h4, h5, h6 {
+        margin-top: 24px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      h1 {
+        font-size: 28px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+      }
+
+      h2 {
+        font-size: 24px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+
+      h3 {
+        font-size: 20px;
+      }
+
+      // 段落样式
+      p {
+        margin-bottom: 16px;
+        font-size: 16px;
+        max-width: 100%;
+        overflow: hidden;
+        word-wrap: break-word;
+      }
+
+      // 列表样式
+      ul, ol {
+        margin: 16px 0;
+        padding-left: 32px;
+
+        li {
+          margin-bottom: 8px;
+          font-size: 16px;
+        }
+      }
+
+      // 代码块样式
+      pre {
+        background-color: #f6f8fa;
+        border-radius: 6px;
+        padding: 16px;
+        margin: 16px 0;
+        overflow-x: auto;
+
+        code {
+          font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+          font-size: 14px;
+        }
+      }
+
+      // 行内代码样式
+      code {
+        background-color: #f6f8fa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      // 表格样式
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0;
+        font-size: 14px;
+
+        th, td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+        }
+
+        th {
+          background-color: #f6f8fa;
+          font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+          background-color: #f8f8f8;
+        }
+      }
+
+      // 图片样式 - 优化以适应小程序屏幕
+      img {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 16px auto !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        border-radius: 4px;
+        display: block;
+        object-fit: contain;
+        box-sizing: border-box;
+      }
+
+      // 引用块样式
+      blockquote {
+        border-left: 4px solid #ddd;
+        margin: 16px 0;
+        padding: 8px 16px;
+        background-color: #f8f8f8;
+        color: #666;
+
+        p {
+          margin: 0;
+        }
+      }
+
+      // 强调样式
+      strong, b {
+        font-weight: 600;
+      }
+
+      // 水平线样式
+      hr {
+        height: 1px;
+        background-color: #ddd;
+        border: none;
+        margin: 24px 0;
+      }
+    }
+
+    .related-papers {
+      margin-top: 10px;
+
+      .related-paper {
+        padding: 10px;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+        margin-bottom: 8px;
+
+        .title {
+          font-size: 14px;
+          font-weight: bold;
+          margin-bottom: 4px;
+          display: block;
+          color: #333;
+        }
+
+        .authors {
+          font-size: 12px;
+          color: #666;
+          display: block;
+        }
+      }
+    }
+  }
+
+  .actions {
+    margin-top: 20px;
+  }
+} 
