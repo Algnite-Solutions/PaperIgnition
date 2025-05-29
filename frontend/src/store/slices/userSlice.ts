@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
 export interface UserState {
   isRegistered: boolean
+  isLoggedIn: boolean
   frequency: 'daily' | 'weekly'
   interests: {
     paperIds: string[]
@@ -15,6 +16,7 @@ export interface UserState {
 
 const initialState: UserState = {
   isRegistered: false,
+  isLoggedIn: false,
   frequency: 'daily',
   interests: {
     paperIds: [],
@@ -52,7 +54,23 @@ const userSlice = createSlice({
       state.loading = false
       state.error = action.payload
     },
-    // 兴趣配置相关操作
+    loginStart: (state) => {
+      state.loading = true
+      state.error = null
+    },
+    loginSuccess: (state) => {
+      state.isLoggedIn = true
+      state.isRegistered = true
+      state.loading = false
+      state.error = null
+    },
+    loginFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false
+      state.error = action.payload
+    },
+    logout: (state) => {
+      state.isLoggedIn = false
+    },
     startConfiguring: (state) => {
       state.isConfiguring = true
       state.error = null
@@ -99,6 +117,10 @@ export const {
   registerStart,
   registerSuccess,
   registerFailure,
+  loginStart,
+  loginSuccess,
+  loginFailure,
+  logout,
   startConfiguring,
   togglePaperSelection,
   setSelectedPapers,

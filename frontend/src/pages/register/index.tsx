@@ -10,173 +10,153 @@ import './index.scss'
 const Register = () => {
   const dispatch = useAppDispatch()
   const { frequency, loading, error } = useAppSelector(state => state.user)
-  const [validationError, setValidationError] = useState('')
-  const [wxUserInfo, setWxUserInfo] = useState<any>(null)
-  const [registrationType, setRegistrationType] = useState<'manual' | 'wechat'>('wechat')
-
-  // 检查是否已经有缓存的微信用户信息
-  useEffect(() => {
-    const cachedUserInfo = Taro.getStorageSync('wxUserInfo')
-    if (cachedUserInfo) {
-      setWxUserInfo(cachedUserInfo)
-    }
-  }, [])
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   const handleFrequencyChange = (e: any) => {
     dispatch(setFrequency(e.detail.value))
   }
 
-  const validateForm = () => {
-    if (!wxUserInfo) {
-      setValidationError('请先授权微信信息')
-      return false
-    }
-    setValidationError('')
-    return true
-  }
-
-  // 获取微信用户信息
-  const getUserProfile = () => {
-    Taro.getUserProfile({
-      desc: '用于完善用户资料',
-      success: (res) => {
-        // 将用户信息存储到本地缓存
-        Taro.setStorageSync('wxUserInfo', res.userInfo)
-        setWxUserInfo(res.userInfo)
-      },
-      fail: (err) => {
-        console.error('获取用户信息失败', err)
-        Taro.showToast({
-          title: '获取用户信息失败',
-          icon: 'none'
-        })
-      }
-    })
-  }
-
-  // 获取用户手机号码 (Keep this as it might be needed later)
-  const getPhoneNumber = (e: any) => {
-    if (e.detail.errMsg.indexOf('ok') > -1) {
-      // In a real environment, you need to send e.detail.code to the backend to exchange for the phone number
-      console.log('Successfully obtained phone number, code:', e.detail.code)
-      Taro.showToast({
-        title: '手机号授权成功',
-        icon: 'success'
-      })
-    } else {
-      Taro.showToast({
-        title: '手机号授权失败',
-        icon: 'none'
-      })
-    }
-  }
-
-  const handleRegister = async () => {
-    if (!validateForm()) {
-      return
-    }
-
+  const handleWechatLogin = async () => {
+    dispatch(registerStart());
     try {
-      dispatch(registerStart())
-      
-      // Call Taro.login() to get the login code
       const loginRes = await Taro.login();
       const code = loginRes.code;
+      if (!code) throw new Error('Failed to get WeChat login code.');
 
-      if (!code) {
-        throw new Error('Failed to get WeChat login code.');
-      }
-
-      // Prepare registration data
-      const registerData = {
-        code: code, // Use the obtained code
-        // You might want to send userInfo and frequency here as well, depending on backend API
-        // userInfo: wxUserInfo,
-        // frequency: frequency
-      };
-
-      // Call backend WeChat login API
-      const response = await Taro.request({
-        url: 'http://127.0.0.1:8000/api/auth/wechat_login', // Use the new endpoint
+      const response = await fetch('http://127.0.0.1:8000/api/auth/wechat_login', {
         method: 'POST',
-        data: registerData,
-        header: {
-          'content-type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
       });
 
-      console.log('微信登录响应:', response);
+      const data = await response.json();
 
-      if (response.statusCode === 200) {
-        // Save token
-        Taro.setStorageSync('token', response.data.access_token);
-        
+      if (response.ok && data.access_token) {
+        localStorage.setItem('token', data.access_token);
         dispatch(registerSuccess());
-        Taro.showToast({
-          title: '登录成功',
-          icon: 'success',
-          duration: 1500,
-          mask: true,
-          success: () => {
-            setTimeout(() => {
-              if (response.data.needs_profile_completion) {
-                // Redirect to profile completion page
-                Taro.redirectTo({
-                  url: '/pages/profile/index' // Assuming profile completion page is here
-                });
+        alert('登录成功');
+        
+        if (data.needs_profile_completion) {
+          if (process.env.TARO_ENV === 'h5') {
+            window.location.hash = '#/pages/interests/index';
               } else {
-                // Redirect to main page (e.g., paper list or index)
-                Taro.switchTab({
-                  url: '/pages/index/index' // Assuming index is the main page
-                });
-              }
-            }, 1600);
+            Taro.navigateTo({ url: '/pages/interests/index' });
           }
-        });
+        } else {
+          if (process.env.TARO_ENV === 'h5') {
+            window.location.hash = '#/pages/profile/index';
+          } else {
+            Taro.switchTab({ url: '/pages/profile/index' });
+              }
+        }
       } else {
-        throw new Error(response.data.detail || '微信登录失败'); // Changed error message
+        throw new Error(data.detail || '微信登录失败');
       }
     } catch (err) {
-      dispatch(registerFailure(err instanceof Error ? err.message : '微信登录失败')); // Changed error message
-      Taro.showToast({
-        title: err instanceof Error ? err.message : '微信登录失败', // Changed error message
-        icon: 'error',
-        duration: 2000
-      });
+      dispatch(registerFailure(err instanceof Error ? err.message : '微信登录失败'));
+      alert(err instanceof Error ? err.message : '微信登录失败');
     }
-  }
+  };
+
+  const handleEmailRegister = async () => {
+    setEmailError('');
+    if (!email || !password) {
+      setEmailError('邮箱和密码不能为空');
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+        setEmailError('请输入有效的邮箱地址');
+        return;
+    }
+    dispatch(registerStart());
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/register-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert('邮箱注册成功! 请使用邮箱登录');
+        setEmail('');
+        setPassword('');
+        dispatch(registerSuccess());
+        
+        if (process.env.TARO_ENV === 'h5') {
+          window.location.hash = '#/pages/login/index';
+        } else {
+          Taro.navigateTo({ url: '/pages/login/index' });
+        }
+      } else {
+        const errorDetail = data?.detail || '邮箱注册失败';
+        setEmailError(errorDetail);
+        dispatch(registerFailure(errorDetail));
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : '网络请求错误，注册失败';
+      setEmailError(errorMsg);
+      dispatch(registerFailure(errorMsg));
+    }
+  };
+  
+  const goToLogin = () => {
+    if (process.env.TARO_ENV === 'h5') {
+      window.location.hash = '#/pages/login/index';
+    } else {
+      Taro.navigateTo({ url: '/pages/login/index' });
+    }
+  };
 
   return (
     <View className='register-container'>
       <View className='header'>
-        <Text className='title'>欢迎使用</Text>
+        <Text className='title'>AIgnite</Text>
         <Text className='subtitle'>智能论文推荐助手</Text>
       </View>
 
-      <View className='wechat-registration-section'>
-        <Text className='section-title'>微信授权登录</Text>
-        {!wxUserInfo ? (
-          <CustomButton onClick={getUserProfile}>授权微信信息</CustomButton>
-        ) : (
-          <View>
-            <Text>已授权微信信息: {wxUserInfo.nickName}</Text>
-            <Form>
-              <FormItem label='接收频率'>
-                <View>
-                  <Radio checked={frequency === 'daily'} value='daily' onClick={handleFrequencyChange}>每日</Radio>
-                  <Radio checked={frequency === 'weekly'} value='weekly' onClick={handleFrequencyChange}>每周</Radio>
-                </View>
-              </FormItem>
-            </Form>
-
-            <CustomButton onClick={handleRegister} loading={loading}>
-              {loading ? '登录中...' : '微信登录'}
-            </CustomButton>
-          </View>
-        )}
-        {validationError && <Text className='error-message'>{validationError}</Text>}
-        {error && <Text className='error-message'>{error}</Text>}
+      <View className='content'>
+        <Text className='description'>基于您的兴趣和阅读习惯，为您推荐最相关的学术论文</Text>
       </View>
+
+      <View className='registration-section email-section'>
+        <Form className='email-form'>
+          <FormItem label='邮箱'>
+            <Input
+              type='text'
+              placeholder='请输入邮箱地址'
+              value={email}
+              onInput={(e) => setEmail(e.detail.value)}
+              className='input-field'
+              placeholderClass='register-input-placeholder'
+            />
+          </FormItem>
+          <FormItem label='密码'>
+            <Input
+              password={true}
+              placeholder='请输入密码'
+              value={password}
+              onInput={(e) => setPassword(e.detail.value)}
+              className='input-field'
+              placeholderClass='register-input-placeholder'
+            />
+          </FormItem>
+          {emailError && <Text className='error-message'>{emailError}</Text>}
+          <View className='button-group'>
+            <CustomButton onClick={handleEmailRegister} loading={loading} type='default' className='email-button'>注册邮箱</CustomButton>
+            <CustomButton onClick={handleWechatLogin} loading={loading} type='primary' className='email-button'>微信授权登录</CustomButton>
+          </View>
+          <View className='login-link'>
+            <Text>已有账号？</Text>
+            <Text className='link' onClick={goToLogin}>立即登录</Text>
+          </View>
+        </Form>
+      </View>
+      
+      {error && <Text className='error-message global-error'>{error}</Text>}
     </View>
   )
 }

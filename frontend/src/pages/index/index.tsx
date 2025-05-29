@@ -8,24 +8,16 @@ const Index = () => {
   const { isRegistered } = useAppSelector(state => state.user)
 
   const handleLogin = () => {
-    // 直接跳转到论文推荐页面
-    Taro.switchTab({
-      url: '/pages/recommendations/index'
-    })
+    // 直接使用与注册页面相同的方式
+    window.location.hash = '#/pages/login/index';
   }
   
   const handleRegister = () => {
-    // 跳转到注册页面
-    Taro.navigateTo({
-      url: '/pages/register/index'
-    })
+    window.location.hash = '#/pages/register/index';
   }
 
   const handleViewPapers = () => {
-    // 跳转到论文列表页面
-    Taro.navigateTo({
-      url: '/pages/paper-list/index'
-    })
+    window.location.hash = '#/pages/paper-list/index';
   }
 
   return (

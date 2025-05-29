@@ -20,13 +20,13 @@ export default defineConfig<'vite'>(async (merge, { command, mode }) => {
     plugins: [],
     defineConstants: {
     },
-    copy: {
+    /* copy: {
       patterns: [
         { from: 'src/assets/icons', to: 'dist/assets/icons' }
       ],
       options: {
       }
-    },
+    }, */
     framework: 'react',
     compiler: 'vite',
     mini: {
@@ -46,11 +46,11 @@ export default defineConfig<'vite'>(async (merge, { command, mode }) => {
         }
       },
       // 复制静态资源
-      copyPlugin: {
+      /* copyPlugin: {
         patterns: [
           { from: 'src/assets/icons', to: 'dist/assets/icons' }
         ]
-      }
+      } */
     },
     h5: {
       publicPath: '/',

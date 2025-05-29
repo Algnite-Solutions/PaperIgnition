@@ -244,8 +244,8 @@
     font-size: 12px; 
   }
   
-  // 登录链接样式
-  .login-link {
+  // 注册链接样式
+  .register-link {
     margin-top: 20px;
     text-align: center;
     font-size: 14px;
@@ -291,4 +291,16 @@
     margin: 10px 0;
     text-align: center;
   }
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 10px;
+  display: block;
+}
+
+.global-error {
+  margin-top: 20px;
+  text-align: center;
 } 

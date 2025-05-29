@@ -109,11 +109,11 @@ const Interests = () => {
   // 检查是否是从注册页面跳转过来
   useEffect(() => {
     // 检查localStorage中的标志
-    const fromRegistration = Taro.getStorageSync('fromRegistration')
+    const fromRegistration = localStorage.getItem('fromRegistration')
     if (fromRegistration) {
       setIsFromRegistration(true)
       // 清除标志，避免下次进入该页面时仍然被认为是从注册页面来的
-      Taro.removeStorageSync('fromRegistration')
+      localStorage.removeItem('fromRegistration')
       // 如果是从注册页面跳转来的，默认显示欢迎提示
       Taro.showModal({
         title: '欢迎加入',
@@ -126,8 +126,8 @@ const Interests = () => {
 
   // 处理订阅频率选择
   const handleFrequencyChange = (e) => {
-    const value = e.detail.value
-    dispatch(setFrequency(value === '0' ? 'daily' : 'weekly'))
+    const value = parseInt(e.detail.value)
+    dispatch(setFrequency(value === 0 ? 'daily' : 'weekly'))
   }
   
   // 处理论文选择 - 修改为收藏功能
@@ -374,6 +374,7 @@ const Interests = () => {
           </View>
         </View>
         
+        {/* 添加arXiv论文部分暂时注释掉
         <View className='section-title search-title'>
           <AtIcon value='search' size='16' color='#DC4A4A' />
           <Text>添加arXiv论文</Text>
@@ -425,6 +426,7 @@ const Interests = () => {
             </View>
           )}
         </View>
+        */}
       </Card>
 
       {error && (

@@ -19,7 +19,7 @@
 | is_verified | 布尔值 | 账户是否已验证 |
 | created_at | 日期时间 | 创建时间 |
 | updated_at | 日期时间 | 更新时间 |
-| interests_description | 文本 | 用户兴趣文字描述 |
+| interests_description | 字符串数组 | 用户研究兴趣关键词数组 |
 
 ### 2. 研究领域表 (research_domains)
 
@@ -55,6 +55,23 @@
 | url | 字符串(255) | 论文URL |
 | created_at | 日期时间 | 创建时间 |
 
+## 数据结构变更
+
+### interests_description 字段从文本到数组的迁移
+
+在v1.1版本中，我们将用户的兴趣描述字段从单一文本改为字符串数组，以便更好地存储和查询多个关键词。
+若要运行此迁移，请执行以下命令：
+
+```bash
+python run_migrations.py
+```
+
+迁移过程会：
+1. 创建临时列保存原始文本数据
+2. 将原字段类型更改为字符串数组
+3. 使用逗号分隔符拆分原始文本数据并转换为数组
+4. 删除临时列
+
 ## API端点
 
 目前前后端需要以下这些api接口，但是我没有完全实现
@@ -86,3 +103,27 @@
 | `/api/users/interests` | POST | 更新用户研究兴趣 |
 | `/api/papers` | GET | 获取论文列表 |
 | `/api/papers/{paper_id}` | GET | 获取论文详情 |
+
+## 数据格式示例
+
+### 用户兴趣更新
+
+请求:
+```json
+{
+  "research_domain_ids": [1, 3, 5],
+  "interests_description": ["机器学习", "深度学习", "自然语言处理", "计算机视觉"]
+}
+```
+
+响应:
+```json
+{
+  "id": 1,
+  "username": "user123",
+  "email": "user@example.com",
+  "is_active": true,
+  "interests_description": ["机器学习", "深度学习", "自然语言处理", "计算机视觉"],
+  "research_domain_ids": [1, 3, 5]
+}
+```

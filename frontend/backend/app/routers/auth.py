@@ -5,62 +5,99 @@ from sqlalchemy import or_
 
 from ..db.database import get_db
 from ..models.user import User
-from ..auth.schemas import UserLogin, Token, UserOut, WechatLogin, WechatLoginResponse
-from ..auth.utils import get_password_hash, verify_password, create_access_token
+from ..auth import schemas as auth_schemas # aliased for clarity
+from ..auth.utils import verify_password, create_access_token # get_password_hash is used in crud
+from ..crud import user as crud_user # aliased for clarity
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/login", response_model=Token)
-async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
-    """用户登录"""
-    # 查找用户
-    result = await db.execute(select(User).where(User.username == user_data.username))
-    user = result.scalars().first()
+@router.post("/register-email", response_model=auth_schemas.UserOut)
+async def register_email(user_in: auth_schemas.UserCreateEmail, db: AsyncSession = Depends(get_db)):
+    """用户通过邮箱密码注册"""
+    db_user = await crud_user.get_user_by_email(db, email=user_in.email)
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="此邮箱已被注册"
+        )
+    created_user = await crud_user.create_user_email(db=db, user_in=user_in)
+    # Optionally, create a token upon registration:
+    # access_token = create_access_token(data={"sub": created_user.email})
+    # return {"access_token": access_token, "token_type": "bearer", "user": created_user} 
+    # For now, just returning user info as per UserOut schema which includes id, email, username.
+    return created_user
+
+@router.post("/login-email", response_model=auth_schemas.EmailLoginResponse)
+async def login_email(user_in: auth_schemas.UserLoginEmail, db: AsyncSession = Depends(get_db)):
+    """用户通过邮箱密码登录"""
+    user = await crud_user.get_user_by_email(db, email=user_in.email)
+    if not user or not user.hashed_password or not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="邮箱或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.email}) # Use email as subject
     
-    # 验证用户和密码
-    if not user or not verify_password(user_data.password, user.hashed_password):
+    # 检查用户是否设置了研究兴趣
+    needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
+    
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "needs_interest_setup": needs_interest_setup,
+        "user_info": {
+            "email": user.email,
+            "username": user.username
+        }
+    }
+
+
+# Existing username/password login (can be kept or deprecated based on strategy)
+@router.post("/login", response_model=auth_schemas.Token)
+async def login_username_password(user_data: auth_schemas.UserLogin, db: AsyncSession = Depends(get_db)):
+    """用户通过用户名密码登录"""
+    user = await crud_user.get_user_by_username(db, username=user_data.username)
+    if not user or not user.hashed_password or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # 生成访问令牌
     access_token = create_access_token(data={"sub": user.username})
-    
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/wechat_login", response_model=WechatLoginResponse)
-async def wechat_login(wechat_data: WechatLogin, db: AsyncSession = Depends(get_db)):
+@router.post("/wechat_login", response_model=auth_schemas.WechatLoginResponse)
+async def wechat_login(wechat_data: auth_schemas.WechatLogin, db: AsyncSession = Depends(get_db)):
     """微信小程序登录"""
-    # TODO: Implement WeChat authentication logic using wechat_data.code
-    # This involves calling WeChat's API to exchange code for session_key and openid
+    # This is a simplified placeholder for WeChat OAuth flow.
+    # In a real application, you would exchange wechat_data.code for openid and session_key with WeChat servers.
+    # openid = await call_wechat_api(wechat_data.code) # Placeholder for actual API call
     
-    # Example placeholder logic:
-    # 1. Call WeChat API with code to get openid
-    # wechat_info = await get_wechat_openid(wechat_data.code) # Hypothetical function
-    # openid = wechat_info.openid # Assuming you get openid here
-    openid = "placeholder_openid" # Placeholder
+    # For demonstration, using a mock openid. Replace with actual openid retrieval.
+    mock_openid = f"mock_openid_for_code_{wechat_data.code}" 
     
-    # 2. Find user by openid
-    result = await db.execute(select(User).where(User.wx_openid == openid))
-    user = result.scalars().first()
-    
-    # 3. If user doesn't exist, create a new user (minimal info first)
+    user = await crud_user.get_user_by_username(db, username=mock_openid) # Assuming wx_openid is stored as username for wechat users
+    # Or if wx_openid field is primary lookup for wechat:
+    # result = await db.execute(select(User).where(User.wx_openid == mock_openid))
+    # user = result.scalars().first()
+
+    needs_interest_setup = True
     if not user:
-        # TODO: Get nickname and avatar from WeChat API if possible
-        new_user = User(wx_openid=openid)
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        user = new_user
-        
-    # 4. Generate access token
-    # Using openid as sub for now, you might want to use user.id or username if available
-    access_token = create_access_token(data={"sub": user.wx_openid})
-    
-    # 5. Check if user needs to complete profile (e.g., email is None)
-    needs_profile_completion = user.email is None # Or check other fields like interests_description
-    
-    # Return Token and needs_profile_completion flag
-    return WechatLoginResponse(access_token=access_token, token_type="bearer", needs_profile_completion=needs_profile_completion) 
+        # Assuming a new WeChat user always needs profile completion for now.
+        # You might get nickname/avatar if WeChat API provides it with code exchange.
+        user = await crud_user.create_user_wechat(db=db, openid=mock_openid, nickname="微信用户", avatar_url=None)
+    else:
+        # 检查用户是否设置了研究兴趣
+        needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
+
+    access_token = create_access_token(data={"sub": user.username}) # or user.wx_openid
+    return auth_schemas.WechatLoginResponse(
+        access_token=access_token, 
+        token_type="bearer", 
+        needs_interest_setup=needs_interest_setup,
+        user_info={
+            "email": user.email if user.email else "wx_user@example.com",
+            "username": user.username
+        }
+    ) 

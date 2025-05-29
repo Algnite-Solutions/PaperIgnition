@@ -46,6 +46,14 @@ async def init_db():
             
             await session.commit()
             print("已添加初始研究领域数据")
+            
+    # 确保PostgreSQL支持数组类型
+    async with AsyncSessionLocal() as session:
+        try:
+            await session.execute("SELECT ARRAY['test1', 'test2']::TEXT[]")
+            print("数据库支持数组类型，表创建成功")
+        except Exception as e:
+            print(f"警告: 数据库可能不支持数组类型，请确保PostgreSQL版本 >= 9.4: {e}")
 
 if __name__ == "__main__":
     # 当直接运行此脚本时，初始化数据库

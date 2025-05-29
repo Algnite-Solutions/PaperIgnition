@@ -2,11 +2,14 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/register/index',
+    'pages/login/index',
     'pages/interests/index',
     'pages/recommendations/index',
     'pages/paper-detail/index',
     'pages/paper-list/index',
-    'pages/favorites/index'
+    'pages/favorites/index',
+    'pages/profile/index',
+    'pages/research-interests/index'
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -24,20 +27,20 @@ export default defineAppConfig({
       {
         pagePath: 'pages/recommendations/index',
         text: '推荐',
-        iconPath: 'assets/icons/paper.png',
-        selectedIconPath: 'assets/icons/paper.png'
+        iconPath: '_assets/icons/paper.png',
+        selectedIconPath: '_assets/icons/paper.png'
       },
       {
         pagePath: 'pages/favorites/index',
         text: '收藏',
-        iconPath: 'assets/icons/heart.png',
-        selectedIconPath: 'assets/icons/heart.png'
+        iconPath: '_assets/icons/heart.png',
+        selectedIconPath: '_assets/icons/heart.png'
       },
       {
-        pagePath: 'pages/interests/index',
+        pagePath: 'pages/profile/index',
         text: '个人',
-        iconPath: 'assets/icons/person.png',
-        selectedIconPath: 'assets/icons/person.png'
+        iconPath: '_assets/icons/person.png',
+        selectedIconPath: '_assets/icons/person.png'
       }
     ]
   },

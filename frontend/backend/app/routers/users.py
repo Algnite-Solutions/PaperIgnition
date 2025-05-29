@@ -13,7 +13,7 @@ from ..auth.utils import get_current_user
 # 请求模型
 class UserInterestUpdate(BaseModel):
     research_domain_ids: List[int]
-    interests_description: Optional[str] = None
+    interests_description: Optional[List[str]] = None
 
 # Response model for research domains (assuming a simple list of id and name)
 class ResearchDomainOut(BaseModel):
@@ -45,7 +45,7 @@ async def get_current_user_info(username: str, db: AsyncSession = Depends(get_db
         "username": user.username,
         "email": user.email,
         "is_active": user.is_active,
-        "interests_description": user.interests_description,
+        "interests_description": user.interests_description or [],  # 确保返回空列表而不是None
         "research_domain_ids": research_domain_ids
     }
 
@@ -58,7 +58,7 @@ async def update_interests(
     """更新用户研究兴趣"""
     user = await get_current_user(username, db)
     
-    # 更新文字描述
+    # 更新兴趣关键词数组
     if interests.interests_description is not None:
         user.interests_description = interests.interests_description
     
@@ -89,7 +89,7 @@ async def update_interests(
         "username": user.username,
         "email": user.email,
         "is_active": user.is_active,
-        "interests_description": user.interests_description,
+        "interests_description": user.interests_description or [],  # 确保返回空列表而不是None
         "research_domain_ids": updated_domain_ids
     }
 
