@@ -62,34 +62,42 @@ const fetchUserInfo = async (): Promise<UserInfo | null> => {
 }
 
 // 更新用户推送频率接口
-const updateUserFrequency = async (frequency) => {
+const updateUserFrequency = async (frequency: 'daily' | 'weekly') => {
   try {
+    // console.log('Taro object in updateUserFrequency:', Taro); // Diagnostic log - keeping for now
     const token = localStorage.getItem('token')
-    if (!token) throw new Error('未登录')
-    
-    // 临时存储到本地存储
-    localStorage.setItem('pushFrequency', frequency)
-    return { success: true }
-    
-    /* 下面是原来的API调用代码，可以在后端API准备好后恢复
-    const response = await fetch('http://127.0.0.1:8000/api/users/update-frequency', {
+    if (!token) {
+      console.error('更新推送频率失败: 未找到token')
+      throw new Error('未登录')
+    }
+
+    console.log(`正在更新推送频率为: ${frequency}, token: ${token.substring(0,10)}...`);
+
+    // Using fetch API, similar to research-interests/index.tsx
+    const response = await fetch('http://127.0.0.1:8000/api/users/me/profile', {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ frequency })
-    })
-    
+      body: JSON.stringify({ push_frequency: frequency })
+    });
+
     if (!response.ok) {
-      throw new Error('更新推送频率失败')
+      console.error('更新推送频率失败: 服务器响应错误', response.status);
+      // Try to get an error message from backend if available
+      const errorData = await response.json().catch(() => ({ detail: '更新推送频率失败' }));
+      throw new Error(errorData.detail || '更新推送频率失败');
     }
-    
-    return await response.json()
-    */
+
+    const responseData = await response.json();
+    console.log('更新推送频率成功:', responseData);
+    return responseData; // Or simply { success: true }
+
   } catch (error) {
-    console.error('更新推送频率失败:', error)
-    return null
+    console.error('更新推送频率操作失败:', error);
+    // Throw the error so the calling function can catch it and show a toast
+    throw error;
   }
 }
 
@@ -172,10 +180,12 @@ const ProfilePage = () => {
     
     try {
       // 调用API更新频率
+      console.log('Taro object in handleFrequencyChange (before updateUserFrequency):', Taro); // Diagnostic log
       const result = await updateUserFrequency(newFrequency)
       if (result) {
         // 更新Redux状态
         dispatch(setFrequency(newFrequency))
+        console.log('Taro object in handleFrequencyChange (before success toast):', Taro); // Diagnostic log
         Taro.showToast({
           title: `已设置为${newFrequency === 'daily' ? '每日' : '每周'}推送`,
           icon: 'success',
@@ -183,9 +193,10 @@ const ProfilePage = () => {
         })
       }
     } catch (error) {
-      console.error('切换推送频率失败:', error)
+      console.error('Error in handleFrequencyChange while updating frequency:', error); // Corrected console.error
+      console.log('Taro object in handleFrequencyChange (before error toast):', Taro); // Diagnostic log
       Taro.showToast({
-        title: '切换推送频率失败',
+        title: error.message || '切换推送频率失败',
         icon: 'none',
         duration: 2000
       })

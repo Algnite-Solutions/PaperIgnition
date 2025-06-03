@@ -166,7 +166,7 @@ const Login = () => {
         <Text className='description'>基于您的兴趣和阅读习惯，为您推荐最相关的学术论文</Text>
       </View>
 
-      <View className='registration-section email-section'>
+      {/* <View className='registration-section email-section'> */}
         <Form className='email-form'>
           <FormItem label='邮箱'>
             <Input
@@ -176,6 +176,7 @@ const Login = () => {
               onInput={(e) => setEmail(e.detail.value)}
               className='input-field'
               placeholderClass='register-input-placeholder'
+              style={{ backgroundColor: 'transparent' }}
             />
           </FormItem>
           <FormItem label='密码'>
@@ -186,6 +187,7 @@ const Login = () => {
               onInput={(e) => setPassword(e.detail.value)}
               className='input-field'
               placeholderClass='register-input-placeholder'
+              style={{ backgroundColor: 'transparent' }}
             />
           </FormItem>
           {loginError && <Text className='error-message'>{loginError}</Text>}
@@ -198,7 +200,7 @@ const Login = () => {
             <Text className='link' onClick={goToRegister}>立即注册</Text>
           </View>
         </Form>
-      </View>
+      {/* </View> */}
       
       {error && <Text className='error-message global-error'>{error}</Text>}
     </View>

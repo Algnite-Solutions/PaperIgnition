@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from ..db.database import get_db
 from ..models.user import User, ResearchDomain, user_domain_association
@@ -117,3 +118,56 @@ async def update_user_profile(
     await db.refresh(current_user)
     
     return current_user 
+
+@router.get("/all", response_model=List[UserOut])
+async def get_all_users_info(db: AsyncSession = Depends(get_db)):
+    """获取所有用户信息（username 和 interests_description）"""
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    
+    response_users = []
+    for user in users:
+        research_domain_ids = []
+        # if user.research_domains:
+        #     for domain in user.research_domains:
+        #         research_domain_ids.append(domain.id)
+        
+        response_users.append({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_active": user.is_active,
+            "interests_description": user.interests_description or [],
+            "research_domain_ids": research_domain_ids
+        })
+    return response_users 
+
+@router.get("/by_email/{username}", response_model=UserOut)
+async def get_user_by_email(
+    username: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """获取指定邮箱用户的详细信息"""
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email {username} not found"
+        )
+    
+    # 获取用户的研究领域ID (与 /me 和 /all 接口保持一致的返回结构)
+    research_domain_ids = []
+    # if user.research_domains:
+    #     for domain in user.research_domains:
+    #         research_domain_ids.append(domain.id)
+            
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "interests_description": user.interests_description or [],
+        "research_domain_ids": research_domain_ids
+    } 
