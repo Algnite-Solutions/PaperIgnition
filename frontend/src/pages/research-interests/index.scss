@@ -154,16 +154,9 @@
     
     .button-container {
       display: flex;
-      gap: 12px;
+      flex-direction: row;
+      justify-content: center;
       padding: 20px 0;
-      
-      .cancel-button, .save-button {
-        flex: 1;
-        height: 46px;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 500;
-      }
       
       .cancel-button {
         background-color: #f5f5f5;
@@ -173,6 +166,11 @@
       
       .save-button {
         background-color: #4a89dc;
+        width: 48%;
+        height: 46px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 500;
       }
     }
   }

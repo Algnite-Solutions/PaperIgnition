@@ -40,6 +40,7 @@ const Login = () => {
       return;
     }
     
+    console.log('[Login Page] handleEmailLogin: dispatching loginStart');
     dispatch(loginStart());
     try {
       const response = await fetch('http://127.0.0.1:8000/api/auth/login-email', {
@@ -49,49 +50,46 @@ const Login = () => {
       });
       
       const data = await response.json();
-      
+      console.log('[Login Page] handleEmailLogin: API response data:', data);
       if (response.ok) {
-        // 保存token
         localStorage.setItem('token', data.access_token);
-        
-        // 保存用户邮箱到本地存储
         localStorage.setItem('userEmail', email);
         
+        console.log('[Login Page] handleEmailLogin: dispatching loginSuccess');
         dispatch(loginSuccess());
+        console.log('[Login Page] handleEmailLogin: loginSuccess dispatched. Current loading state should be false.');
         
-        // 根据用户是否设置了研究兴趣决定跳转路径
         if (data.needs_interest_setup) {
-          // 如果用户未设置研究兴趣，跳转到兴趣配置页面
           showMessage('请先设置您的订阅频率和研究兴趣');
-          
-          if (process.env.TARO_ENV === 'h5') {
-            window.location.hash = '#/pages/interests/index';
-          } else {
-            Taro.navigateTo({ url: '/pages/interests/index' });
-          }
+          console.log('[Login Page] handleEmailLogin: Navigating to interests page soon...');
+          setTimeout(() => {
+            Taro.redirectTo({ url: '/pages/interests/index' });
+          }, 200); // Small delay
         } else {
-          // 如果已设置研究兴趣，跳转到首页
           showMessage('登录成功!', 'success');
-          
-          if (process.env.TARO_ENV === 'h5') {
-            window.location.hash = '#/pages/index/index';
-          } else {
-            Taro.switchTab({ url: '/pages/index/index' });
-          }
+          console.log('[Login Page] handleEmailLogin: Navigating to recommendations page soon...');
+          setTimeout(() => {
+            Taro.redirectTo({ url: '/pages/recommendations/index' });
+          }, 200); // Small delay
         }
       } else {
         const errorDetail = data?.detail || '登录失败';
         setLoginError(errorDetail);
+        console.log('[Login Page] handleEmailLogin: dispatching loginFailure with error:', errorDetail);
         dispatch(loginFailure(errorDetail));
+        console.log('[Login Page] handleEmailLogin: loginFailure dispatched. Current loading state should be false.');
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '网络请求错误，登录失败';
       setLoginError(errorMsg);
+      console.log('[Login Page] handleEmailLogin: CATCH block - dispatching loginFailure with error:', errorMsg);
       dispatch(loginFailure(errorMsg));
+      console.log('[Login Page] handleEmailLogin: CATCH block - loginFailure dispatched. Current loading state should be false.');
     }
   };
 
   const handleWechatLogin = async () => {
+    console.log('[Login Page] handleWechatLogin: dispatching loginStart');
     dispatch(loginStart());
     try {
       const loginRes = await Taro.login();
@@ -105,45 +103,46 @@ const Login = () => {
       });
 
       const data = await response.json();
+      console.log('[Login Page] handleWechatLogin: API response data:', data);
       
       if (response.ok && data.access_token) {
         localStorage.setItem('token', data.access_token);
-        
-        // 保存微信用户信息到本地存储
         if (data.user_info && data.user_info.email) {
           localStorage.setItem('userEmail', data.user_info.email);
         } else {
           localStorage.setItem('userEmail', '微信用户');
         }
         
+        console.log('[Login Page] handleWechatLogin: dispatching loginSuccess');
         dispatch(loginSuccess());
+        console.log('[Login Page] handleWechatLogin: loginSuccess dispatched. Current loading state should be false.');
         
-        // 根据用户是否设置了研究兴趣决定跳转路径
         if (data.needs_interest_setup) {
-          // 如果用户未设置研究兴趣，跳转到兴趣配置页面
           showMessage('请先设置您的订阅频率和研究兴趣');
-          
-          if (process.env.TARO_ENV === 'h5') {
-            window.location.hash = '#/pages/interests/index';
-          } else {
-            Taro.navigateTo({ url: '/pages/interests/index' });
-          }
+          console.log('[Login Page] handleWechatLogin: Navigating to interests page soon...');
+          setTimeout(() => {
+            Taro.redirectTo({ url: '/pages/interests/index' });
+          }, 200); // Small delay
         } else {
-          // 如果已设置研究兴趣，跳转到首页
           showMessage('登录成功!', 'success');
-          
-          if (process.env.TARO_ENV === 'h5') {
-            window.location.hash = '#/pages/index/index';
-          } else {
-            Taro.switchTab({ url: '/pages/index/index' });
-          }
+          console.log('[Login Page] handleWechatLogin: Navigating to recommendations page soon...');
+          setTimeout(() => {
+            Taro.redirectTo({ url: '/pages/recommendations/index' });
+          }, 200); // Small delay
         }
       } else {
-        throw new Error(data.detail || '微信登录失败');
+        const errorDetail = data.detail || '微信登录失败';
+        console.error('[Login Page] handleWechatLogin: Error condition met. Error:', errorDetail);
+        dispatch(loginFailure(errorDetail));
+        console.log('[Login Page] handleWechatLogin: loginFailure dispatched. Current loading state should be false.');
+        showMessage(errorDetail, 'error');
       }
     } catch (err) {
-      dispatch(loginFailure(err instanceof Error ? err.message : '微信登录失败'));
-      showMessage(err instanceof Error ? err.message : '微信登录失败', 'error');
+      const errorMsg = err instanceof Error ? err.message : '微信登录失败';
+      console.error('[Login Page] handleWechatLogin: CATCH block - dispatching loginFailure with error:', errorMsg);
+      dispatch(loginFailure(errorMsg));
+      console.log('[Login Page] handleWechatLogin: CATCH block - loginFailure dispatched. Current loading state should be false.');
+      showMessage(errorMsg, 'error');
     }
   };
 

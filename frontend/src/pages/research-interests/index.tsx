@@ -7,215 +7,154 @@ import { setInterestDescription, saveInterestsWithDescription } from '../../stor
 import CustomButton from '../../components/ui/Button'
 import './index.scss'
 
-// 定义研究领域接口
-interface ResearchDomain {
-  id: number
-  name: string
-  description?: string
-}
-
-// 获取所有研究领域接口
-const fetchResearchDomains = async (): Promise<ResearchDomain[]> => {
-  try {
-    const response = await fetch('http://127.0.0.1:8000/api/research-domains', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('获取研究领域失败')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('获取研究领域失败:', error)
-    return []
-  }
-}
-
-// 定义用户兴趣接口
-interface UserInterests {
-  description: string
-  domain_ids: number[]
-}
-
-// 获取用户研究兴趣接口
-const fetchUserInterests = async (): Promise<UserInterests | null> => {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) throw new Error('未登录')
-    
-    // 获取用户邮箱
-    const userEmail = localStorage.getItem('userEmail')
-    if (!userEmail) throw new Error('未找到用户邮箱')
-    
-    const response = await fetch('http://127.0.0.1:8000/api/users/interests', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'X-User-Email': userEmail // 将邮箱作为请求头发送给后端
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('获取用户研究兴趣失败')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('获取用户研究兴趣失败:', error)
-    return null
-  }
-}
-
-// 更新用户研究兴趣接口
-const updateUserInterests = async (interests: UserInterests): Promise<any> => {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) throw new Error('未登录')
-    
-    // 获取用户邮箱
-    const userEmail = localStorage.getItem('userEmail')
-    if (!userEmail) throw new Error('未找到用户邮箱')
-    
-    const response = await fetch('http://127.0.0.1:8000/api/users/interests', {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'X-User-Email': userEmail // 将邮箱作为请求头发送给后端
-      },
-      body: JSON.stringify(interests)
-    })
-    
-    if (!response.ok) {
-      throw new Error('更新研究兴趣失败')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('更新研究兴趣失败:', error)
-    return null
-  }
+// UserProfile interface based on what GET /api/users/me likely returns 
+interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  interests_description: string[]; // This is a list of strings
+  research_domain_ids: number[]; // This is a list of domain IDs (still fetched, but not used for editing on this page)
+  push_frequency?: string; 
 }
 
 const ResearchInterestsPage = () => {
-  const dispatch = useAppDispatch()
-  const { interests } = useAppSelector(state => state.user)
+  const dispatch = useAppDispatch();
   
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [description, setDescription] = useState(interests.description || '')
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([])
-  const [domains, setDomains] = useState<ResearchDomain[]>([])
-  const [selectedDomains, setSelectedDomains] = useState<number[]>([])
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [description, setDescription] = useState(''); 
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]); 
   
-  // 热门关键词
-  const [popularKeywords, setPopularKeywords] = useState([
+  const [popularKeywords] = useState([
     'AI', '机器学习', '深度学习', '自然语言处理', '计算机视觉',
     '区块链', '物联网', '云计算', '大数据', '神经网络',
     '量子计算', '人机交互', '生物信息学', '知识图谱', '强化学习',
     '图神经网络', '推荐系统', '语音识别', '多模态学习', '联邦学习'
-  ])
+  ]);
 
-  // 加载研究领域和用户兴趣
   useEffect(() => {
-    const loadData = async () => {
+    const loadInitialData = async () => {
+      setLoading(true);
       try {
-        // 获取所有研究领域
-        const domainsData = await fetchResearchDomains()
-        if (domainsData && domainsData.length > 0) {
-          setDomains(domainsData)
+        // Fetch current user's profile (which includes interests)
+        const token = localStorage.getItem('token');
+        if (!token) {
+          Taro.showToast({ title: '请先登录', icon: 'none' });
+          setLoading(false);
+          return;
+        }
+
+        const userProfileResponse = await fetch('http://127.0.0.1:8000/api/users/me', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!userProfileResponse.ok) {
+          throw new Error('获取用户配置失败');
         }
         
-        // 获取用户已选研究兴趣
-        const userInterests = await fetchUserInterests()
-        if (userInterests) {
-          setDescription(userInterests.description || '')
-          setSelectedDomains(userInterests.domain_ids || [])
-          
-          // 解析描述中的关键词
-          if (userInterests.description) {
-            const keywordsArray = userInterests.description
-              .split(',')
-              .map(keyword => keyword.trim())
-              .filter(keyword => keyword.length > 0)
-            setSelectedKeywords(keywordsArray)
-          }
-          
-          dispatch(setInterestDescription(userInterests.description || ''))
+        const userProfile: UserProfile = await userProfileResponse.json();
+        console.log('User Profile for research interests page:', userProfile);
+
+        const userInterestsDesc = (userProfile.interests_description || []).join(', ');
+        setDescription(userInterestsDesc);
+        
+        if (userInterestsDesc) {
+          const keywordsArray = userInterestsDesc
+            .split(',')
+            .map(keyword => keyword.trim())
+            .filter(keyword => keyword.length > 0);
+          setSelectedKeywords(keywordsArray);
         }
+        
+        dispatch(setInterestDescription(userInterestsDesc));
+
       } catch (error) {
-        console.error('加载数据失败:', error)
+        console.error('加载研究兴趣页面数据失败:', error);
         Taro.showToast({
-          title: '加载数据失败',
+          title: error instanceof Error ? error.message : '加载数据失败',
           icon: 'none',
           duration: 2000
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
     
-    loadData()
-  }, [dispatch])
+    loadInitialData();
+  }, [dispatch]);
 
-  // 切换编辑模式
   const toggleEditMode = () => {
-    setIsEditMode(!isEditMode)
-  }
+    setIsEditMode(!isEditMode);
+  };
 
-  // 处理关键词选择
   const handleKeywordToggle = (keyword: string) => {
+    let newKeywords;
     if (selectedKeywords.includes(keyword)) {
-      // 如果已选中，则移除
-      setSelectedKeywords(selectedKeywords.filter(k => k !== keyword))
+      newKeywords = selectedKeywords.filter(k => k !== keyword);
     } else {
-      // 如果未选中，则添加
-      setSelectedKeywords([...selectedKeywords, keyword])
+      newKeywords = [...selectedKeywords, keyword];
     }
-  }
+    setSelectedKeywords(newKeywords);
+    setDescription(newKeywords.join(', ')); 
+  };
 
-  // 保存研究兴趣
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
-      // 将选择的关键词组合成描述
-      const newDescription = selectedKeywords.join(', ')
-      setDescription(newDescription)
+      const newDescription = selectedKeywords.join(', '); 
       
-      // 更新后端数据
-      await updateUserInterests({
-        description: newDescription,
-        domain_ids: selectedDomains
-      })
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('未登录');
+
+      const interestsListForBackend = newDescription
+          .split(',')
+          .map(item => item.trim())
+          .filter(item => item.length > 0);
+
+      // Only sending interests_description, as domain selection is removed from this page's UI
+      const profileUpdateData = {
+        interests_description: interestsListForBackend,
+      };
+
+      const response = await fetch('http://127.0.0.1:8000/api/users/me/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileUpdateData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({detail: '保存失败'}));
+        throw new Error(errorData.detail || '保存用户配置失败');
+      }
       
-      // 更新Redux状态
-      dispatch(saveInterestsWithDescription(newDescription))
+      dispatch(saveInterestsWithDescription(newDescription));
       
       Taro.showToast({
         title: '保存成功',
         icon: 'success',
         duration: 2000
-      })
-      
-      // 切换回查看模式
-      setIsEditMode(false)
+      });
+      setIsEditMode(false);
     } catch (error) {
-      console.error('保存失败:', error)
+      console.error('保存失败:', error);
       Taro.showToast({
-        title: '保存失败',
+        title: error instanceof Error ? error.message : '保存失败',
         icon: 'none',
         duration: 2000
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -265,7 +204,7 @@ const ResearchInterestsPage = () => {
               )}
             </View>
             
-            <View className='section'>
+            {/* <View className='section'>
               <Text className='section-title'>热门研究领域</Text>
               <View className='keywords-container'>
                 {popularKeywords.slice(0, 10).map((keyword, index) => (
@@ -274,7 +213,7 @@ const ResearchInterestsPage = () => {
                   </View>
                 ))}
               </View>
-            </View>
+            </View> */}
           </View>
         ) : (
           // 编辑模式
@@ -300,13 +239,13 @@ const ResearchInterestsPage = () => {
             </View>
             
             <View className='button-container'>
-              <CustomButton
+              {/* <CustomButton
                 type='default'
                 onClick={toggleEditMode}
                 className='cancel-button'
               >
                 取消
-              </CustomButton>
+              </CustomButton> */}
               <CustomButton
                 type='primary'
                 loading={saving}

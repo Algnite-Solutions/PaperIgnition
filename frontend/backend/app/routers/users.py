@@ -22,41 +22,32 @@ class ResearchDomainOut(BaseModel):
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-# 获取当前用户信息的依赖函数（简化版，实际应使用JWT验证）
-async def get_current_user(username: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
-    return user
-
 @router.get("/me", response_model=UserOut)
-async def get_current_user_info(username: str, db: AsyncSession = Depends(get_db)):
-    """获取当前用户信息（简化版，实际应使用JWT验证）"""
-    user = await get_current_user(username, db)
-    
+async def get_current_user_info(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """获取当前用户信息（现在使用JWT验证）"""
     # 获取用户的研究领域ID
     research_domain_ids = []
-    for domain in user.research_domains:
-        research_domain_ids.append(domain.id)
+    if current_user.research_domains:
+        for domain in current_user.research_domains:
+            research_domain_ids.append(domain.id)
     
     return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "is_active": user.is_active,
-        "interests_description": user.interests_description or [],  # 确保返回空列表而不是None
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_active": current_user.is_active,
+        "interests_description": current_user.interests_description or [],
         "research_domain_ids": research_domain_ids
     }
 
 @router.post("/interests", response_model=UserOut)
 async def update_interests(
     interests: UserInterestUpdate, 
-    username: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """更新用户研究兴趣"""
-    user = await get_current_user(username, db)
+    user = current_user
     
     # 更新兴趣关键词数组
     if interests.interests_description is not None:
@@ -89,7 +80,7 @@ async def update_interests(
         "username": user.username,
         "email": user.email,
         "is_active": user.is_active,
-        "interests_description": user.interests_description or [],  # 确保返回空列表而不是None
+        "interests_description": user.interests_description or [],
         "research_domain_ids": updated_domain_ids
     }
 
@@ -117,7 +108,8 @@ async def update_user_profile(
     if profile_data.research_domain_ids is not None:
         result = await db.execute(select(ResearchDomain).where(ResearchDomain.id.in_(profile_data.research_domain_ids)))
         research_domains = result.scalars().all()
-        
+        if len(research_domains) != len(profile_data.research_domain_ids):
+             raise HTTPException(status_code=400, detail="一个或多个提供的研究领域ID无效。")
         current_user.research_domains = research_domains
 
     db.add(current_user)

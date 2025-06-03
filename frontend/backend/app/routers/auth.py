@@ -40,6 +40,7 @@ async def login_email(user_in: auth_schemas.UserLoginEmail, db: AsyncSession = D
     access_token = create_access_token(data={"sub": user.email}) # Use email as subject
     
     # 检查用户是否设置了研究兴趣
+    # 恢复到原始逻辑，移除所有DEBUG打印
     needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
     
     return {

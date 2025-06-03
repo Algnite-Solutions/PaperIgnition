@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, SecurityS
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from ..db.database import get_db
 from ..models.user import User
@@ -79,7 +80,7 @@ async def get_current_user(
                 User.username == user_identifier,
                 User.wx_openid == user_identifier
             )
-        )
+        ).options(selectinload(User.research_domains))
     )
     user = result.scalars().first()
 
