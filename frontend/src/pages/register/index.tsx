@@ -5,6 +5,7 @@ import Form, { FormItem } from '../../components/ui/Form'
 import CustomButton from '../../components/ui/Button'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setFrequency, registerStart, registerSuccess, registerFailure } from '../../store/slices/userSlice'
+import { API_BASE_URL } from '../../config/api'
 import './index.scss'
 
 const Register = () => {
@@ -25,7 +26,7 @@ const Register = () => {
       const code = loginRes.code;
       if (!code) throw new Error('Failed to get WeChat login code.');
 
-      const response = await fetch('http://127.0.0.1:8000/api/auth/wechat_login', {
+      const response = await fetch(`${API_BASE_URL}/auth/wechat_login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -72,7 +73,7 @@ const Register = () => {
     }
     dispatch(registerStart());
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/register-email', {
+      const response = await fetch(`${API_BASE_URL}/auth/register-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -122,7 +123,7 @@ const Register = () => {
         <Text className='description'>基于您的兴趣和阅读习惯，为您推荐最相关的学术论文</Text>
       </View>
 
-      {/* <View className='registration-section email-section'> */}
+      <View className='registration-section email-section'>
         <Form className='email-form'>
           <FormItem label='邮箱'>
             <Input
@@ -156,7 +157,7 @@ const Register = () => {
             <Text className='link' onClick={goToLogin}>立即登录</Text>
           </View>
         </Form>
-      {/* </View> */}
+      </View>
       
       {error && <Text className='error-message global-error'>{error}</Text>}
     </View>

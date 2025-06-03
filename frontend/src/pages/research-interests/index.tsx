@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { AtIcon } from 'taro-ui'
 import { setInterestDescription, saveInterestsWithDescription } from '../../store/slices/userSlice'
 import CustomButton from '../../components/ui/Button'
+import { API_BASE_URL } from '../../config/api'
 import './index.scss'
 
 // UserProfile interface based on what GET /api/users/me likely returns 
@@ -46,7 +47,7 @@ const ResearchInterestsPage = () => {
           return;
         }
 
-        const userProfileResponse = await fetch('http://127.0.0.1:8000/api/users/me', {
+        const userProfileResponse = await fetch(`${API_BASE_URL}/users/me`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -122,7 +123,7 @@ const ResearchInterestsPage = () => {
         interests_description: interestsListForBackend,
       };
 
-      const response = await fetch('http://127.0.0.1:8000/api/users/me/profile', {
+      const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -17,6 +17,7 @@ import Card from '../../components/ui/Card'
 import InterestPaperCard from '../../components/ui/InterestPaperCard'
 import { Paper } from '../../components/ui/PaperCard'
 import Taro from '@tarojs/taro'
+import { API_BASE_URL } from '../../config/api'
 import './index.scss'
 
 // 模拟搜索论文API调用
@@ -148,7 +149,7 @@ const Interests = () => {
       }
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/users/me', {
+        const response = await fetch(`${API_BASE_URL}/api/users/me`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -365,7 +366,7 @@ const Interests = () => {
 
       try {
         console.log('[ Interests Page handleSave ] ==> Attempting network request with fetch.');
-        const fetchResponse = await fetch('http://127.0.0.1:8000/api/users/me/profile', {
+        const fetchResponse = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

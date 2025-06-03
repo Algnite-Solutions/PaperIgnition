@@ -5,6 +5,7 @@ import Form, { FormItem } from '../../components/ui/Form'
 import CustomButton from '../../components/ui/Button'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/userSlice'
+import { API_BASE_URL } from '../../config/api'
 import './index.scss'
 
 const Login = () => {
@@ -43,7 +44,7 @@ const Login = () => {
     console.log('[Login Page] handleEmailLogin: dispatching loginStart');
     dispatch(loginStart());
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login-email', {
+      const response = await fetch(`${API_BASE_URL}/auth/login-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -96,7 +97,7 @@ const Login = () => {
       const code = loginRes.code;
       if (!code) throw new Error('Failed to get WeChat login code.');
 
-      const response = await fetch('http://127.0.0.1:8000/api/auth/wechat_login', {
+      const response = await fetch(`${API_BASE_URL}/auth/wechat_login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })

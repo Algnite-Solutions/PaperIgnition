@@ -1,6 +1,5 @@
 import Taro from '@tarojs/taro';
-
-const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Replace with your actual backend URL
+import { API_BASE_URL } from '../config/api'; // Import the base URL
 
 // Function to get current user profile
 export const fetchUserProfile = async () => {
