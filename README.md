@@ -15,10 +15,17 @@ export PYTHONPATH=$YOUR_PAPERIGNITION_PATH
 ```
 
 4. Run the service:
-For example, launch indexing server
+First, launch indexing server
 ```bash
 uvicorn backend.index_service.main:app --reload
 ```
+
+Then, test orchestrator
+```
+mkdir -p ./orchestrator/blogs/
+python orchestrator/run_all.py
+```
+
 
 ## API Endpoints
 Please document endpoint for each APIs
