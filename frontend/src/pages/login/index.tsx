@@ -44,7 +44,7 @@ const Login = () => {
     console.log('[Login Page] handleEmailLogin: dispatching loginStart');
     dispatch(loginStart());
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login-email`, {
+      const response = await fetch(`http://localhost:8000/api/auth/login-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

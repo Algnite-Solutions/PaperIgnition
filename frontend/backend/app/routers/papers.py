@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from ..db.database import get_db
 
-router = APIRouter(prefix="/api/papers", tags=["papers"])
+router = APIRouter(prefix="/papers", tags=["papers"])
 
 # 论文模型
 class PaperBase(BaseModel):

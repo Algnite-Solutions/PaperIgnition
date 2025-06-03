@@ -9,7 +9,7 @@ from ..auth import schemas as auth_schemas # aliased for clarity
 from ..auth.utils import verify_password, create_access_token # get_password_hash is used in crud
 from ..crud import user as crud_user # aliased for clarity
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register-email", response_model=auth_schemas.UserOut)
 async def register_email(user_in: auth_schemas.UserCreateEmail, db: AsyncSession = Depends(get_db)):

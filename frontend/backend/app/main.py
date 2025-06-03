@@ -18,9 +18,9 @@ app.add_middleware(
 )
 
 # 注册路由
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(papers.router)
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(papers.router, prefix="/api")
 
 @app.get("/")
 async def root():
