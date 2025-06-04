@@ -1,5 +1,5 @@
 from AIgnite.data.docset import *
-from AIgnite.data.docparser_new import *
+from AIgnite.data.htmlparser import *
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor, as_completed  
 import json
@@ -59,9 +59,8 @@ def run_extractor_for_timeslot(start_str, end_str):
     image_folder_path = os.path.join(base_dir, "imgs")
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
-    set your ak and sk here
-    ak = ""
-    sk = ""
+    ak = 
+    sk = 
 
     extractor = ArxivHTMLExtractor(
         html_text_folder=html_text_folder,
