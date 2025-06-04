@@ -47,7 +47,7 @@ const ResearchInterestsPage = () => {
           return;
         }
 
-        const userProfileResponse = await fetch(`${API_BASE_URL}/users/me`, {
+        const userProfileResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -123,7 +123,7 @@ const ResearchInterestsPage = () => {
         interests_description: interestsListForBackend,
       };
 
-      const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

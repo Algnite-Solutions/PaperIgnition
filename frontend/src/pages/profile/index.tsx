@@ -27,7 +27,7 @@ const fetchUserInfo = async (): Promise<UserInfo | null> => {
     
     console.log('正在获取用户信息, token:', token.substring(0, 10) + '...')
     
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -61,7 +61,7 @@ const updateUserFrequency = async (frequency: 'daily' | 'weekly') => {
 
     console.log(`正在更新推送频率为: ${frequency}, token: ${token.substring(0,10)}...`);
 
-    const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
