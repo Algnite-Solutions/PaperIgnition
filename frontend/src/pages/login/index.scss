@@ -1,0 +1,306 @@
+.register-container {
+  min-height: 100vh;
+  padding: 40px 24px 40px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 80%;
+    height: 40%;
+    background: radial-gradient(circle, rgba(74, 137, 220, 0.1) 0%, rgba(74, 137, 220, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    right: -10%;
+    width: 80%;
+    height: 40%;
+    background: radial-gradient(circle, rgba(74, 137, 220, 0.1) 0%, rgba(74, 137, 220, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .title {
+      font-size: 48px;
+      font-weight: bold;
+      color: #4a89dc;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: #333;
+      opacity: 0.85;
+      letter-spacing: 0.5px;
+    }
+  }
+  
+  .content {
+    text-align: center;
+    padding: 0 24px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+
+    .description {
+      font-size: 16px;
+      color: #666;
+      line-height: 1.8;
+      max-width: 600px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  .wechat-registration-section {
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 16px;
+    padding: 30px 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 24px;
+      display: block;
+    }
+
+    .wechat-auth, .wechat-profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 24px;
+
+      .auth-hint {
+        font-size: 15px;
+        color: #666;
+        margin-bottom: 16px;
+      }
+
+      .user-info-display {
+        margin-bottom: 20px;
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+      }
+    }
+
+    .form-item {
+      margin-bottom: 20px;
+
+      .label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 8px;
+        display: block;
+        text-align: left;
+      }
+    }
+
+    .input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      padding: 0 16px;
+      font-size: 16px;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      color: #333;
+      
+      &::placeholder {
+        color: #aaa;
+      }
+      
+      &:focus {
+        border-color: #4a89dc;
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(74, 137, 220, 0.2);
+      }
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 8px 0;
+      align-items: flex-start;
+      
+      .radio-item {
+        font-size: 16px;
+        color: #333;
+      }
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px 0;
+      align-items: flex-start;
+
+      .checkbox-item {
+        font-size: 16px;
+        color: #333;
+      }
+    }
+
+    .custom-button {
+      margin-top: 30px;
+      border-radius: 24px;
+      height: 48px;
+      background: linear-gradient(135deg, #6a85b6 0%, #bac8e0 100%);
+      box-shadow: 0 6px 15px rgba(106, 133, 182, 0.25);
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      
+      &:active {
+        transform: translateY(1px);
+        box-shadow: 0 3px 8px rgba(106, 133, 182, 0.15);
+      }
+    }
+
+    .error-message {
+      color: #e57373;
+      font-size: 14px;
+      display: block;
+      margin: 20px 0 0;
+      padding: 10px 15px;
+      background-color: rgba(229, 115, 115, 0.15);
+      border-radius: 8px;
+      text-align: center;
+    }
+  }
+
+  .loading {
+    font-size: 18px;
+    color: #555;
+    text-align: center;
+    padding: 30px;
+  }
+
+  .email-section {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 20px;
+  }
+
+  .form-item {
+    .label {
+      font-size: 28px;
+      font-weight: 600;
+    }
+  }
+
+  .input-field {
+    background-color: transparent !important;
+  }
+
+  // Added new class for styling the placeholder via placeholderClass prop
+  .register-input-placeholder {
+    font-size: 12px; 
+  }
+  
+  // 注册链接样式
+  .register-link {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    
+    .link {
+      color: #4a89dc;
+      margin-left: 5px;
+      font-weight: 500;
+      
+      &:active {
+        opacity: 0.8;
+      }
+    }
+  }
+} 
+
+.registration-section {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 30px 24px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+  
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    
+    .email-button {
+      width: 100%;
+    }
+  }
+  
+  .error-message {
+    color: #e57373;
+    font-size: 14px;
+    display: block;
+    margin: 10px 0;
+    text-align: center;
+  }
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 10px;
+  display: block;
+}
+
+.global-error {
+  margin-top: 20px;
+  text-align: center;
+} 

@@ -1,0 +1,382 @@
+.profile-setup-container {
+  min-height: 100vh;
+  padding: 60px 24px 40px; /* Consistent padding with register page */
+  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); /* Consistent background */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  /* Subtle background elements - consistent with register page */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 5%;
+    left: 5%;
+    width: 50%;
+    height: 25%;
+    background: radial-gradient(circle, rgba(158, 198, 234, 0.2) 0%, rgba(158, 198, 234, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 5%;
+    right: 5%;
+    width: 50%;
+    height: 25%;
+    background: radial-gradient(circle, rgba(158, 198, 234, 0.2) 0%, rgba(158, 198, 234, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px; /* Consistent margin */
+    position: relative;
+    z-index: 1;
+
+    .title {
+      font-size: 30px;
+      font-weight: 700;
+      color: #333;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #555;
+      display: block;
+    }
+  }
+
+  .form {
+    background: rgba(255, 255, 255, 0.98); /* Slightly more opaque white */
+    border-radius: 16px;
+    padding: 30px 24px; /* Consistent padding */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12); /* Stronger, softer shadow */
+    backdrop-filter: blur(15px); /* Increased blur */
+    -webkit-backdrop-filter: blur(15px);
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 400px; /* Consistent max width */
+    
+    .form-item {
+      margin-bottom: 24px; /* Increased margin between form items */
+
+      .label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 8px; /* Slightly increased margin below label */
+        display: block;
+        text-align: left;
+      }
+    }
+
+    .input {
+      width: 100%;
+      height: 44px; /* Slightly taller input */
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      padding: 0 16px; /* Adjusted padding */
+      font-size: 16px; /* Slightly larger font */
+      background-color: rgba(255, 255, 255, 0.95); /* More opaque background */
+      backdrop-filter: blur(10px); /* Adjusted blur */
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Slightly stronger inner shadow */
+      transition: all 0.3s ease;
+      color: #333;
+
+      &::placeholder {
+        color: #aaa;
+      }
+
+      &:focus {
+        border-color: #4a89dc;
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(74, 137, 220, 0.2); /* Stronger focus shadow */
+      }
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px; /* Increased gap */
+      padding: 8px 0;
+      align-items: flex-start;
+
+      .radio-item {
+        font-size: 16px; /* Slightly larger font */
+        color: #333;
+
+        /* Custom radio button styling (requires modifying index.tsx or component) */
+        /* input[type='radio'] { ... } */
+        /* .taro-radio .taro-radio__original { ... } */
+      }
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px; /* Increased gap */
+      padding: 8px 0;
+      align-items: flex-start;
+
+      .checkbox-item {
+        font-size: 16px; /* Slightly larger font */
+        color: #333;
+
+         /* Custom checkbox styling (requires modifying index.tsx or component) */
+        /* input[type='checkbox'] { ... } */
+        /* .taro-checkbox .taro-checkbox__original { ... } */
+      }
+    }
+
+    .custom-button {
+      margin-top: 40px; /* Increased top margin for the submit button */
+      border-radius: 24px; /* Slightly larger border radius */
+      height: 48px; /* Slightly taller button */
+      background: linear-gradient(135deg, #6a85b6 0%, #bac8e0 100%); /* Consistent button gradient */
+      box-shadow: 0 6px 15px rgba(106, 133, 182, 0.3); /* Stronger shadow */
+      color: #fff;
+      font-weight: 700; /* Bolder text */
+      font-size: 18px; /* Larger font size */
+
+      &:active {
+        transform: translateY(2px); /* More pronounced press effect */
+        box-shadow: 0 3px 8px rgba(106, 133, 182, 0.2);
+      }
+    }
+
+    .error-message {
+      color: #e57373;
+      font-size: 14px; /* Slightly larger font size */
+      display: block;
+      margin: 20px 0 0; /* Adjusted margin */
+      padding: 10px 15px;
+      background-color: rgba(229, 115, 115, 0.15); /* Slightly more opaque background */
+      border-radius: 8px; /* Slightly larger border radius */
+      text-align: center;
+    }
+  }
+
+  .loading {
+    font-size: 18px; /* Slightly larger font size */
+    color: #555;
+    text-align: center;
+    padding: 30px;
+  }
+}
+
+.profile-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 40px;
+  
+  // 顶部个人信息区域
+  .profile-header {
+    background-color: #fff;
+    padding: 20px 24px 30px;
+    position: relative;
+    
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      
+      .page-title {
+        font-size: 20px;
+        font-weight: 500;
+        color: #333;
+      }
+      
+      .header-buttons {
+        display: flex;
+        
+        .icon-button {
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: 10px;
+          border-radius: 50%;
+          
+          &:active {
+            background-color: #f0f0f0;
+          }
+        }
+      }
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      
+      .avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background-color: #eee;
+        margin-right: 16px;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .user-details {
+        flex: 1;
+        
+        .username {
+          font-size: 18px;
+          font-weight: 500;
+          color: #333;
+          margin-bottom: 6px;
+          display: block;
+        }
+        
+        .user-meta {
+          display: flex;
+          align-items: center;
+          
+          .user-level {
+            font-size: 12px;
+            color: #666;
+            background-color: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 10px;
+          }
+          
+          .register-time {
+            font-size: 12px;
+            color: #999;
+          }
+        }
+      }
+    }
+  }
+  
+  // 用户统计信息
+  .user-stats {
+    display: flex;
+    background-color: #fff;
+    margin-top: 1px;
+    padding: 16px 0;
+    
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      
+      &:not(:last-child):after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 20%;
+        height: 60%;
+        width: 1px;
+        background-color: #eee;
+      }
+      
+      .stat-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        display: block;
+        margin-bottom: 4px;
+      }
+      
+      .stat-label {
+        font-size: 12px;
+        color: #999;
+        display: block;
+      }
+    }
+  }
+  
+  // 菜单列表
+  .menu-list {
+    margin-top: 12px;
+    
+    .menu-item {
+      display: flex;
+      align-items: center;
+      background-color: #fff;
+      padding: 18px 24px;
+      position: relative;
+      
+      &:not(:last-child):after {
+        content: '';
+        position: absolute;
+        left: 24px;
+        right: 0;
+        bottom: 0;
+        height: 1px;
+        background-color: #f0f0f0;
+      }
+      
+      &:active {
+        background-color: #f9f9f9;
+      }
+      
+      .menu-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 16px;
+      }
+      
+      .menu-content {
+        flex: 1;
+        
+        .menu-title {
+          font-size: 16px;
+          color: #333;
+          font-weight: 500;
+        }
+      }
+    }
+    
+    // 退出登录按钮
+    .logout-button {
+      margin-top: 20px;
+      background-color: #fff;
+      text-align: center;
+      padding: 16px;
+      color: #FF4949;
+      font-size: 16px;
+      font-weight: 500;
+      
+      &:active {
+        background-color: #f9f9f9;
+      }
+    }
+  }
+}
+
+// 未登录状态
+.profile-not-login {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30px;
+  
+  .login-prompt {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 30px;
+  }
+} 
