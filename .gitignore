@@ -178,3 +178,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+dist/
+deploy_versions/
+
+# Frontend
+.temp/
+.rn_temp/
+node_modules/
+.DS_Store
+.swc
+*.local
