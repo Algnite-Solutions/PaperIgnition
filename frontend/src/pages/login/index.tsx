@@ -57,7 +57,7 @@ const Login = () => {
         localStorage.setItem('userEmail', email);
         
         console.log('[Login Page] handleEmailLogin: dispatching loginSuccess');
-        dispatch(loginSuccess());
+        dispatch(loginSuccess(email));
         console.log('[Login Page] handleEmailLogin: loginSuccess dispatched. Current loading state should be false.');
         
         if (data.needs_interest_setup) {
@@ -110,8 +110,10 @@ const Login = () => {
         localStorage.setItem('token', data.access_token);
         if (data.user_info && data.user_info.email) {
           localStorage.setItem('userEmail', data.user_info.email);
+          dispatch(loginSuccess(data.user_info.email));
         } else {
           localStorage.setItem('userEmail', '微信用户');
+          dispatch(loginSuccess('微信用户'));
         }
         
         console.log('[Login Page] handleWechatLogin: dispatching loginSuccess');

@@ -3,6 +3,12 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 export interface UserState {
   isRegistered: boolean
   isLoggedIn: boolean
+  email: string
+  username: string
+  userInfo: {
+    email: string
+    username?: string
+  } | null
   frequency: 'daily' | 'weekly'
   interests: {
     paperIds: string[]
@@ -17,6 +23,9 @@ export interface UserState {
 const initialState: UserState = {
   isRegistered: false,
   isLoggedIn: false,
+  email: '',
+  username: '',
+  userInfo: null,
   frequency: 'daily',
   interests: {
     paperIds: [],
@@ -58,9 +67,10 @@ const userSlice = createSlice({
       state.loading = true
       state.error = null
     },
-    loginSuccess: (state) => {
+    loginSuccess: (state, action: PayloadAction<string>) => {
       state.isLoggedIn = true
       state.isRegistered = true
+      state.email = action.payload
       state.loading = false
       state.error = null
     },
@@ -106,6 +116,11 @@ const userSlice = createSlice({
     saveInterestsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false
       state.error = action.payload
+    },
+    setUserInfo: (state, action: PayloadAction<{ email: string, username?: string }>) => {
+      state.userInfo = action.payload
+      state.email = action.payload.email
+      state.username = action.payload.username || ''
     }
   }
 })
@@ -127,7 +142,8 @@ export const {
   saveInterestsStart,
   saveInterestsSuccess,
   saveInterestsWithDescription,
-  saveInterestsFailure
+  saveInterestsFailure,
+  setUserInfo
 } = userSlice.actions
 
 export default userSlice.reducer 

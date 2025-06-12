@@ -9,9 +9,9 @@ import './index.scss'
 export interface Paper {
   id: string
   title: string
-  authors: string[]
+  authors: string
   abstract: string
-  tags: string[]
+  url?: string
   publishDate?: string
   submittedDate?: string
   comments?: string
@@ -103,7 +103,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
       <View className='paper-title'>{paper.title}</View>
       
       <View className='paper-authors'>
-        <Text>Authors: {paper.authors.join(', ')}</Text>
+        <Text>Authors: {paper.authors}</Text>
       </View>
       
       <View className={`paper-abstract ${expanded ? 'expanded' : ''}`}>
@@ -114,7 +114,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
           <View className='show-more-container' onClick={toggleExpand}>
             <AtIcon value={expanded ? 'chevron-up' : 'chevron-down'} size='16' color='#4A89DC' />
             <Text className='show-more-text'>{expanded ? 'Less' : 'More'}</Text>
-        </View>
+          </View>
         )}
       </View>
       
@@ -132,23 +132,23 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
           )}
         </View>
         
-      <View className='feedback-buttons'>
-        <View 
+        <View className='feedback-buttons'>
+          <View 
             className={`action-button like-button ${feedback === true ? 'active' : ''}`}
             onClick={(e) => handleFeedback(true, e)}
-        >
+          >
             {feedback === true ? (
               <Text className='emoji-icon'>👍</Text>
             ) : (
               <Image className='feedback-icon' src='/assets/icons/like.png' />
             )}
             <Text className='action-text'>有用</Text>
-        </View>
+          </View>
           
-        <View 
+          <View 
             className={`action-button dislike-button ${feedback === false ? 'active' : ''}`}
             onClick={(e) => handleFeedback(false, e)}
-        >
+          >
             {feedback === false ? (
               <Text className='emoji-icon'>👎</Text>
             ) : (
