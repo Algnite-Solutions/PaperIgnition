@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from ..db.database import engine, Base, AsyncSessionLocal
-from ..models.user import ResearchDomain
+from ..models.user import ResearchDomain, PaperRecommendation
 
 # AI领域初始数据
 AI_DOMAINS = [
@@ -46,6 +46,13 @@ async def init_db():
             
             await session.commit()
             print("已添加初始研究领域数据")
+        
+        # 检查是否已存在论文推荐表
+        result = await session.execute(select(PaperRecommendation).limit(1))
+        recommendation_exists = result.scalars().first() is not None
+        
+        if not recommendation_exists:
+            print("已创建论文推荐表")
             
     # 确保PostgreSQL支持数组类型
     async with AsyncSessionLocal() as session:

@@ -1,12 +1,13 @@
 import { View, RichText, Text } from '@tarojs/components'
 import React, { useEffect, useState } from 'react'
-import { useAppDispatch } from '../../store/hooks'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearCurrentPaper } from '../../store/slices/paperSlice'
 import Taro from '@tarojs/taro'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
-import { getPaperContent } from '../../services/paperService'
+import { API_BASE_URL } from '../../config/api'
+import CustomButton from '../../components/ui/Button'
 import './index.scss'
 
 // 配置marked以支持数学公式和表格
@@ -117,18 +118,26 @@ const PaperDetail = () => {
   const dispatch = useAppDispatch()
   const [parsedHtml, setParsedHtml] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(true)
+  const { isLoggedIn } = useAppSelector(state => state.user)
 
   const fetchPaperContent = async (paperId: string) => {
     try {
       setLoading(true)
       
+      // 检查用户是否已登录
+      if (!isLoggedIn) {
+        throw new Error('用户未登录，请先登录')
+      }
+      
       // 获取论文内容
-      const contentResponse = await getPaperContent(paperId)
-      if (contentResponse.statusCode === 200 && contentResponse.data) {
-        const markdownContent = contentResponse.data.content
+      const response = await fetch(`${API_BASE_URL}/api/papers/paper_content/${paperId}`)
+      if (response.ok) {
+        const markdownContent = await response.text()
         try {
+          // 将字符串中的 \n 转换为实际的换行符
+          const processedContent = markdownContent.replace(/\\n/g, '\n')
           // 将Markdown转换为HTML
-          const htmlContent = marked.parse(markdownContent)
+          const htmlContent = marked.parse(processedContent)
           // 修复图片链接并进行简单清理
           const fixedHtml = fixImageLinks(htmlContent as string)
           const sanitizedHtml = simpleSanitizeHtml(fixedHtml)
@@ -142,7 +151,7 @@ const PaperDetail = () => {
           })
         }
       } else {
-        const errorMessage = contentResponse.error || 'Failed to fetch paper content'
+        const errorMessage = 'Failed to fetch paper content'
         Taro.showToast({
           title: errorMessage,
           icon: 'none',
@@ -174,6 +183,20 @@ const PaperDetail = () => {
       dispatch(clearCurrentPaper())
     }
   }, [])
+
+  if (!isLoggedIn) {
+    return (
+      <View className='paper-detail-not-login'>
+        <Text className='login-prompt'>请先登录</Text>
+        <CustomButton 
+          type='primary' 
+          onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
+        >
+          去登录
+        </CustomButton>
+      </View>
+    )
+  }
 
   return (
     <View className='paper-detail-page'>

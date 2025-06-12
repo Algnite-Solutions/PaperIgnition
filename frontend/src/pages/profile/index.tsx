@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { AtIcon } from 'taro-ui'
-import { logout, setFrequency } from '../../store/slices/userSlice'
+import { logout, setFrequency, setUserInfo } from '../../store/slices/userSlice'
 import CustomButton from '../../components/ui/Button'
 import { API_BASE_URL } from '../../config/api'
 import './index.scss'
@@ -92,6 +92,8 @@ const ProfilePage = () => {
     isLoggedIn, 
     interests, 
     frequency,
+    userInfo,
+    email
   } = useAppSelector(state => state.user)
 
   // 收藏的论文数量
@@ -128,6 +130,12 @@ const ProfilePage = () => {
             email: userInfo.email
           })
           
+          // 更新 Redux store 中的用户信息
+          dispatch(setUserInfo({
+            email: userInfo.email,
+            username: userInfo.username
+          }))
+          
           setUserData(prev => ({
             ...prev,
             username: userInfo.username || '论文阅读者',
@@ -149,7 +157,7 @@ const ProfilePage = () => {
     if (isLoggedIn) {
       loadUserData()
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, dispatch])
 
   // 跳转到兴趣设置页面
   const handleEditInterests = () => {

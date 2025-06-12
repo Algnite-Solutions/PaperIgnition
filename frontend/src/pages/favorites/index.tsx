@@ -6,6 +6,7 @@ import { AtIcon } from 'taro-ui'
 import Taro from '@tarojs/taro'
 import './index.scss'
 import PaperCard, { Paper } from '../../components/ui/PaperCard'
+import CustomButton from '../../components/ui/Button'
 
 // 收藏论文卡片组件
 const FavoritePaperCard = ({ paper, onRemove }) => {
@@ -118,6 +119,7 @@ const FavoritePaperCard = ({ paper, onRemove }) => {
 const Favorites = () => {
   const dispatch = useAppDispatch()
   const { papers, loading, error } = useAppSelector(state => state.favorites)
+  const { isLoggedIn } = useAppSelector(state => state.user)
 
   // 处理移除收藏
   const handleRemoveFavorite = (paperId: string) => {
@@ -129,6 +131,20 @@ const Favorites = () => {
     })
     // 添加震动反馈
     Taro.vibrateShort({ type: 'medium' })
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <View className='favorites-not-login'>
+        <Text className='login-prompt'>请先登录</Text>
+        <CustomButton 
+          type='primary' 
+          onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
+        >
+          去登录
+        </CustomButton>
+      </View>
+    )
   }
 
   return (
