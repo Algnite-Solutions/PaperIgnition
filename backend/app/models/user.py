@@ -84,7 +84,7 @@ class PaperRecommendation(Base):
     paper_id = Column(String(50), index=True)  # 论文外部ID (arXiv ID等)
     
     # 推荐特定元数据
-    recommendation_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)
     relevance_score = Column(Float, nullable=True)  # 可选的相关性分数
     recommendation_reason = Column(Text, nullable=True)  # 推荐原因

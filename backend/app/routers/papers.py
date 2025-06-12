@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 
 from ..db.database import get_db
-from ..models.user import PaperRecommendation
+from ..models.user import PaperRecommendation, User
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -132,19 +132,45 @@ def get_content_by_ids(paper_id: str):
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
 async def add_paper_recommendation(rec: PaperRecommendationIn, db: AsyncSession = Depends(get_db)):
     """根据username和paper_id插入推荐记录"""
-    new_rec = PaperRecommendation(
-        username=rec.username,
-        paper_id=rec.paper_id,
-        recommendation_reason=rec.recommendation_reason,
-        relevance_score=rec.relevance_score
-    )
-    db.add(new_rec)
     try:
+        # 验证用户是否存在
+        user_result = await db.execute(
+            select(User).where(User.username == rec.username)
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"用户 {rec.username} 不存在")
+
+        # 验证论文是否存在（这里假设论文ID是有效的）
+        # TODO: 添加实际的论文验证逻辑
+        # paper_result = await db.execute(
+        #     select(Paper).where(Paper.id == rec.paper_id)
+        # )
+        # paper = paper_result.scalar_one_or_none()
+        # if not paper:
+        #     raise HTTPException(status_code=404, detail=f"论文 {rec.paper_id} 不存在")
+
+        # 创建推荐记录
+        new_rec = PaperRecommendation(
+            username=rec.username,
+            paper_id=rec.paper_id,
+            recommendation_reason=rec.recommendation_reason,
+            relevance_score=rec.relevance_score
+        )
+        
+        # 添加到数据库
+        db.add(new_rec)
         await db.commit()
         await db.refresh(new_rec)
+        
+        return {"message": "推荐记录添加成功", "id": new_rec.id}
+        
     except IntegrityError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="该推荐记录已存在或数据不合法")
-    return {"message": "推荐记录添加成功", "id": new_rec.id}
+    except Exception as e:
+        await db.rollback()
+        print(f"添加推荐记录时发生错误: {str(e)}")  # 添加日志
+        raise HTTPException(status_code=500, detail="添加推荐记录失败")
 
 
