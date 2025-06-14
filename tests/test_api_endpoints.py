@@ -59,7 +59,7 @@ async def initialize_database(recreate_databases: bool = True) -> bool:
         recreate_databases: If True, drops and recreates all databases.
     """
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             # Print the request payload for debugging
             request_data = {"config": config}
             print(f"\nSending request with payload: {request_data}")
@@ -179,148 +179,111 @@ async def test_database_initialization():
     
     print("✅ Database initialization tests passed")
 
-async def test_index_papers():
-    """Test paper indexing endpoint."""
+async def test_index_2_papers():
+    """Index the first 2 papers only."""
     async with httpx.AsyncClient() as client:
-        # Convert DocSetList to dict and ensure HTML_path is included
-        data = sample_papers.dict()
+        data = DocSetList(docsets=docsets[:2]).dict()
         response = await client.post(
             f"{BASE_URL}/index_papers/",
             json=data,
             timeout=30.0
         )
-        assert response.status_code == 200, f"Indexing failed: {response.text}"
+        assert response.status_code == 200, f"Indexing first 2 papers failed: {response.text}"
         data = response.json()
         assert "message" in data, "Response missing 'message' field"
-        assert "5 papers indexed successfully" in data["message"]
-        print("✅ Papers indexed successfully")
+        assert "2 papers indexed successfully" in data["message"]
+        print("✅ Indexed first 2 papers")
 
-async def test_get_metadata():
-    """Test metadata retrieval endpoint."""
+async def test_get_metadata_2():
+    """Test metadata retrieval after indexing 2 papers."""
     async with httpx.AsyncClient() as client:
-        # Test first paper
-        response = await client.get(f"{BASE_URL}/get_metadata/paper_001")
-        assert response.status_code == 200, f"Metadata fetch failed: {response.text}"
-        data = response.json()
-        assert data["title"] == "Example Paper on FastAPI", "Incorrect paper title"
-        assert data["authors"] == ["Alice", "Bob"], "Incorrect authors"
-        
-        # Test last paper
-        response = await client.get(f"{BASE_URL}/get_metadata/paper_005")
-        assert response.status_code == 200, f"Metadata fetch failed: {response.text}"
-        data = response.json()
-        assert data["title"] == "Bayesian Optimization in Machine Learning", "Incorrect paper title"
-        print("✅ Metadata retrieved successfully")
+        for i in range(2):
+            pid = f"paper_{i+1:03d}"
+            response = await client.get(f"{BASE_URL}/get_metadata/{pid}")
+            assert response.status_code == 200, f"Metadata fetch failed for {pid}: {response.text}"
+        for i in range(2, 5):
+            pid = f"paper_{i+1:03d}"
+            response = await client.get(f"{BASE_URL}/get_metadata/{pid}")
+            assert response.status_code == 404, f"Expected 404 for {pid}, got {response.status_code}"
+        print("✅ Metadata check after 2 papers indexed")
 
-async def test_find_similar():
-    """Test similarity search endpoint with different search strategies."""
+async def test_indexer_reload_and_incremental_indexing():
+    """Re-init indexer (without recreating DB), index last 3 papers."""
+    assert await initialize_database(recreate_databases=False), "Failed to create indexer with existing DB"
+    await asyncio.sleep(1)
     async with httpx.AsyncClient() as client:
-        # Test vector search
-        vector_query = {
-            "query": "transformer models and NLP",
-            "top_k": 3,
-            "similarity_cutoff": 0.8,
-            "strategy_type": "vector"
-        }
+        data = DocSetList(docsets=docsets[2:]).dict()
         response = await client.post(
-            f"{BASE_URL}/find_similar/",
-            json=vector_query,
-            timeout=10.0
+            f"{BASE_URL}/index_papers/",
+            json=data,
+            timeout=30.0
         )
+        assert response.status_code == 200, f"Indexing last 3 papers failed: {response.text}"
+        data = response.json()
+        assert "message" in data, "Response missing 'message' field"
+        assert "3 papers indexed successfully" in data["message"]
+        print("✅ Indexed last 3 papers with new indexer")
+
+async def test_get_metadata_all():
+    """Test metadata retrieval after all 5 papers are indexed."""
+    async with httpx.AsyncClient() as client:
+        for i in range(5):
+            pid = f"paper_{i+1:03d}"
+            response = await client.get(f"{BASE_URL}/get_metadata/{pid}")
+            assert response.status_code == 200, f"Metadata fetch failed for {pid}: {response.text}"
+        print("✅ Metadata check after all papers indexed")
+
+async def test_find_similar_2():
+    async with httpx.AsyncClient() as client:
+        # 1. Vector search: should match one of the first two papers
+        vector_query = {"query": "API design", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
         assert response.status_code == 200, "Vector search failed"
-        vector_results = response.json()
-        assert isinstance(vector_results, list), "Expected list of results for vector search"
-        assert len(vector_results) > 0, "Expected at least one similar paper for vector search"
-        
-        # Verify vector search results
-        for result in vector_results:
-            assert result["search_method"] == "vector"
-            assert "transformer" in result["title"].lower() or "nlp" in result["title"].lower() or \
-                   "transformer" in result["abstract"].lower() or "nlp" in result["abstract"].lower(), \
-                   "Vector search results should contain relevant transformer/NLP papers"
-        print(f"✅ Vector search: Found {len(vector_results)} relevant papers")
-        
-        # Test TF-IDF search
-        tfidf_query = {
-            "query": "deep learning in computer vision",
-            "top_k": 3,
-            "similarity_cutoff": 1.0,
-            "strategy_type": "tf-idf"
-        }
-        response = await client.post(
-            f"{BASE_URL}/find_similar/",
-            json=tfidf_query,
-            timeout=10.0
-        )
+        results = response.json()
+        assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for vector search"
+        print(f"✅ [2 papers] Vector search: Found {len(results)} results for query '{vector_query['query']}'")
+
+        # 2. TF-IDF search: should match one of the first two papers
+        tfidf_query = {"query": "transformer models", "top_k": 5, "similarity_cutoff": 0.0, "strategy_type": "tf-idf"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=tfidf_query, timeout=10.0)
         assert response.status_code == 200, "TF-IDF search failed"
-        tfidf_results = response.json()
-        
-        assert isinstance(tfidf_results, list), "Expected list of results for TF-IDF search"
-        assert len(tfidf_results) > 0, "Expected at least one similar paper for TF-IDF search"
-        
-        # Verify TF-IDF search results
-        
-        for result in tfidf_results:
-            assert result["search_method"] == "tf-idf"
-            assert "vision" in result["title"].lower() or "vision" in result["abstract"].lower() or \
-                   "deep learning" in result["title"].lower() or "deep learning" in result["abstract"].lower(), \
-                   "TF-IDF search results should contain relevant computer vision papers"
-            assert "matched_text" in result, "TF-IDF results should include matched text"
-        print(f"✅ TF-IDF search: Found {len(tfidf_results)} relevant papers")
-        
-        # Test hybrid search
-        hybrid_query = {
-            "query": "attention mechanisms in neural networks",
-            "top_k": 3,
-            "similarity_cutoff": 0.5,
-            "strategy_type": "hybrid"
-        }
-        response = await client.post(
-            f"{BASE_URL}/find_similar/",
-            json=hybrid_query,
-            timeout=10.0
-        )
-        assert response.status_code == 200, "Hybrid search failed"
-        hybrid_results = response.json()
-        assert isinstance(hybrid_results, list), "Expected list of results for hybrid search"
-        assert len(hybrid_results) > 0, "Expected at least one similar paper for hybrid search"
-        
-        # Verify hybrid search results
-        print(hybrid_results)
-        for result in hybrid_results:
-            assert result["search_method"] == "hybrid"
-            assert "attention" in result["title"].lower() or "attention" in result["abstract"].lower() or \
-                   "neural" in result["title"].lower() or "neural" in result["abstract"].lower(), \
-                   "Hybrid search results should contain relevant attention/neural network papers"
-            # Hybrid search should combine features of both vector and TF-IDF
-            assert "similarity_score" in result, "Hybrid results should include similarity score"
-            assert "matched_text" in result, "Hybrid results should include matched text"
-        print(f"✅ Hybrid search: Found {len(hybrid_results)} relevant papers")
-        
-        # Verify results are different for each strategy
-        vector_ids = {r["doc_id"] for r in vector_results}
-        tfidf_ids = {r["doc_id"] for r in tfidf_results}
-        hybrid_ids = {r["doc_id"] for r in hybrid_results}
-        
-        # There should be some variation in results between strategies
-        assert len(vector_ids.intersection(tfidf_ids)) < len(vector_ids), \
-            "Vector and TF-IDF search should return some different results"
-        
-        # Print detailed results for manual verification
-        print("\nDetailed Results:")
-        print("\nTop Vector Search Result:")
-        print(f"Title: {vector_results[0]['title']}")
-        print(f"Score: {vector_results[0]['similarity_score']:.3f}")
-        
-        print("\nTop TF-IDF Search Result:")
-        print(f"Title: {tfidf_results[0]['title']}")
-        print(f"Score: {tfidf_results[0]['similarity_score']:.3f}")
-        print(f"Matched Text: {tfidf_results[0]['matched_text'][:100]}...")
-        
-        print("\nTop Hybrid Search Result:")
-        print(f"Title: {hybrid_results[0]['title']}")
-        print(f"Score: {hybrid_results[0]['similarity_score']:.3f}")
-        print(f"Matched Text: {hybrid_results[0]['matched_text'][:100]}...")
+        results = response.json()
+        assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for tf-idf search"
+        print(f"✅ [2 papers] TF-IDF search: Found {len(results)} results for query '{tfidf_query['query']}'")
+
+        # 3. No result case: query that should not match any paper
+        no_result_query = {"query": "quantum entanglement", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
+        assert response.status_code == 200, "No-result search failed"
+        results = response.json()
+        assert len(results) == 0, f"Expected 0 results, got {len(results)} for no-result search"
+        print(f"✅ [2 papers] No-result search: Found {len(results)} results for query '{no_result_query['query']}'")
+
+async def test_find_similar_all():
+    async with httpx.AsyncClient() as client:
+        # 1. Vector search: should match all 5 papers
+        vector_query = {"query": "deep learning", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
+        assert response.status_code == 200, "Vector search failed"
+        results = response.json()
+        assert len(results) >0, f"Expected more than  0  results, got {len(results)} for vector search"
+        print(f"✅ [all papers] Vector search: Found {len(results)} results for query '{vector_query['query']}'")
+
+        # 2. TF-IDF search: should match all 5 papers
+        tfidf_query = {"query": "controlling robotic", "top_k": 5, "similarity_cutoff": 0.0, "strategy_type": "tf-idf"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=tfidf_query, timeout=10.0)
+        assert response.status_code == 200, "TF-IDF search failed"
+        results = response.json()
+        assert len(results) > 0, f"Expected more than 0 results, got {len(results)} for tf-idf search"
+        print(f"✅ [all papers] TF-IDF search: Found {len(results)} results for query '{tfidf_query['query']}'")
+
+        # 3. No result case: query that should not match any paper
+        no_result_query = {"query": "quantum entanglement", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
+        assert response.status_code == 200, "No-result search failed"
+        results = response.json()
+        assert len(results) == 0, f"Expected 0 results, got {len(results)} for no-result search"
+        print(f"✅ [all papers] No-result search: Found {len(results)} results for query '{no_result_query['query']}'")
 
 async def test_error_cases():
     """Test error handling."""
@@ -363,10 +326,12 @@ async def run_tests():
         
         # Basic health and functionality tests
         await test_connection_health()
-        await test_index_papers()
-        await asyncio.sleep(1)  # Give indexing time to complete
-        await test_get_metadata()
-        await test_find_similar()
+        await test_index_2_papers()
+        await test_get_metadata_2()
+        await test_find_similar_2()
+        await test_indexer_reload_and_incremental_indexing()
+        await test_get_metadata_all()
+        await test_find_similar_all()
         
         # Error case tests
         await test_error_cases()

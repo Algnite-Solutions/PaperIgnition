@@ -9,8 +9,8 @@ metadata_db:
   db_url: 'postgresql://postgres:11111@localhost:5432/aignite_test'
 
 minio_db:
-  'endpoint': 'localhost:9000'
-  'access_key': 'Wc58W6KOCOfxaAc2MjzM'
-  'secret_key': 'Seqa7Xs3TO6EaClfD4l6y4b4teW7t2Y1Slu92VKw'
+  'endpoint': 'localhost:9081'
+  'access_key': 'XOrv2wfoWfPypp2zGIae'
+  'secret_key': 'k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3'
   'bucket_name': 'aignite-test-papers'
   'secure': false
