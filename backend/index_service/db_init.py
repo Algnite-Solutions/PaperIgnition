@@ -64,7 +64,6 @@ def init_databases(
     """
     global _vector_db_instance
     logger.debug("Loading configuration and initializing databases...")
-    
     try:
         # Load configuration if not provided
         if config is None:
