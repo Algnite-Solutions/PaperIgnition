@@ -4,7 +4,7 @@ import os
 from typing import AsyncGenerator
 
 # 数据库URL（从环境变量读取或使用默认值）
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:ch20031021@localhost/AIgnite")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres@localhost/AIgnite")
 
 # 创建异步引擎
 engine = create_async_engine(
