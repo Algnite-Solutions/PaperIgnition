@@ -35,8 +35,8 @@ class User(Base):
     # 元数据
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # 关联关系
     interests_description = Column(ARRAY(TEXT), nullable=True)  # 用户研究兴趣关键词数组
@@ -69,7 +69,7 @@ class FavoritePaper(Base):
     authors = Column(String(255))
     abstract = Column(Text, nullable=True)
     url = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
     # 关联关系
     user = relationship("User", back_populates="favorite_papers")
