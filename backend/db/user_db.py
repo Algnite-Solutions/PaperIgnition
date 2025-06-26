@@ -3,8 +3,16 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from typing import AsyncGenerator
 
-# 数据库URL（从环境变量读取或使用默认值）
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:ch20031021@localhost/AIgnite")
+# 从环境变量读取配置（带默认值）
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "AIgnite")
+
+DATABASE_URL = (
+    f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 # 创建异步引擎
 engine = create_async_engine(

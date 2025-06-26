@@ -2,8 +2,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from ..db.database import engine, Base, AsyncSessionLocal
-from ..models.user import ResearchDomain, PaperRecommendation
+from backend.db.user_db import engine, Base, AsyncSessionLocal
+from backend.models.user import ResearchDomain, UserPaperRecommendation
 
 # AI领域初始数据
 AI_DOMAINS = [
@@ -48,7 +48,7 @@ async def init_db():
             print("已添加初始研究领域数据")
         
         # 检查是否已存在论文推荐表
-        result = await session.execute(select(PaperRecommendation).limit(1))
+        result = await session.execute(select(UserPaperRecommendation).limit(1))
         recommendation_exists = result.scalars().first() is not None
         
         if not recommendation_exists:
