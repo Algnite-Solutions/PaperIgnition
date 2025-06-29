@@ -1,10 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text, Float
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.orm import relationship
-from datetime import datetime
-import uuid
+from datetime import datetime, timezone
 
-from ..db.database import Base
+from backend.db.user_db import Base
 
 # 用户和研究领域的多对多关联表
 user_domain_association = Table(
@@ -35,13 +34,13 @@ class User(Base):
     # 元数据
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     # 关联关系
     interests_description = Column(ARRAY(TEXT), nullable=True)  # 用户研究兴趣关键词数组
     research_domains = relationship("ResearchDomain", secondary=user_domain_association, back_populates="users")
     favorite_papers = relationship("FavoritePaper", back_populates="user")
+    recommended_papers = relationship("UserPaperRecommendation", back_populates="user")
 
 
 class ResearchDomain(Base):
@@ -68,7 +67,25 @@ class FavoritePaper(Base):
     authors = Column(String(255))
     abstract = Column(Text, nullable=True)
     url = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
     # 关联关系
-    user = relationship("User", back_populates="favorite_papers") 
+    user = relationship("User", back_populates="favorite_papers")
+
+
+class UserPaperRecommendation(Base):
+    """只存储推荐关系，链接@Fang Guo的论文表与@Hui Chen的用户表，链接论文表的主键为paper_id，用户表的主键为user_id"""
+    __tablename__ = "paper_recommendations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), ForeignKey("users.username"), index=True)
+    paper_id = Column(String(50), index=True)  # 论文外部ID (arXiv ID等)
+    
+    # 推荐特定元数据
+    recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    viewed = Column(Boolean, default=False)
+    relevance_score = Column(Float, nullable=True)  # 可选的相关性分数
+    recommendation_reason = Column(Text, nullable=True)  # 推荐原因
+    
+    # 关联关系
+    user = relationship("User", back_populates="recommended_papers") 
