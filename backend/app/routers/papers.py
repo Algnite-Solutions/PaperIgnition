@@ -1,39 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List
+from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-from typing import List, Optional
-
-from ..db.database import get_db
+from backend.db.user_db import get_db
+from backend.models.user import User, UserPaperRecommendation
+from backend.models.papers import PaperBase, PaperRecommendation, MOCK_PAPERS
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
-# 论文模型
-class PaperBase(BaseModel):
-    id: str
-    title: str
-    authors: str
-    abstract: str
-    url: Optional[str] = None
+@router.get("/recommendations/{username}", response_model=List[PaperBase])
+async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
+    """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
+    result = await db.execute(select(UserPaperRecommendation.paper_id).where(UserPaperRecommendation.username == username))
+    paper_ids = [row[0] for row in result.all()]
+    papers=get_papers_by_ids(paper_ids)
+    print("========================")
+    print(papers)
+    print("========================")
+    return papers
 
-class PaperDetail(PaperBase):
-    markdownContent: str
-
-# 模拟论文数据
-MOCK_PAPERS = [
-    {
-        "id": "2023.12345",
-        "title": "深度学习在自然语言处理中的应用",
-        "authors": "张三, 李四, 王五",
-        "abstract": "本文探讨了深度学习技术在自然语言处理领域的最新进展...",
-        "url": "https://example.com/papers/2023.12345"
-    },
-    {
-        "id": "2023.67890",
-        "title": "计算机视觉中的注意力机制",
-        "authors": "赵六, 钱七",
-        "abstract": "注意力机制极大地提高了计算机视觉模型的性能...",
-        "url": "https://example.com/papers/2023.67890"
-    },
+# TODO(@Fang Guo): 输入为paper_id列表，返回为以下json格式的内容,实际上我觉得可以在其他地方实现，import进来就行
+"""
     {
         "id": "2023.24680",
         "title": "多模态大语言模型研究进展",
@@ -41,79 +29,77 @@ MOCK_PAPERS = [
         "abstract": "多模态大语言模型将文本、图像等多种模态信息融合处理...",
         "url": "https://example.com/papers/2023.24680"
     }
-]
+"""
+def get_papers_by_ids(paper_ids: List[str]):
+    """根据paper_id列表返回论文详情（mock数据）"""
+    # 用mock数据模拟数据库查询
+    papers = []
+    for pid in paper_ids:
+        paper = next((p for p in MOCK_PAPERS if p["id"] == pid), None)
+        if paper:
+            papers.append(PaperBase(**paper))
+    return papers
 
-# 论文详情Markdown内容
-PAPER_CONTENT = {
-    "2023.12345": """# 深度学习在自然语言处理中的应用
+@router.get("/paper_content/{paper_id}")
+async def get_paper_markdown_content(paper_id: str):
+    """根据paper_id返回论文的markdown内容（mock数据）"""
+    paper = get_content_by_ids(paper_id)
+    print("========================")
+    print(paper)
+    print("========================")
+    if paper is None:
+        raise HTTPException(status_code=404, detail="Paper content not found")
+    return paper
 
-## 简介
-深度学习技术已经彻底改变了自然语言处理领域。本文将探讨最新的研究进展以及未来发展方向。
+# TODO(@Fang Guo): 输入为paper_id，返回为str格式的markdown内容,暂时不考虑图片
+def get_content_by_ids(paper_id: str):
+    """根据paper_id返回论文详情（mock数据）"""
+    content = next((p["content"] for p in MOCK_PAPERS if p["id"] == paper_id), None)
+    return content
 
-## 主要内容
-1. Transformer架构及其变体
-2. 预训练语言模型（如BERT、GPT系列）
-3. 多模态学习在NLP中的应用
-4. 低资源语言的NLP技术
+# 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
+# 接口为{backend_url}/api/papers/recommend
+# TODO(@Hui Chen): 需要添加安全验证
+@router.post("/recommend", status_code=status.HTTP_201_CREATED)
+async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
+    """根据username和paper_id插入推荐记录"""
+    try:
+        # 验证用户是否存在
+        user_result = await db.execute(
+            select(User).where(User.username == username)
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"用户 {username} 不存在")
 
-## 研究方法
-本研究采用了对比实验的方法，在多个基准测试集上评估了不同模型的性能。
+        # 验证论文是否存在（这里假设论文ID是有效的）
+        # TODO: 添加实际的论文验证逻辑
+        # paper_result = await db.execute(
+        #     select(Paper).where(Paper.id == rec.paper_id)
+        # )
+        # paper = paper_result.scalar_one_or_none()
+        # if not paper:
+        #     raise HTTPException(status_code=404, detail=f"论文 {rec.paper_id} 不存在")
 
-## 结论
-研究表明，大规模预训练模型在多种NLP任务上表现出色，但在特定领域仍然需要针对性的优化。""",
-
-    "2023.67890": """# 计算机视觉中的注意力机制
-
-## 简介
-注意力机制已成为计算机视觉模型中不可或缺的组件。本文综述了注意力机制在计算机视觉中的发展与应用。
-
-## 主要内容
-1. 空间注意力
-2. 通道注意力
-3. 自注意力机制
-4. 跨模态注意力
-
-## 研究方法
-我们分析了近五年来发表的主要论文，并对不同类型的注意力机制进行了系统分类。
-
-## 结论
-注意力机制不仅提高了模型性能，还增强了模型的可解释性，是未来计算机视觉研究的重要方向。""",
-
-    "2023.24680": """# 多模态大语言模型研究进展
-
-## 简介
-随着大语言模型的快速发展，多模态能力成为了当前研究热点。本文介绍了多模态大语言模型的最新进展。
-
-## 主要内容
-1. 视觉-语言预训练
-2. 跨模态对齐技术
-3. 多模态指令微调
-4. 多模态应用案例
-
-## 研究方法
-我们对代表性多模态大模型（如GPT-4V, Claude 3, Gemini）进行了多维度评测和分析。
-
-## 结论
-多模态大语言模型极大拓展了AI系统的能力边界，但在模态间深度语义理解和推理方面仍有待提高。"""
-}
-
-@router.get("", response_model=List[PaperBase])
-async def get_papers(domain_id: Optional[int] = None):
-    """获取论文列表（模拟数据）"""
-    # 简化实现，忽略domain_id参数
-    return MOCK_PAPERS
-
-@router.get("/{paper_id}", response_model=PaperDetail)
-async def get_paper_detail(paper_id: str):
-    """获取论文详情（模拟数据）"""
-    # 查找论文基本信息
-    paper = next((p for p in MOCK_PAPERS if p["id"] == paper_id), None)
-    
-    if not paper:
-        raise HTTPException(status_code=404, detail="论文不存在")
-    
-    # 添加Markdown内容
-    paper_with_content = {**paper}
-    paper_with_content["markdownContent"] = PAPER_CONTENT.get(paper_id, "# 论文内容暂未提供")
-    
-    return paper_with_content 
+        # 创建推荐记录
+        new_rec = UserPaperRecommendation(
+            username=username,
+            paper_id=rec.paper_id,
+            recommendation_reason=rec.recommendation_reason,
+            relevance_score=rec.relevance_score
+        )
+        
+        # 添加到数据库
+        db.add(new_rec)
+        await db.commit()
+        await db.refresh(new_rec)
+        
+        return {"message": "推荐记录添加成功", "id": new_rec.id}
+        
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="该推荐记录已存在或数据不合法")
+    except Exception as e:
+        await db.rollback()
+        print(f"添加推荐记录时发生错误: {str(e)}")  # 添加日志
+        raise HTTPException(status_code=500, detail="添加推荐记录失败")

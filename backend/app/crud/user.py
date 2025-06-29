@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy import update
 from typing import Optional
 
-from ..models.user import User
+from backend.models.user import User
 from ..auth import schemas as auth_schemas
 from ..auth.utils import get_password_hash
 
