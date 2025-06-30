@@ -1,12 +1,14 @@
 import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-def load_config(config_path: str) -> Dict[str, Any]:
+DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs/index_config.yaml"
+
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration from YAML file.
     
     Args:
@@ -20,7 +22,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         ValueError: If required configuration sections are missing or if loading fails
     """
     if not config_path:
-        raise ValueError("config_path must be provided")
+        config_path = os.environ.get("INDEX_SERVICE_CONFIG", str(DEFAULT_CONFIG_PATH))
         
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found at: {config_path}")

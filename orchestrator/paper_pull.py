@@ -30,7 +30,7 @@ def fetch_daily_papers() -> list[DocSet]:
         os.makedirs(path, exist_ok=True)
 
     #fetch daily papers in parallel
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         futures = []
         for i in range(len(time_slots) - 1):
             start_str = time_slots[i]
@@ -52,6 +52,24 @@ def fetch_daily_papers() -> list[DocSet]:
 
     return docs
 
+def dummy_paper_fetch(file_path: str) -> list[DocSet]:
+    docs = []
+    path_obj = Path(file_path)
+    
+    if path_obj.is_dir():
+        for json_file in path_obj.glob("*.json"):
+            with open(json_file, "r", encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
+                    docset = DocSet(**data)
+                    print(f"Parsed {json_file.name}")
+                    docs.append(docset)
+                except Exception as e:
+                    print(f"Failed to parse {json_file.name}: {e}")
+    else:
+        print(f"The path {file_path} is not a directory")
+    return docs
+
 def run_extractor_for_timeslot(start_str, end_str):
     base_dir = os.path.dirname(__file__)
     html_text_folder = os.path.join(base_dir, "htmls")
@@ -59,8 +77,8 @@ def run_extractor_for_timeslot(start_str, end_str):
     image_folder_path = os.path.join(base_dir, "imgs")
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
-    ak = 
-    sk = 
+    ak = os.getenv("VOLCENGINE_AK")
+    sk = os.getenv("VOLCENGINE_SK")
 
     extractor = ArxivHTMLExtractor(
         html_text_folder=html_text_folder,
