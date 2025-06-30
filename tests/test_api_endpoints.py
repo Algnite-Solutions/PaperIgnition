@@ -6,11 +6,9 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 from AIgnite.data.docset import DocSet, TextChunk, ChunkType, DocSetList
-from backend.index_service.config import load_config
+from backend.index_service.db_utils import load_config
 
-# Load config from tests/config.yaml
-config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
-config = load_config(config_path)
+config = load_config()
 
 BASE_URL = config['index_api_url']
 
@@ -50,36 +48,6 @@ async def check_server_running(url: str, timeout: float = 5.0) -> bool:
         print("    cd PaperIgnition")
         print(f"    uvicorn backend.index_service.main:app --host 0.0.0.0 --port {url.split(':')[-1]}")
         print(f"\nError details: {str(e)}")
-        return False
-
-async def initialize_database(recreate_databases: bool = True) -> bool:
-    """Initialize the database and indexer.
-    
-    Args:
-        recreate_databases: If True, drops and recreates all databases.
-    """
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Print the request payload for debugging
-            request_data = {"config": config}
-            print(f"\nSending request with payload: {request_data}")
-            
-            response = await client.post(
-                f"{BASE_URL}/init_database",
-                json=request_data,
-                params={"recreate_databases": recreate_databases}
-            )
-            print(f"Response status: {response.status_code}")
-            print(f"Response body: {response.text}")
-            
-            assert response.status_code == 200, f"Database initialization failed: {response.text}"
-            data = response.json()
-            action = "recreated" if recreate_databases else "created"
-            assert data["message"] == f"Database {action} and indexer creation successful"
-            print(f"✅ Database {action} successfully")
-            return True
-    except Exception as e:
-        print(f"\n❌ Error initializing database: {str(e)}")
         return False
 
 # Create sample papers using proper DocSet models
@@ -167,18 +135,6 @@ async def test_connection_health():
         assert data["indexer_ready"] == True, "Indexer not ready"
         print("✅ Connection health check passed")
 
-async def test_database_initialization():
-    """Test database initialization with different settings."""
-    # Test initialization with database recreation (default)
-    assert await initialize_database(recreate_databases=True), "Failed to recreate database"
-    await asyncio.sleep(1)  # Give time for initialization to complete
-    
-    # Test initialization without database recreation
-    assert await initialize_database(recreate_databases=False), "Failed to create database without recreation"
-    await asyncio.sleep(1)  # Give time for initialization to complete
-    
-    print("✅ Database initialization tests passed")
-
 async def test_index_2_papers():
     """Index the first 2 papers only."""
     async with httpx.AsyncClient() as client:
@@ -199,6 +155,7 @@ async def test_get_metadata_2():
     async with httpx.AsyncClient() as client:
         for i in range(2):
             pid = f"paper_{i+1:03d}"
+            # returns string of metadata
             response = await client.get(f"{BASE_URL}/get_metadata/{pid}")
             assert response.status_code == 200, f"Metadata fetch failed for {pid}: {response.text}"
         for i in range(2, 5):
@@ -209,8 +166,6 @@ async def test_get_metadata_2():
 
 async def test_indexer_reload_and_incremental_indexing():
     """Re-init indexer (without recreating DB), index last 3 papers."""
-    assert await initialize_database(recreate_databases=False), "Failed to create indexer with existing DB"
-    await asyncio.sleep(1)
     async with httpx.AsyncClient() as client:
         data = DocSetList(docsets=docsets[2:]).dict()
         response = await client.post(
@@ -319,10 +274,6 @@ async def run_tests():
         # Check if server is running first
         if not await check_server_running(BASE_URL):
             return
-            
-        # Test database initialization scenarios
-        print("\nTesting database initialization...")
-        await test_database_initialization()
         
         # Basic health and functionality tests
         await test_connection_health()

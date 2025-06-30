@@ -26,19 +26,35 @@ In the PaperIgnition rootfolder, perform followings steps.
 1. Init User DB
 source code: backend/user_db/
 ```
-createdb AIgnite
-# create role
+# create role (MAC)
 psql postgres
 CREATE ROLE postgres WITH LOGIN SUPERUSER;
+
+# create role (ubuntu)
+sudo service postgresql start
+sudo -u postgres psql
+
+# create user database
+CREATE DATABASE paperignition_user;
 
 python backend/user_db_service/db_init.py
 ```
 
-2. Init PaperDB (TODO)
-source code: backend/paper_db/
+2. Start DB Backend
+```
+CREATE DATABASE paperignition;
+
+python backend/scripts/paper_db_init.py
+```
+
+3. Init Index Service and test
+source code: backend/index_service/
+```
+bash launch_index_service.sh
+python tests/test_api_endpoints.py
+```
 
 
-3. Start DB Backend
 
 ## Start Web Backend
 backend/app

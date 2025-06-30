@@ -38,7 +38,7 @@ sudo -u postgres psql
 Inside `psql`:
 
 ```sql
-CREATE DATABASE aignite_test;
+CREATE DATABASE paperignition;
 ```
 
 ### 🔐 Set User Password (Optional)
@@ -56,10 +56,10 @@ Run:
 ALTER USER postgres WITH PASSWORD '11111';
 ```
 
-### 🧱 Create Tables (Example)
+### 🧱 Create Tables (Example) should be deleted
 
 ```sql
-\c aignite_test;
+\c paperignition;
 
 CREATE TABLE papers (
     paper_id SERIAL PRIMARY KEY,

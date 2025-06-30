@@ -6,7 +6,7 @@ vector_db:
   db_path: "vector_db/test_db"
 
 metadata_db:
-  db_url: 'postgresql://postgres:11111@localhost:5432/aignite_test'
+  db_url: 'postgresql://postgres:11111@localhost:5432/paperignition'
 
 minio_db:
   'endpoint': 'localhost:9081'
@@ -14,3 +14,5 @@ minio_db:
   'secret_key': 'k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3'
   'bucket_name': 'aignite-test-papers'
   'secure': false
+
+paper_folder: ""

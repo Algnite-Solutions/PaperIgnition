@@ -84,13 +84,15 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         return []
 
 def main():
+
+    # TODO: use the real paper_pull.fetch_daily_papers
     # Given the directory of the json files, index the papers
-    json_dir = "/data3/guofang/AIgnite-Solutions/PaperIgnition/orchestrator/jsons"
+    json_dir = "./orchestrator/jsons"
     papers = paper_pull.dummy_paper_fetch(json_dir)
     print(f"Fetched {len(papers)} papers.")
 
     # Load config and get API URL
-    config_path = os.path.join(os.path.dirname(__file__), "../tests/config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/index_config.yaml")
     config = load_config(config_path)
     api_url = config["index_api_url"]
 
@@ -120,7 +122,8 @@ def main():
     for query in example_queries:
         papers=search_papers_via_api(api_url, query, 'vector', 0.5)
 
-    
+    # TODO: use the real paper_pull.fetch_daily_papers
+
     #print("Generating blog digests for users...")
     #generate_blog.run_dummy_blog_generation(papers)
     #print("Digest generation complete.")
