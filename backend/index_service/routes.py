@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from .models import CustomerQuery
 from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, ChunkType, DocSetList
 from typing import Dict, Any, List, Optional
-from .service import index_papers, get_metadata, find_similar, init_db, create_indexer
+from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer
 from AIgnite.index.paper_indexer import PaperIndexer
 from pydantic import BaseModel, validator
 import logging
@@ -16,46 +16,10 @@ class InitDatabaseRequest(BaseModel):
 
 router = APIRouter()
 
-# Global indexer instance
-paper_indexer = None
-
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "indexer_ready": paper_indexer is not None}
-
-@router.post("/init_database")
-async def init_database(
-    request: InitDatabaseRequest = Body(...),
-    recreate_databases: bool = Query(True)
-) -> Dict[str, str]:
-    """Initialize the database and create indexer.
-    
-    Args:
-        request: Request body containing database configuration
-        recreate_databases: If True, will drop and recreate metadata tables
-    """
-    try:
-        global paper_indexer
-        if paper_indexer is not None:
-            del paper_indexer
-            paper_indexer = None
-            
-        vector_db, metadata_db, image_db = init_db(
-            config=request.config,
-            recreate_databases=recreate_databases
-        )
-        
-        paper_indexer = PaperIndexer(vector_db, metadata_db, image_db)
-        action = "recreated" if recreate_databases else "created"
-        return {"message": f"Database {action} and indexer creation successful"}
-        
-    except ValueError as e:  # Handle validation errors from init_db
-        paper_indexer = None
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:  # Handle other errors
-        paper_indexer = None
-        raise HTTPException(status_code=500, detail=f"Failed to initialize database: {str(e)}")
 
 @router.post("/index_papers/")
 async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:

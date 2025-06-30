@@ -1,6 +1,5 @@
 ### service.py
 from typing import List, Dict, Any, Tuple, Optional
-from .db_init import init_databases
 from AIgnite.index.paper_indexer import PaperIndexer
 from AIgnite.data.docset import DocSet
 import logging
@@ -8,31 +7,8 @@ import logging
 # Set up logging
 logger = logging.getLogger(__name__)
 
-def init_db(config: Dict[str, Any], recreate_databases: bool = True) -> Tuple[Any, Any, Any]:
-    """Initialize the databases.
-    
-    Args:
-        config: Configuration dictionary containing database settings
-        recreate_databases: If True, will drop and recreate metadata tables. Defaults to True.
-    
-    Returns:
-        Tuple of (vector_db, metadata_db, image_db)
-        
-    Raises:
-        ValueError: If configuration is invalid
-        RuntimeError: If database initialization fails for other reasons
-    """
-    try:
-        dbs = init_databases(config=config, recreate_databases=recreate_databases)
-        logger.info("Databases initialized successfully")
-        return dbs
-    except ValueError as e:
-        logger.error(f"Invalid configuration: {str(e)}")
-        raise  # Re-raise ValueError as is
-    except Exception as e:
-        error_msg = f"Failed to initialize databases: {str(e)}"
-        logger.error(error_msg)
-        raise RuntimeError(error_msg)
+# Global indexer instance
+paper_indexer = PaperIndexer()
 
 def create_indexer(vector_db, metadata_db, image_db) -> PaperIndexer:
     """Create a PaperIndexer instance with the given databases."""
