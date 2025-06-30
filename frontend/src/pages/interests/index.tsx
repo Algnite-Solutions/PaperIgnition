@@ -137,7 +137,20 @@ const Interests = () => {
       setProfileLoading(true)
       setProfileError(null)
       console.log('[Interests Page] Fetching current user profile...')
-      const token = localStorage.getItem('token') // Prefer localStorage directly for H5
+      
+      // 使用与handleSave相同的token获取逻辑
+      let token: string | null = null;
+      if (Taro && typeof Taro.getStorageSync === 'function') {
+        try {
+          token = Taro.getStorageSync('token');
+        } catch (e) {
+          if (typeof localStorage !== 'undefined') {
+            token = localStorage.getItem('token');
+          }
+        }
+      } else if (typeof localStorage !== 'undefined') {
+        token = localStorage.getItem('token');
+      }
 
       if (!token) {
         console.warn('[Interests Page] No token found, cannot fetch profile.')

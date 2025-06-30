@@ -19,24 +19,29 @@ npm -v
 
 Install pnpm `npm install -g pnpm`
 
+export PYTHONPATH=/path/to/your/PaperIgnition
 
-## Initialize Databases
+## Initialize Databases (DB Backend)
 In the PaperIgnition rootfolder, perform followings steps. 
-
 1. Init User DB
-
+source code: backend/user_db/
 ```
 createdb AIgnite
 # create role
 psql postgres
 CREATE ROLE postgres WITH LOGIN SUPERUSER;
 
-python backend/user_db_service/run_init_db.py
+python backend/user_db_service/db_init.py
 ```
 
 2. Init PaperDB (TODO)
+source code: backend/paper_db/
 
-## Start Backend
+
+3. Start DB Backend
+
+## Start Web Backend
+backend/app
 ```
  # 开发环境
  uvicorn backend.app.main:app --reload --port 8000

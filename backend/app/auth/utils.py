@@ -9,8 +9,8 @@ from sqlalchemy.future import select
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 
-from ..db.database import get_db
-from ..models.user import User
+from backend.db.user_db import get_db
+from backend.models.user import User
 
 # JWT配置
 SECRET_KEY = "aignite_secret_key_change_in_production"  # 生产环境中应使用环境变量
