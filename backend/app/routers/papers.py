@@ -3,9 +3,11 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.db.user_db import get_db
-from backend.models.user import User, UserPaperRecommendation
-from backend.models.papers import PaperBase, PaperRecommendation, MOCK_PAPERS
+
+from ..models.users import User, UserPaperRecommendation
+from ..models.papers import PaperBase, PaperRecommendation, MOCK_PAPERS
+from ..db_utils import get_db
+
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 

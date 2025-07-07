@@ -2,8 +2,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from backend.db.user_db import engine, Base, AsyncSessionLocal
-from backend.models.user import ResearchDomain, UserPaperRecommendation
+from backend.app.db_utils import engine, Base, AsyncSessionLocal
+from backend.app.models.users import ResearchDomain, UserPaperRecommendation
 
 # AI领域初始数据
 AI_DOMAINS = [

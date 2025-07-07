@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
-from backend.db.user_db import Base
+from ..db_utils import Base
 
 # 用户和研究领域的多对多关联表
 user_domain_association = Table(
@@ -88,4 +88,4 @@ class UserPaperRecommendation(Base):
     recommendation_reason = Column(Text, nullable=True)  # 推荐原因
     
     # 关联关系
-    user = relationship("User", back_populates="recommended_papers") 
+    user = relationship("User", back_populates="recommended_papers")

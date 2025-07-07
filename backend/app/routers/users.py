@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 
-from backend.models.user import User, ResearchDomain, user_domain_association
-from backend.db.user_db import get_db
+from ..models.users import User, ResearchDomain, user_domain_association
+from ..db_utils import get_db
 
 from ..auth.schemas import UserOut, UserProfileUpdate
 from ..auth.utils import get_current_user
