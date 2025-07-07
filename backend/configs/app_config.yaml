@@ -18,7 +18,7 @@ INDEX_SERVICE:
 
 USER_DB:
   db_user: postgres
-  db_password: ""
+  db_password: "11111"
   db_host: localhost
   db_port: "5432"
   db_name: paperignition_user

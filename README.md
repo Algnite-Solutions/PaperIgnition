@@ -17,7 +17,7 @@ node -v
 npm -v
 ```
 
-Install pnpm `npm install -g pnpm`
+Install pnpm `sudo npm install -g pnpm`
 
 export PYTHONPATH=/path/to/your/PaperIgnition
 
@@ -33,6 +33,7 @@ CREATE ROLE postgres WITH LOGIN SUPERUSER;
 # create role (ubuntu)
 sudo service postgresql start
 sudo -u postgres psql
+ALTER USER postgres WITH PASSWORD '11111';
 
 # create user database
 CREATE DATABASE paperignition_user;
