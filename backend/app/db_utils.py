@@ -3,12 +3,34 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from typing import AsyncGenerator
 
+def load_config(config_path: str | None = None) -> dict:
+    """Load database configuration from YAML file."""
+    if not config_path:
+        config_path = os.environ.get(
+            "PAPERIGNITION_CONFIG",
+            str(Path(__file__).resolve().parent.parent / "configs/app_config.yaml"),
+        )
+
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)["USER_DB"]
+
+    required = ["db_user", "db_password", "db_host", "db_port", "db_name"]
+    for key in required:
+        if key not in config:
+            raise ValueError(f"Missing '{key}' in {config_path}")
+
+    return config
+
+config = load_config()
 # 从环境变量读取配置（带默认值）
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "paperignition_user")
+DB_USER = config.get("db_user", "postgres")
+DB_PASSWORD = config.get("db_password", "")
+DB_HOST = config.get("db_host", "localhost")
+DB_PORT = config.get("db_port", "5432")
+DB_NAME = config.get("db_name", "paperignition_user")
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

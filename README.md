@@ -37,14 +37,14 @@ sudo -u postgres psql
 # create user database
 CREATE DATABASE paperignition_user;
 
-python backend/user_db_service/db_init.py
+python scripts/user_db_init.py
 ```
 
 2. Start DB Backend
 ```
 CREATE DATABASE paperignition;
 
-python backend/scripts/paper_db_init.py
+python scripts/paper_db_init.py
 ```
 
 3. Init Index Service and test
