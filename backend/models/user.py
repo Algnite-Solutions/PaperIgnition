@@ -36,10 +36,6 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-<<<<<<< HEAD:backend/app/models/user.py
-    
-=======
->>>>>>> 91b9299a235fae866bc0289116141cd3888369b0:backend/models/user.py
     # 关联关系
     interests_description = Column(ARRAY(TEXT), nullable=True)  # 用户研究兴趣关键词数组
     research_domains = relationship("ResearchDomain", secondary=user_domain_association, back_populates="users")

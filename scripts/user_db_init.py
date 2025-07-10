@@ -1,9 +1,11 @@
 import asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
+import os
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 
 from backend.db.user_db import engine, Base, AsyncSessionLocal
 from backend.models.user import ResearchDomain, UserPaperRecommendation
+from backend.configs.config import load_backend_config
 
 # AI领域初始数据
 AI_DOMAINS = [
@@ -22,8 +24,8 @@ AI_DOMAINS = [
     {"name": "知识图谱", "code": "KG", "description": "知识图谱和知识表示学习"}
 ]
 
-async def init_db():
-    """初始化数据库，创建表和添加初始数据"""
+async def init_main_db():
+    """初始化主数据库，创建表和添加初始数据"""
     # 创建所有表
     async with engine.begin() as conn:
         # 删除现有表（如果需要重置）
@@ -61,6 +63,43 @@ async def init_db():
             print("数据库支持数组类型，表创建成功")
         except Exception as e:
             print(f"警告: 数据库可能不支持数组类型，请确保PostgreSQL版本 >= 9.4: {e}")
+
+async def init_test_db():
+    """初始化测试数据库"""
+    # 加载配置
+    config = load_backend_config()
+    test_db_config = config['database']['test']
+    
+    # 构建测试数据库URL
+    test_db_url = (
+        f"postgresql+asyncpg://{test_db_config['user']}:{test_db_config['password']}"
+        f"@{test_db_config['host']}:{test_db_config['port']}/{test_db_config['name']}"
+    )
+    
+    # 创建测试数据库引擎
+    test_engine = create_async_engine(
+        test_db_url,
+        echo=True,
+        future=True
+    )
+    
+    # 创建测试数据库表
+    try:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print(f"测试数据库 {test_db_config['name']} 表创建成功")
+    except Exception as e:
+        print(f"创建测试数据库表失败: {str(e)}")
+        print("请确保测试数据库已存在。如果不存在，请使用以下命令创建:")
+        print(f"psql -U {test_db_config['user']} -c \"CREATE DATABASE {test_db_config['name']};\"")
+
+async def init_db():
+    """初始化主数据库和测试数据库"""
+    print("===== 初始化主数据库 =====")
+    await init_main_db()
+    
+    print("\n===== 初始化测试数据库 =====")
+    await init_test_db()
 
 if __name__ == "__main__":
     # 当直接运行此脚本时，初始化数据库

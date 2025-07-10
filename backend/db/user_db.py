@@ -1,14 +1,19 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
+from backend.configs.config import load_backend_config
 
-# 从环境变量读取配置（带默认值）
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "paperignition_user")
+# 加载配置
+config = load_backend_config()
+db_config = config['database']['main']  # 默认使用主数据库配置
+
+# 从配置中获取数据库参数
+DB_USER = os.getenv("DB_USER", db_config['user'])
+DB_PASSWORD = os.getenv("DB_PASSWORD", db_config['password'])
+DB_HOST = os.getenv("DB_HOST", db_config['host'])
+DB_PORT = os.getenv("DB_PORT", db_config['port'])
+DB_NAME = os.getenv("DB_NAME", db_config['name'])
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -42,4 +47,37 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.commit()
         except Exception:
             await session.rollback()
-            raise 
+            raise
+
+# 为测试提供的函数，使用测试数据库
+def get_test_db_url() -> str:
+    """
+    获取测试数据库URL
+    """
+    test_config = config['database']['test']
+    return (
+        f"postgresql+asyncpg://{test_config['user']}:{test_config['password']}"
+        f"@{test_config['host']}:{test_config['port']}/{test_config['name']}"
+    )
+
+# 创建测试数据库引擎
+def create_test_engine():
+    """
+    创建测试数据库引擎
+    """
+    return create_async_engine(
+        get_test_db_url(),
+        echo=True,
+        future=True
+    )
+
+# 创建测试会话工厂
+def create_test_session_factory(engine):
+    """
+    创建测试会话工厂
+    """
+    return sessionmaker(
+        engine, 
+        class_=AsyncSession, 
+        expire_on_commit=False
+    ) 

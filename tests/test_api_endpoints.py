@@ -6,9 +6,9 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 from AIgnite.data.docset import DocSet, TextChunk, ChunkType, DocSetList
-from backend.index_service.db_utils import load_config
+from backend.configs.config import load_index_config
 
-config = load_config()
+config = load_index_config()
 
 BASE_URL = config['index_api_url']
 
