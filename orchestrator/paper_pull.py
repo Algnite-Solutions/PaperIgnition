@@ -21,7 +21,7 @@ def fetch_daily_papers() -> list[DocSet]:
     today = datetime.now(timezone.utc).date()# - timedelta(days=2)
     date_str = today.strftime("%Y%m%d")
     #time_slots = divide_one_day_into(date_str, 3)
-    time_slots = divide_one_day_into('20240530', 3)
+    time_slots = divide_one_day_into('20240620', 6)
     
     #make sure the folders exist
     os.makedirs(os.path.dirname(arxiv_pool_path), exist_ok=True)
@@ -110,3 +110,6 @@ def divide_one_day_into(date: str, count: int):
             time_sec.append(date + "0" + str(clock) + "00")
     time_sec.append(date + "2359")
     return time_sec
+
+if __name__ == "__main__":
+    fetch_daily_papers()

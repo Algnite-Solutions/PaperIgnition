@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 class InitDatabaseRequest(BaseModel):
     config: Dict[str, Any]
 
+class SaveBlogRequest(BaseModel):
+    doc_id: str
+    blog: str
+
 router = APIRouter()
 
 @router.get("/health")
@@ -108,3 +112,17 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error in similarity search: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/save_blog/")
+async def save_blog_api(request: SaveBlogRequest):
+    """保存或更新指定论文的博客内容（markdown）到metadata数据库"""
+    if paper_indexer is None or paper_indexer.metadata_db is None:
+        raise HTTPException(status_code=503, detail="Indexer or metadata DB not initialized")
+    try:
+        success = paper_indexer.metadata_db.save_blog(request.doc_id, request.blog)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Paper with doc_id {request.doc_id} not found or save failed")
+        return {"message": "博客内容保存成功", "doc_id": request.doc_id}
+    except Exception as e:
+        logger.error(f"Error saving blog for {request.doc_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"保存博客内容失败: {str(e)}")

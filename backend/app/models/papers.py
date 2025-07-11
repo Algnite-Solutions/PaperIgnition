@@ -1,6 +1,7 @@
 
 from pydantic import BaseModel
 from typing import List, Optional
+from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk
 
 # TODO(@Fang Guo): 下面需要使用 AIgnite的Paper模型， 不应该重复定义
 

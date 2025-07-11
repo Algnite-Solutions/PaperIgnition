@@ -1,3 +1,5 @@
+import requests
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
@@ -8,15 +10,18 @@ from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation, MOCK_PAPERS
 from ..db_utils import get_db
 
-
 router = APIRouter(prefix="/papers", tags=["papers"])
+
+INDEX_SERVICE_URL = "http://localhost:8002"
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
 async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
     """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
     result = await db.execute(select(UserPaperRecommendation.paper_id).where(UserPaperRecommendation.username == username))
+    print(result)
     paper_ids = [row[0] for row in result.all()]
-    papers=get_papers_by_ids(paper_ids)
+    print("查到的paperid:",paper_ids)
+    papers = get_papers_by_ids(paper_ids)
     print("========================")
     print(papers)
     print("========================")
@@ -33,23 +38,53 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
     }
 """
 def get_papers_by_ids(paper_ids: List[str]):
-    """根据paper_id列表返回论文详情（mock数据）"""
-    # 用mock数据模拟数据库查询
+    """根据paper_id列表返回论文详情（通过 index_service 获取）"""
     papers = []
     for pid in paper_ids:
-        paper = next((p for p in MOCK_PAPERS if p["id"] == pid), None)
-        if paper:
+        try:
+            resp = requests.get(f"{INDEX_SERVICE_URL}/get_metadata/{pid}")
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # 只取部分字段，按 PaperBase 格式
+            paper = {
+                "id": data.get("doc_id", data.get("id", "")),
+                "title": data.get("title", ""),
+                "authors": ", ".join(data.get("authors", [])) if isinstance(data.get("authors", []), list) else str(data.get("authors", "")),
+                "abstract": data.get("abstract", ""),
+                "url": data.get("url", "")
+            }
+            print("oiiiiiiiiiiiiiiiiiiiiii",paper)
             papers.append(PaperBase(**paper))
+        except Exception as e:
+            continue
+    print(papers)
+    tem = {
+        "id": "2023.24680",
+        "title": "多模态大语言模型研究进展",
+        "authors": "孙八, 周九, 吴十",
+        "abstract": "多模态大语言模型将文本、图像等多种模态信息融合处理...",
+        "url": "https://example.com/papers/2023.24680"
+    }
+    papers.append(tem)
     return papers
 
 @router.get("/paper_content/{paper_id}")
 async def get_paper_markdown_content(paper_id: str):
-    """根据paper_id返回论文的markdown内容（mock数据）"""
-    paper = get_content_by_ids(paper_id)
-    print("========================")
-    print(paper)
-    print("========================")
-    if paper is None:
+    """根据paper_id返回论文的markdown内容（通过 index_service 获取）"""
+    try:
+        resp = requests.get(f"{INDEX_SERVICE_URL}/get_metadata/{paper_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        # 假设 markdown 内容在 data['markdown'] 字段
+        content = data.get("markdown", "")
+        if not content:
+            raise HTTPException(status_code=404, detail="Paper content not found")
+        print("========================")
+        print(content)
+        print("========================")
+        return {"content": content}
+    except Exception as e:
         raise HTTPException(status_code=404, detail="Paper content not found")
     return paper
 

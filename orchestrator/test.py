@@ -17,9 +17,10 @@ def get_all_users():
 def get_user_interest(username: str):
     # user_email is the email of the user
     response = requests.get(f"http://localhost:8000/api/users/by_email/{username}") 
-    response.raise_for_status() # Raises an exception for bad status codes (e.g., 404)
+    response.raise_for_status() # Raises an exception for bad status codes (e.pyg., 404)
     user_data = response.json()
     return user_data.get("interests_description", [])
 
 # print(get_all_users())
-print(get_user_interest("3220102841@zju.edu.cn"))
+print(get_user_interest("111@tongji.edu.cn"))
+print(get_all_users())
