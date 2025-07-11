@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from .db_utils import init_databases, load_config
 from .routes import router
@@ -10,7 +10,7 @@ app.include_router(router)
 @app.on_event("startup")
 async def startup_event():
     # Setup databases and inject into indexer
-    config = load_config()
+    config = load_config("C:\\Users\\lenovo\\Desktop\\paperignite\\PaperIgnition\\backend\\configs\\app_config.yaml")
     vector_db, metadata_db, image_db = init_databases(config)
     try:
         paper_indexer.set_databases(vector_db, metadata_db, image_db)

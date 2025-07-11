@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.user import User
-from backend.db.user_db import get_db
+from ..models.users import User
+from ..db_utils import get_db
 
 from ..auth import schemas as auth_schemas # aliased for clarity
 from ..auth.utils import verify_password, create_access_token # get_password_hash is used in crud

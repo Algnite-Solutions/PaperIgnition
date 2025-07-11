@@ -49,6 +49,7 @@ def get_user_interest(username: str):
 generator = GeminiBlogGenerator(data_path="../imgs/", output_path="./orchestrator/blogs/")
 
 def run_batch_generation():
+    """discarded."""
     users = get_all_users()
     for user in users:
         #interests = get_user_interest(user)
@@ -58,3 +59,5 @@ def run_batch_generation():
 
 def run_dummy_blog_generation(papers):
     blog = generator.generate_digest(papers)
+
+
