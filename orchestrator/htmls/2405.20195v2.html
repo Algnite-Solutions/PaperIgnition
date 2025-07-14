@@ -1,0 +1,1303 @@
+<article class="ltx_document ltx_pruned_first">
+<h1 class="ltx_title ltx_title_document">Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations</h1>
+<div class="ltx_authors">
+<span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Zilin Ma
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Susannah (Cheng) Su
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Nathan Zhao
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Linn Bieske
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Blake Bullwinkel
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Yanyi Zhang
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Sophia (Yanrui) Yang
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Ziqing Luo
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Siyao Li
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Gekai Liao
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Boxiang Wang
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Jinglun Gao
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Zihan Wen
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Claude Bruderlein
+</span></span>
+<span class="ltx_author_before">  </span><span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Weiwei Pan
+</span></span>
+</div>
+<div class="ltx_abstract">
+<h6 class="ltx_title ltx_title_abstract">Abstract</h6>
+<p class="ltx_p" id="id1.id1">Humanitarian negotiations in conflict zones, called <em class="ltx_emph ltx_font_italic" id="id1.id1.1">frontline negotiation</em>, are often highly adversarial, complex, and high-risk. Several best-practices have emerged over the years that help negotiators extract insights from large datasets to navigate nuanced and rapidly evolving scenarios.
+Recent advances in large language models (LLMs) have sparked interest in the potential for AI to aid decision making in frontline negotiation. Through in-depth interviews with 13 experienced frontline negotiators, we identified their needs for AI-assisted case analysis and creativity support, as well as concerns surrounding confidentiality and model bias. We further explored the potential for AI augmentation of three standard tools used in frontline negotiation planning. We evaluated the quality and stability of our ChatGPT-based negotiation tools in the context of two real cases. Our findings highlight the potential for LLMs to enhance humanitarian negotiations and underscore the need for careful ethical and practical considerations.</p>
+</div>
+<div class="ltx_keywords">Machine Learning, ICML
+</div>
+<div class="ltx_para" id="p2">
+<br class="ltx_break"/>
+</div>
+<section class="ltx_section" id="S1">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">1 </span>Introduction</h2>
+<div class="ltx_para" id="S1.p1">
+<p class="ltx_p" id="S1.p1.1">Humanitarian negotiations in conflict zones, known as <em class="ltx_emph ltx_font_italic" id="S1.p1.1.1">frontline negotiation</em>, help secure access to crisis-affected populations for aid delivery <cite class="ltx_cite ltx_citemacro_citep">(Global Interagency Security Forum (2020), <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib10" title="">GISF</a>)</cite>. These negotiations are often highly adversarial, complex, and high-risk. Stakeholders are fragmented geographically, politically, and culturally. Negotiators must <em class="ltx_emph ltx_font_italic" id="S1.p1.1.2">quickly</em> navigate conflicting perspectives by synthesizing unstructured information, including interviews, stakeholder meetings, and historical documents. Given the time pressure on negotiators, efficient and accurate information synthesis is crucial <cite class="ltx_cite ltx_citemacro_citep">(e.g. Subramanian, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib17" title="">2023</a>; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib5" title="">2023</a>)</cite>.</p>
+</div>
+<div class="ltx_para" id="S1.p2">
+<p class="ltx_p" id="S1.p2.1">To address this challenge, negotiators developed templates to assist in manual information processing. Three templates we studied are: the Island of Agreement (IoA), Iceberg and Common Shared Space (CSS), and Stakeholder Mapping (ShM) <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>. Using these templates, negotiators can efficiently organize unstructured data into clear positions and stakeholder intentions.
+Nonetheless, manual processing is time consuming and can introduce errors (which are costly in real-life terms). Here, large language models (LLMs) might be leveraged to assist in information extraction and synthesis for frontline negotiation.</p>
+</div>
+<div class="ltx_para" id="S1.p3">
+<p class="ltx_p" id="S1.p3.1">However, LLMs pose risks such as “hallucinations” <cite class="ltx_cite ltx_citemacro_citep">(e.g. McKenna et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib13" title="">2023</a>)</cite> and susceptibility to privacy attacks <cite class="ltx_cite ltx_citemacro_citep">(e.g. Neel &amp; Chang, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib15" title="">2023</a>)</cite>. Thus, it is unclear if their benefits outweigh the risks for frontline negotiations. This work addresses the following research questions: (1) Can LLMs generate reliable and useful frontline negotiation case summaries? (2) What are additional use cases for LLMs in this domain? (3) What are the specific ethical and practical concerns associated with using LLMs in frontline negotiation? (4) What are the barriers to the adoption of LLM-powered tools by frontline negotiators?</p>
+</div>
+<div class="ltx_para" id="S1.p4">
+<p class="ltx_p" id="S1.p4.1">We first explored summarization using OpenAI’s GPT-4 API on two real, anonymized frontline negotiation cases to fill out the IoA and ShM templates. We found that GPT-4 showed strong consistency in its responses, producing highly similar summaries (measured by cosine similarity) across 30 API calls for both IoA and Iceberg/CSS. Additionally, GPT-4 generated IoA and Iceberg/CSS results comparable to those manually populated by negotiators. While negotiators typically spend hours or days on these templates, ChatGPT completes them in seconds.</p>
+</div>
+<div class="ltx_para" id="S1.p5">
+<p class="ltx_p" id="S1.p5.1">We next conducted interviews with 13 experienced frontline negotiators. Using a video of GPT-4 filling out Iceberg templates with one of the anonymous cases as a design probe <cite class="ltx_cite ltx_citemacro_citep">(Gaver et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib9" title="">1999</a>)</cite>, we stimulated discussion with negotiators. We identified two key uses for LLMs in frontline negotiation: (1) <em class="ltx_emph ltx_font_italic" id="S1.p5.1.1">Context Analysis</em>: Automating parts of context analysis for long documents and unstructured texts. (2) <em class="ltx_emph ltx_font_italic" id="S1.p5.1.2">Ideation Augmentation</em>: Proposing alternative plans, arguments, or solutions.</p>
+</div>
+<div class="ltx_para" id="S1.p6">
+<p class="ltx_p" id="S1.p6.1">Negotiators also highlighted several concerns about integrating LLMs into their workflow: (1) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.1">Confidentiality:</em> Proprietary model providers may not ensure data confidentiality. (2) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.2">Western bias in LLMs:</em> Bias embeddd within LLMs may influence the conclusions drawn by negotiators. (3) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.3">Adoption barriers:</em> Public, donor and mandator <span class="ltx_note ltx_role_footnote" id="footnote1"><sup class="ltx_note_mark">1</sup><span class="ltx_note_outer"><span class="ltx_note_content"><sup class="ltx_note_mark">1</sup><span class="ltx_tag ltx_tag_note">1</span>Donors provide financial and material support, while mandators grant the authority and framework for negotiators to represent their interests <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</span></span></span> opinion on AI may affect adoption of LLM tools. (4) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.4">Accuracy and trust:</em> LLMs are prone to hallucinating and generating ungrounded content. (4) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.5">Incompleteness:</em> LLM-based automation may fail to capture the emotional and human-centric aspects of frontline negotiation. (5) <em class="ltx_emph ltx_font_italic" id="S1.p6.1.6">Overreliance:</em> Overreliance may cause users to overlook mistakes made by LLMs.</p>
+</div>
+<div class="ltx_para" id="S1.p7">
+<p class="ltx_p" id="S1.p7.1">Overall, our results demonstrate the potential for LLMs to assist frontline negotiators. In particular, we explored auto-filling negotiation templates and generated reliable summaries that are comparable to those written by experts. While many negotiators have already begun using tools like ChatGPT in their daily work, our research is the first to formally study the benefits and risks associated with using LLMs for frontline negotiation. Given the sensitive and high-stakes nature of humanitarian negotiations, we recommend further investigation into the risks we identify to ensure safe and ethical adoption of LLMs in this domain.</p>
+</div>
+</section>
+<section class="ltx_section" id="S2">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">2 </span>Related Work</h2>
+<section class="ltx_subsection" id="S2.SS1">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">2.1 </span>Frontline Negotiation</h3>
+<div class="ltx_para" id="S2.SS1.p1">
+<p class="ltx_p" id="S2.SS1.p1.1">Humanitarian negotiators working at the frontlines often engage high-pressure negotiations. In these situations, preparation time is constrained, training opportunities are limited, and the number of stakeholder groups is high. Therefore, building trust and finding common ground to achieve favorable outcomes for those impacted remains a challenge <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>; Sutton &amp; Rhoads, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib18" title="">2022</a>)</cite>. Additionally, exploring all possibilities in a negotiation is difficult. Even in tense hostage situations with armed groups where negotiators have low bargaining power, negotiators rarely fully exploit all of their options, leaving a swath of tactical choices unexplored <cite class="ltx_cite ltx_citemacro_citep">(Clements, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib7" title="">2020</a>)</cite>.</p>
+</div>
+</section>
+<section class="ltx_subsection" id="S2.SS2">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">2.2 </span>Templates for Synthesizing Information in Frontline Negotiation</h3>
+<div class="ltx_para" id="S2.SS2.p1">
+<p class="ltx_p" id="S2.SS2.p1.1">To address the complication of unstructured information overload in negotiations, practitioners have developed templates to synthesize information in a structured manner, making strategizing easier. We studied three tools in particular: IoA, Iceberg/CSS, and ShM <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite> (See also Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS2" title="A.2 Tools for Frontline Humanitarian Negotiation Planning ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.2</span></a>).</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p2">
+<p class="ltx_p" id="S2.SS2.p2.1">IoA is a framework that helps negotiators identify convergent and divergent norms and facts, enabling constructive dialogues by determining agreed-upon aspects of a situation <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p3">
+<p class="ltx_p" id="S2.SS2.p3.1">Iceberg/CSS helps negotiators uncover unspoken values, motives, and interests of counterparts. Mapping deeper beliefs identifies shared spaces to inform negotiation strategies <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p4">
+<p class="ltx_p" id="S2.SS2.p4.1">Humanitarian negotiations often involve many dynamic stakeholders. ShM is crucial for understanding their roles and perspectives, helping to identify effective influence paths and prioritize actor engagement <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p5">
+<p class="ltx_p" id="S2.SS2.p5.1">In this work, we assess whether LLMs can populate these tools and be helpful for frontline negotiators. Based on the above background on frontline negotiation and observations of LLM applications in other fields, we propose the following hypotheses:</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p6">
+<p class="ltx_p" id="S2.SS2.p6.1"><span class="ltx_text ltx_font_bold" id="S2.SS2.p6.1.1">Hypothesis 1:</span> Provided with detailed information, LLMs can consistently generate stable and reliable outputs across different negotiation frameworks and cases.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p7">
+<p class="ltx_p" id="S2.SS2.p7.1"><span class="ltx_text ltx_font_bold" id="S2.SS2.p7.1.1">Hypothesis 2:</span> LLMs can produce case analyses that are comparable in accuracy to those generated by experienced humanitarian negotiators.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p8">
+<p class="ltx_p" id="S2.SS2.p8.1"><span class="ltx_text ltx_font_bold" id="S2.SS2.p8.1.1">Hypothesis 3:</span> Frontline negotiators are likely to accept and integrate LLM tools into their workflows if these tools prove to be helpful and satisfy key negotiators’ needs.</p>
+</div>
+<div class="ltx_para" id="S2.SS2.p9">
+<p class="ltx_p" id="S2.SS2.p9.1"><span class="ltx_text ltx_font_bold" id="S2.SS2.p9.1.1">Hypothesis 4:</span> The deployment of LLMs in humanitarian negotiations raises significant ethical and practical concerns, including data confidentiality and model bias.</p>
+</div>
+</section>
+</section>
+<section class="ltx_section" id="S3">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">3 </span>Method</h2>
+<div class="ltx_para" id="S3.p1">
+<p class="ltx_p" id="S3.p1.1"><span class="ltx_text ltx_font_bold" id="S3.p1.1.1">Overview: </span> We configured three Custom GPTs using OpenAI’s GPT-4 to fill in IoA, Iceberg/CSS, and ShM negotiation templates from background information. Users interact through a chatbot interface. The tools were verified for consistency and compared with templates populated by frontline negotiators to assess quality. The evaluation pipeline is shown in Figure <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#S3.F1" title="Figure 1 ‣ 3 Method ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">1</span></a>.</p>
+</div>
+<figure class="ltx_figure" id="S3.F1"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="326" id="S3.F1.g1" src="extracted/5633811/Flowchart.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 1: </span>Response Generation and Analysis Pipeline</figcaption>
+</figure>
+<div class="ltx_para" id="S3.p2">
+<p class="ltx_p" id="S3.p2.1">However, quantitative results do not necessarily reflect how negotiators integrate tools into their workflow. These metrics are also unable to answer hypotheses <span class="ltx_text ltx_font_bold" id="S3.p2.1.1">H3</span> or <span class="ltx_text ltx_font_bold" id="S3.p2.1.2">H4</span>, which require detailed qualitative feedback from negotiators to address. Beyond context analysis, we are also interested in discovering other potential uses of LLMs in this domain and can only do so by interviewing practitioners directly.</p>
+</div>
+<section class="ltx_subsection" id="S3.SS1">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">3.1 </span>Quantitative Analysis of LLMs Populating Frontline Negotiation Templates</h3>
+<div class="ltx_para" id="S3.SS1.p1">
+<p class="ltx_p" id="S3.SS1.p1.1"><span class="ltx_text ltx_font_bold" id="S3.SS1.p1.1.1">Tool Development and Iteration:</span>
+We used an iterative prompt-engineering approach to develop three pipeline tools, starting with system prompts outlining the LLM’s role and expectations. This involved defining task objectives, creating instructions, and specifying output formats, followed by refinement based on feedback from negotiators. The full process is detailed in Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS1" title="A.1 Synthesizing Tool Development ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.1</span></a></p>
+</div>
+<div class="ltx_para" id="S3.SS1.p2">
+<p class="ltx_p" id="S3.SS1.p2.1"><span class="ltx_text ltx_font_bold" id="S3.SS1.p2.1.1">Evaluating the Stability of the LLM Responses:</span>
+We evaluated the tools based on three principles: stability of responses, benchmarking against negotiator responses, and response time. First, we measured consistency using cosine similarity to ensure low variance and minimal hallucinations. For IoA and Iceberg/CSS, we used <span class="ltx_text ltx_font_typewriter" id="S3.SS1.p2.1.2">sklearn.metrics</span>. For ShM, we used <span class="ltx_text ltx_font_typewriter" id="S3.SS1.p2.1.3">sklearn.spatial</span> to measure the cosine spatial distance between the stakeholder map graph centroids. Second, we benchmarked against human negotiators by calculating semantic similarity between the LLM and human responses for Iceberg/CSS and IoA. Third, we compared the average time ChatGPT takes to generate a response with the average time taken by negotiators, aiming to minimize manual effort for human negotiators.</p>
+</div>
+<div class="ltx_para" id="S3.SS1.p3">
+<p class="ltx_p" id="S3.SS1.p3.1"><span class="ltx_text ltx_font_bold" id="S3.SS1.p3.1.1">Benchmarking LLM Responses Against Practitioner Responses:</span>
+We benchmarked our LLM-generated responses against those from experienced practitioners. We worked with the Centre of Competence on Humanitarian Negotiation, which shared practitioner-generated respones using the Iceberg and CSS framework and the IoA framework on the “Health for All” (HfA) example case. To compare these with the LLM-generated responses, we processed all texts using Bidirectional Encoder Representations from Transformers (BERT) to capture the general semantics more effectively <cite class="ltx_cite ltx_citemacro_citep">(Devlin et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib8" title="">2018</a>)</cite>. After preprocessing with BERT, we conducted the comparison using cosine similarity.</p>
+</div>
+</section>
+<section class="ltx_subsection" id="S3.SS2">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">3.2 </span>Human-Centered Benchmarking and Evaluation of Tools</h3>
+<div class="ltx_para" id="S3.SS2.p1">
+<p class="ltx_p" id="S3.SS2.p1.1">After validating the LLM-generated responses using quantitative metrics, we conducted interviews with frontline negotiators to understand their workflow, collect qualitative feedback on the responses, determine whether there are other uses of LLMs in this context, and identify concerns with integrating LLMs into their workflow.</p>
+</div>
+<div class="ltx_para" id="S3.SS2.p2">
+<p class="ltx_p" id="S3.SS2.p2.1"><span class="ltx_text ltx_font_bold" id="S3.SS2.p2.1.1">Recruitment: </span> We disseminated a recruitment survey to the negotiator networks including organizations such as the International Committee of the Red Cross (ICRC), United Nations (UN), and World Food Program (WFP). The survey collected demographic information and years of experience with frontline negotiation. Of the 35 survey responses, 13 interviewees agreed to participate in the interview. We eventually conducted 13 interviews.</p>
+</div>
+<div class="ltx_para" id="S3.SS2.p3">
+<p class="ltx_p" id="S3.SS2.p3.1"><span class="ltx_text ltx_font_bold" id="S3.SS2.p3.1.1">Semi-structured interview: </span> We conducted semi-structured interviews with 13 participants, divided into two parts. In the first part, we sought to understand how practitioners prepare for and conduct negotiations, and the most challenging aspects of their workflows. In the second part, we presented a video demonstration of our Iceberg and CSS tool, developed using a customized GPT. This demonstration served as a design probe <cite class="ltx_cite ltx_citemacro_citep">(Gaver et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib9" title="">1999</a>)</cite> that prompted negotiators to reflect on their workflow, consider other ways in which LLMs might be helpful, and identify weaknesses and risks in the LLM-generated responses.</p>
+</div>
+<div class="ltx_para" id="S3.SS2.p4">
+<p class="ltx_p" id="S3.SS2.p4.1">Detailed interview guides are provided in Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS8" title="A.8 Interview guildelines ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.8</span></a>. Participants gave informed consent to participate in one hour-long interviews with the option to withdraw and were compensated with a $30 Amazon Gift Cards. Interview audio recordings were transcribed and anonymized, and the study was approved by our university’s Institutional Review Board.</p>
+</div>
+</section>
+</section>
+<section class="ltx_section" id="S4">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">4 </span>Quantitative Results</h2>
+<div class="ltx_para" id="S4.p1">
+<p class="ltx_p" id="S4.p1.1">The results of our first experiments, aimed at assessing the stability of ChatGPT’s responses, are detailed in Table <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.T1" title="Table 1 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">1</span></a> in the Appendix. Using 30 API calls, we observed high pair-wise cosine similarity scores across the Food Without Borders (FwB) and Health for All (HfA) scenarios within the Iceberg/CSS and IoA frameworks. For the Iceberg/CSS framework, scores ranged from 0.9627 to 0.9907, with a median of 0.9829 and an average of 0.9821 for FwB, and from 0.9609 to 0.9892, with a median of 0.9767 and an average of 0.9765 for HfA. The IoA framework exhibited scores from 0.9474 to 0.9919, with a median of 0.9788 and an average of 0.9763 for FwB, and from 0.9564 to 0.9895, with a median of 0.9795 and an average of 0.9767 for HfA. The ShM displayed the greatest variability, with scores from 0.7658 to 0.9955, a median of 0.9410, and an average of 0.9265 for FwB, and from 0.7842 to 0.9929, a median of 0.9372, and an average of 0.9231 for HfA. For visual representations of the cosine similarity scores, see Figures <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F5" title="Figure 5 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">5</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F6" title="Figure 6 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">6</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F7" title="Figure 7 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">7</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F8" title="Figure 8 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">8</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F9" title="Figure 9 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">9</span></a>, and <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F10" title="Figure 10 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">10</span></a> in Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS5" title="A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.5</span></a>.</p>
+</div>
+<div class="ltx_para" id="S4.p2">
+<p class="ltx_p" id="S4.p2.1">The results of our experiments comparing LLM-generated outputs with practitioners’ responses for the HfA case are detailed in Figure <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#S4.F2" title="Figure 2 ‣ 4 Quantitative Results ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">2</span></a> and Figure <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F11" title="Figure 11 ‣ A.6 Benchmarking LLM Responses Against Practitioner Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">11</span></a> in Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS6" title="A.6 Benchmarking LLM Responses Against Practitioner Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.6</span></a>. In the IoA framework, the average cosine similarity between ChatGPT and practitioner responses was 0.93, with scores ranging from 0.91 to 0.94 across 30 API calls. Similarly, in the Iceberg/CSS framework, the average cosine similarity was 0.92, with scores also ranging from 0.91 to 0.94.</p>
+</div>
+<figure class="ltx_figure" id="S4.F2"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="359" id="S4.F2.g1" src="extracted/5633811/benchmark_ioa_hfa.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 2: </span>
+Cosine similarity scores between practitioner and GPT responses using the IoA framework for the Health for All case averaged <span class="ltx_text ltx_font_bold" id="S4.F2.2.1">0.93</span>. ChatGPT was called 30 times with the same prompt, and responses were compared using BERT. Scores ranged from 0.91 to 0.94, showing consistent alignment with practitioner responses and validating the accuracy of LLM outputs in real-world negotiations.</figcaption>
+</figure>
+</section>
+<section class="ltx_section" id="S5">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">5 </span>Interview Results: Opportunities and Concerns of Using LLMs in the Frontline</h2>
+<div class="ltx_para" id="S5.p1">
+<p class="ltx_p" id="S5.p1.1">This section summarizes the main findings of our interviews, focusing on the emerging opportunities and concerns regarding the use of LLMs in humanitarian negotiations. Negotiators often referred to LLMs as AI; thus, in the quotes, we retain the term “AI” where it was originally used by the participants. Detailed interview analysis is included in Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS9" title="A.9 Opportunities for LLM in humanitarian negotiation ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.9</span></a>.</p>
+</div>
+<section class="ltx_subsection" id="S5.SS1">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">5.1 </span>Opportunities</h3>
+<div class="ltx_para" id="S5.SS1.p1">
+<p class="ltx_p" id="S5.SS1.p1.1">Although the LLM-generated CSS acted as a design probe and was not meant for practical use, participants appreciated the artifact. For example, P11 mentioned, <span class="ltx_text ltx_font_italic" id="S5.SS1.p1.1.1">“I hope I have this right now.”</span> Negotiators showed general interest in the next stages of these tools. The CSS tool inspired negotiators to consider ways in which LLMs can be useful in their workflow. Two types of potential novel use cases of LLMs stood out in the interview: 1) context analysis and 2) argument ideation.</p>
+</div>
+<div class="ltx_para" id="S5.SS1.p2">
+<p class="ltx_p" id="S5.SS1.p2.1"><span class="ltx_text ltx_font_bold" id="S5.SS1.p2.1.1">Context Analysis:</span> Negotiators face challenges with long, unstructured texts and see potential in LLMs like ChatGPT to automate context analysis and provide support. However, effective prompting is a challenge, and negotiators seek professional guidance to use these tools efficiently, suggesting that LLMs can help them quickly familiarize themselves with cases.</p>
+</div>
+<div class="ltx_para" id="S5.SS1.p3">
+<p class="ltx_p" id="S5.SS1.p3.1"><span class="ltx_text ltx_font_bold" id="S5.SS1.p3.1.1">Argument Ideation:</span> Negotiators believe that LLMs can enhance creativity by proposing alternative plans and solutions, helping to avoid narrow-mindedness and find new middle grounds. <span class="ltx_text ltx_font_italic" id="S5.SS1.p3.1.2">“I just don’t want to let my brain be single minded. […]”</span> (P3) Additionally, LLMs can identify information gaps during context analysis, prompting further investigation.</p>
+</div>
+</section>
+<section class="ltx_subsection" id="S5.SS2">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">5.2 </span>Concerns</h3>
+<div class="ltx_para" id="S5.SS2.p1">
+<p class="ltx_p" id="S5.SS2.p1.1">Despite positive sentiments for our demo, there are still concerns about using the tools in negotiation.</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p2">
+<p class="ltx_p" id="S5.SS2.p2.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p2.1.1">Confidentiality:</span> Negotiators handle sensitive information and were initially skeptical of using ChatGPT. While comfort with ChatGPT has grown, understanding of relevant privacy policies and appropriate use remains inadequate.</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p3">
+<p class="ltx_p" id="S5.SS2.p3.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p3.1.1">Western Bias:</span> Concerns exist about Western bias in LLMs, affecting their utility in diverse cultural contexts. Feedback from non-Western users is crucial. As one negotiator noted, <span class="ltx_text ltx_font_italic" id="S5.SS2.p3.1.2">“You really need to go to Nigeria, to Myanmar, and talk to the field teams and get their inputs on all these.”</span> (P12)</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p4">
+<p class="ltx_p" id="S5.SS2.p4.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p4.1.1">Public and Mandator Opinions:</span> Public and mandator views on AI can influence its use in negotiations. Educating the public on AI’s limitations and benefits can aid integration into workflows, leading to broader acceptance and more effective use in humanitarian negotiations.</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p5">
+<p class="ltx_p" id="S5.SS2.p5.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p5.1.1">Accuracy and Trust:</span> Concerns about LLM accuracy in negotiation tasks highlight the need for transparency and reliability in LLM-generated responses. LLMs can still serve as a source of inspiration despite these concerns.</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p6">
+<p class="ltx_p" id="S5.SS2.p6.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p6.1.1">Limitation of Automation:</span> LLMs should complement, not replace, the human aspect of negotiation. Human oversight is necessary due to varying levels of preparation and technical skills among negotiators. One negotiator noted, <span class="ltx_text ltx_font_italic" id="S5.SS2.p6.1.2">“The key part of my job is actually to tour the region and engage with different levels [of groups].”</span> (P8)</p>
+</div>
+<div class="ltx_para" id="S5.SS2.p7">
+<p class="ltx_p" id="S5.SS2.p7.1"><span class="ltx_text ltx_font_bold" id="S5.SS2.p7.1.1">Overreliance:</span> There are concerns that over-automating negotiations might hinder effectiveness. Maintaining human involvement in analysis and decision-making is crucial. As emphasized by P4, <span class="ltx_text ltx_font_italic" id="S5.SS2.p7.1.2">“I think it’s important to do your own analysis. I think that information and intelligence comes from doing proper analysis.”</span></p>
+</div>
+</section>
+</section>
+<section class="ltx_section" id="S6">
+<h2 class="ltx_title ltx_title_section">
+<span class="ltx_tag ltx_tag_section">6 </span>Discussion</h2>
+<div class="ltx_para" id="S6.p1">
+<p class="ltx_p" id="S6.p1.1"><span class="ltx_text ltx_font_bold" id="S6.p1.1.1">LLMs Generate Consistent and Reliable Templates that Are Comparable to Human Negotiators’: </span>
+Our quantitative evaluation of ChatGPT’s capabilities in humanitarian negotiations compared AI-generated responses with those from experienced practitioners to assess consistency and reliability. The results showed that LLMs can reliably generate stable, uniform outputs and templates comparable in accuracy to human negotiators. While human negotiators took a week or more to complete templates, ChatGPT did so in seconds. These findings support <span class="ltx_text ltx_font_bold" id="S6.p1.1.2">H1</span> and <span class="ltx_text ltx_font_bold" id="S6.p1.1.3">H2</span>, demonstrating that LLMs can effectively support frontline negotiators by providing consistent templates, thereby enhancing preparation and execution of negotiations.</p>
+</div>
+<div class="ltx_para" id="S6.p2">
+<p class="ltx_p" id="S6.p2.1"><span class="ltx_text ltx_font_bold" id="S6.p2.1.1">Needs for LLMs in Frontline Negotiation: </span>
+Our qualitative interviews revealed that some negotiators have already started using LLMs for frontline negotiations, primarily for context analysis and argument ideation. These findings support <span class="ltx_text ltx_font_bold" id="S6.p2.1.2">H3</span>, suggesting that frontline negotiators are likely to accept and integrate LLM tools into their workflows if these tools address their key concerns. However, negotiators also emphasized the need for better support in prompt-engineering and a deeper understanding of LLM limitations. Future studies should focus on these areas, and training programs within humanitarian organizations should be designed to help negotiators better understand and effectively use these tools.</p>
+</div>
+<div class="ltx_para" id="S6.p3">
+<p class="ltx_p" id="S6.p3.1"><span class="ltx_text ltx_font_bold" id="S6.p3.1.1">Concerns over LLMs in Negotiation: </span>
+Privacy and confidentiality are paramount concerns for humanitarian negotiators. Therefore, any LLM system introduced must guarantee stringent privacy standards and clearly disclose its terms. Leakage of confidential information could endanger negotiators and other involved parties, leading to distrust and disruptions.</p>
+</div>
+<div class="ltx_para" id="S6.p4">
+<p class="ltx_p" id="S6.p4.1">Biases are present in every negotiation domain undermining outcomes. LLMs could further skew viewpoints if they provide, for example, Western biased summaries to negotiators operating in other geographies. These findings support <span class="ltx_text ltx_font_bold" id="S6.p4.1.1">H4</span> and reveal a strong need to align LLMs to address these practical and ethical concerns. Since negotiators have already begun integrating LLMs into their workflows, it is crucial to build their capacity to mitigate or identify LLM biases. Consequently, there is a pressing need for comprehensive educational programs and enhanced interface support across organizations to address these limitations.</p>
+</div>
+<div class="ltx_para" id="S6.p5">
+<p class="ltx_p" id="S6.p5.1"><span class="ltx_text ltx_font_bold" id="S6.p5.1.1">Addressing Privacy and Confidentiality Concerns with Infrastructure Investments: </span>
+Privacy and confidentiality concerns can be partially addressed through the right infrastructure investments. For example, many open-source LLMs <cite class="ltx_cite ltx_citemacro_citep">(BigScience, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib3" title="">2022</a>; Zhang et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib20" title="">2022</a>; Black et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib4" title="">2022</a>; Institute, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib12" title="">2023</a>)</cite> and models optimized for local deployment <cite class="ltx_cite ltx_citemacro_citep">(Abdin et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib1" title="">2024</a>; Google AI, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib11" title="">2023</a>; Mistral AI, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib14" title="">2023</a>; Salesforce AI, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib16" title="">2023</a>)</cite> can generate text comparable to, or even better than, ChatGPT in some domains. By properly observing data and privacy practices, we can ensure the confidentiality required by negotiators. Future work in this area might include comparing the performance of open-source models with our GPT-based negotiation tools.</p>
+</div>
+<div class="ltx_para" id="S6.p6">
+<p class="ltx_p" id="S6.p6.1"><span class="ltx_text ltx_font_bold" id="S6.p6.1.1">Address Trust, Overreliance and Overautomation before Adaptation: </span> Concerns about adapting LLMs in negotiation come not only from negotiators themselves but also involved communities, donors, and negotiation mandators. These concerns often stem from broader issues inherent in LLMs that remain unaddressed. We have identified risks related to trust, over-reliance, and over-automation. To successfully integrate LLM tools into negotiation processes, technologists need to demonstrate a thorough understanding of these key issues (e.g., do negotiators trust LLMs even when LLMs make mistakes?) and address them through improved algorithms and interface design.</p>
+</div>
+<div class="ltx_para" id="S6.p7">
+<p class="ltx_p" id="S6.p7.1">Technologists must carefully consider where automation is appropriate. Studies have indicated that careless automation only increases manual labor <cite class="ltx_cite ltx_citemacro_citep">(Beede et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib2" title="">2020</a>; Ulloa et al., <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib19" title="">2022</a>)</cite>. For example, negotiators noted that their standard practices do not align with the input formats suited for LLMs. This misalignment affects the adoption of LLM tools and necessitates changes in existing data management practices, such as capturing notes or case data more systematically and continuously. Negotiators might perceive these changes as burdensome. To address this issue, further design work is needed to support negotiators beyond summarization, including aiding in data collection and providing other workflow support.</p>
+</div>
+<section class="ltx_subsection" id="S6.SS1">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">6.1 </span>Conclusion</h3>
+<div class="ltx_para" id="S6.SS1.p1">
+<p class="ltx_p" id="S6.SS1.p1.1">Our research is the first to demonstrate the potential for LLMs to assist frontline negotiators by auto-filling negotiation templates and providing consistent, reliable summaries that are comparable in quality to those written by human experts. Interviews with negotiators indicated key uses for LLMs in context analysis and ideation augmentation, but also highlighted concerns surrounding confidentiality, embedded biases, barriers to adoption, accuracy, and overreliance. While many negotiators already use tools like ChatGPT, our study formally assesses the benefits and risks, emphasizing the need for further investigation to ensure safe and ethical adoption. Ultimately, we hope that LLMs can enhance the efficiency, safety and effectiveness of humanitarian negotiations, aiding the delivery of critical aid to crisis-affected populations.</p>
+</div>
+</section>
+</section>
+<section class="ltx_bibliography" id="bib">
+<h2 class="ltx_title ltx_title_bibliography">References</h2>
+<ul class="ltx_biblist">
+<li class="ltx_bibitem" id="bib.bib1">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Abdin et al. (2024)</span>
+<span class="ltx_bibblock">
+Abdin, M., Jacobs, S. A., Awan, A. A., Aneja, J., Awadallah, A., Awadalla, H., Bach, N., Bahree, A., Bakhtiari, A., Bao, J., Behl, H., Benhaim, A., Bilenko, M., Bjorck, J., Bubeck, S., Cai, Q., Cai, M., Mendes, C. C. T., Chen, W., Chaudhary, V., Chen, D., Chen, D., Chen, Y.-C., Chen, Y.-L., Chopra, P., Dai, X., Giorno, A. D., de Rosa, G., Dixon, M., Eldan, R., Fragoso, V., Iter, D., Gao, M., Gao, M., Gao, J., Garg, A., Goswami, A., Gunasekar, S., Haider, E., Hao, J., Hewett, R. J., Huynh, J., Javaheripi, M., Jin, X., Kauffmann, P., Karampatziakis, N., Kim, D., Khademi, M., Kurilenko, L., Lee, J. R., Lee, Y. T., Li, Y., Li, Y., Liang, C., Liden, L., Liu, C., Liu, M., Liu, W., Lin, E., Lin, Z., Luo, C., Madan, P., Mazzola, M., Mitra, A., Modi, H., Nguyen, A., Norick, B., Patra, B., Perez-Becker, D., Portet, T., Pryzant, R., Qin, H., Radmilac, M., Rosset, C., Roy, S., Ruwase, O., Saarikivi, O., Saied, A., Salim, A., Santacroce, M., Shah, S., Shang, N., Sharma, H., Shukla, S., Song, X., Tanaka, M., Tupini, A.,
+Wang, X., Wang, L., Wang, C., Wang, Y., Ward, R., Wang, G., Witte, P., Wu, H., Wyatt, M., Xiao, B., Xu, C., Xu, J., Xu, W., Yadav, S., Yang, F., Yang, J., Yang, Z., Yang, Y., Yu, D., Yuan, L., Zhang, C., Zhang, C., Zhang, J., Zhang, L. L., Zhang, Y., Zhang, Y., Zhang, Y., and Zhou, X.
+
+</span>
+<span class="ltx_bibblock">Phi-3 technical report: A highly capable language model locally on your phone, 2024.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib2">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Beede et al. (2020)</span>
+<span class="ltx_bibblock">
+Beede, E., Baylor, E. E., Hersch, F., Iurchenko, A., Wilcox, L., Ruamviboonsuk, P., and Vardoulakis, L. M.
+
+</span>
+<span class="ltx_bibblock">A human-centered evaluation of a deep learning system deployed in clinics for the detection of diabetic retinopathy.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib2.1.1">Proceedings of the 2020 CHI Conference on Human Factors in Computing Systems</em>, 2020.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://api.semanticscholar.org/CorpusID:213644599" title="">https://api.semanticscholar.org/CorpusID:213644599</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib3">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">BigScience (2022)</span>
+<span class="ltx_bibblock">
+BigScience.
+
+</span>
+<span class="ltx_bibblock">Bloom: A 176b parameter open-access multilingual language model.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib3.1.1">Hugging Face</em>, 2022.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://huggingface.co/bigscience/bloom" title="">https://huggingface.co/bigscience/bloom</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib4">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Black et al. (2022)</span>
+<span class="ltx_bibblock">
+Black, S. et al.
+
+</span>
+<span class="ltx_bibblock">Gpt-neox-20b: An open-source autoregressive language model.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib4.1.1">arXiv preprint arXiv:2204.06745</em>, 2022.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://arxiv.org/abs/2204.06745" title="">https://arxiv.org/abs/2204.06745</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib5">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Bruderlein (2023)</span>
+<span class="ltx_bibblock">
+Bruderlein, C.
+
+</span>
+<span class="ltx_bibblock">Challenges and dilemmas in frontline negotiations.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib5.1.1">Frontline Negotiations</em>, 2023.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://blogs.icrc.org/law-and-policy/2018/01/04/challenges-dilemmas-in-frontline-%5C%5C%0Anegotiations-interview-with-claude-%5C%5C%0Abruderlein" title="">https://blogs.icrc.org/law-and-policy/2018/01/04/challenges-dilemmas-in-frontline-
+<br class="ltx_break"/>negotiations-interview-with-claude-
+<br class="ltx_break"/>bruderlein</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib6">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Centre of Competence on Humanitarian Negotiation &amp; Bruderlein (2019)</span>
+<span class="ltx_bibblock">
+Centre of Competence on Humanitarian Negotiation and Bruderlein, C.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib6.1.1">CCHN Field Manual on Frontline Humanitarian Negotiation</em>.
+
+</span>
+<span class="ltx_bibblock">106 Route de Ferney, 1202 Geneva, Switzerland, 2.0 edition, November 2019.
+
+</span>
+<span class="ltx_bibblock">Available online at <a class="ltx_ref ltx_url ltx_font_typewriter" href="http://www.frontline-negotiations.org" title="">http://www.frontline-negotiations.org</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib7">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Clements (2020)</span>
+<span class="ltx_bibblock">
+Clements, A. S.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib7.1.1">Frontlines of Diplomacy: How Humanitarian Negotiators are Changing the Practice of Diplomacy</em>.
+
+</span>
+<span class="ltx_bibblock">Routledge, New York, NY, USA, 2020.
+
+</span>
+<span class="ltx_bibblock">Available at major academic libraries and booksellers.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib8">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Devlin et al. (2018)</span>
+<span class="ltx_bibblock">
+Devlin, J., Chang, M.-W., Lee, K., and Toutanova, K.
+
+</span>
+<span class="ltx_bibblock">Bert: Pre-training of deep bidirectional transformers for language understanding.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib8.1.1">arXiv preprint arXiv:1810.04805</em>, 2018.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib9">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Gaver et al. (1999)</span>
+<span class="ltx_bibblock">
+Gaver, B., Dunne, T., and Pacenti, E.
+
+</span>
+<span class="ltx_bibblock">Design: Cultural probes.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib9.1.1">Interactions</em>, 6(1):21–29, jan 1999.
+
+</span>
+<span class="ltx_bibblock">ISSN 1072-5520.
+
+</span>
+<span class="ltx_bibblock">doi: <span class="ltx_ref ltx_nolink ltx_Url ltx_ref_self">10.1145/291224.291235</span>.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://doi.org/10.1145/291224.291235" title="">https://doi.org/10.1145/291224.291235</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib10">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Global Interagency Security Forum (2020) (GISF)</span>
+<span class="ltx_bibblock">Global Interagency Security Forum (GISF).
+
+</span>
+<span class="ltx_bibblock">Humanitarian access score report 2020: Global synthesis, 2020.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://gisf.ngo/resource/humanitarian-access-score-report-2020-%5C%5C%0Aglobal-synthesis/" title="">https://gisf.ngo/resource/humanitarian-access-score-report-2020-
+<br class="ltx_break"/>global-synthesis/</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib11">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Google AI (2023)</span>
+<span class="ltx_bibblock">
+Google AI.
+
+</span>
+<span class="ltx_bibblock">Gemma: Open llm by google, 2023.
+
+</span>
+<span class="ltx_bibblock">Available at <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://huggingface.co/google/gemma-7b-it" title="">https://huggingface.co/google/gemma-7b-it</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib12">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Institute (2023)</span>
+<span class="ltx_bibblock">
+Institute, T. I.
+
+</span>
+<span class="ltx_bibblock">Falcon 180b: A high-performance open-source llm, 2023.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://falconllm.tii.ae" title="">https://falconllm.tii.ae</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib13">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">McKenna et al. (2023)</span>
+<span class="ltx_bibblock">
+McKenna, N., Li, T., Cheng, L., Hosseini, M. J., Johnson, M., and Steedman, M.
+
+</span>
+<span class="ltx_bibblock">Sources of hallucination by large language models on inference tasks.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib13.1.1">arXiv preprint arXiv:2305.14552</em>, 2023.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib14">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Mistral AI (2023)</span>
+<span class="ltx_bibblock">
+Mistral AI.
+
+</span>
+<span class="ltx_bibblock">Mistral 7b: An open-source efficient language model, 2023.
+
+</span>
+<span class="ltx_bibblock">Available at <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://huggingface.co/mistralai/Mistral-7B-v0.2" title="">https://huggingface.co/mistralai/Mistral-7B-v0.2</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib15">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Neel &amp; Chang (2023)</span>
+<span class="ltx_bibblock">
+Neel, S. and Chang, P.
+
+</span>
+<span class="ltx_bibblock">Privacy issues in large language models: A survey.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib15.1.1">ArXiv</em>, abs/2312.06717, 2023.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://api.semanticscholar.org/CorpusID:266174760" title="">https://api.semanticscholar.org/CorpusID:266174760</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib16">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Salesforce AI (2023)</span>
+<span class="ltx_bibblock">
+Salesforce AI.
+
+</span>
+<span class="ltx_bibblock">Xgen: Open-source language model by salesforce, 2023.
+
+</span>
+<span class="ltx_bibblock">Available at <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://huggingface.co/salesforce/xgen-7b-8k-base" title="">https://huggingface.co/salesforce/xgen-7b-8k-base</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib17">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Subramanian (2023)</span>
+<span class="ltx_bibblock">
+Subramanian, G.
+
+</span>
+<span class="ltx_bibblock">Ask a negotiation expert: Learning from humanitarian negotiations amid international conflict.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib17.1.1">Program on Negotiation at Harvard Law School</em>, 2023.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://www.pon.harvard.edu/daily/negotiation-skills-daily/ask-a-negotiation-expert-learning-from-%5C%5C%0Ahumanitarian-negotiations-nb/" title="">https://www.pon.harvard.edu/daily/negotiation-skills-daily/ask-a-negotiation-expert-learning-from-
+<br class="ltx_break"/>humanitarian-negotiations-nb/</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib18">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Sutton &amp; Rhoads (2022)</span>
+<span class="ltx_bibblock">
+Sutton, R. and Rhoads, E. P.
+
+</span>
+<span class="ltx_bibblock">Empathy in frontline humanitarian negotiations: a relational approach to engagement.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib18.1.1">Journal of International Humanitarian Action</em>, 7(23), 2022.
+
+</span>
+<span class="ltx_bibblock">doi: <span class="ltx_ref ltx_nolink ltx_Url ltx_ref_self">10.1186/s41018-022-00131-0</span>.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://doi.org/10.1186/s41018-022-00131-0" title="">https://doi.org/10.1186/s41018-022-00131-0</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib19">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Ulloa et al. (2022)</span>
+<span class="ltx_bibblock">
+Ulloa, M., Rothrock, B., Ahmad, F. S., and Jacobs, M.
+
+</span>
+<span class="ltx_bibblock">Invisible clinical labor driving the successful integration of AI in healthcare.
+
+</span>
+<span class="ltx_bibblock"><em class="ltx_emph ltx_font_italic" id="bib.bib19.1.1">Frontiers in Computer Science</em>, 4:1045704, December 2022.
+
+</span>
+<span class="ltx_bibblock">ISSN 2624-9898.
+
+</span>
+<span class="ltx_bibblock">doi: <span class="ltx_ref ltx_nolink ltx_Url ltx_ref_self">10.3389/fcomp.2022.1045704</span>.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://www.frontiersin.org/articles/10.3389/fcomp.2022.1045704/full" title="">https://www.frontiersin.org/articles/10.3389/fcomp.2022.1045704/full</a>.
+
+</span>
+</li>
+<li class="ltx_bibitem" id="bib.bib20">
+<span class="ltx_tag ltx_role_refnum ltx_tag_bibitem">Zhang et al. (2022)</span>
+<span class="ltx_bibblock">
+Zhang, S. et al.
+
+</span>
+<span class="ltx_bibblock">Opt: Open pre-trained transformers language models, 2022.
+
+</span>
+<span class="ltx_bibblock">URL <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://arxiv.org/abs/2205.01068" title="">https://arxiv.org/abs/2205.01068</a>.
+
+</span>
+</li>
+</ul>
+</section>
+<div class="ltx_pagination ltx_role_newpage"></div>
+<section class="ltx_appendix" id="A1">
+<h2 class="ltx_title ltx_title_appendix">
+<span class="ltx_tag ltx_tag_appendix">Appendix A </span>Appendix</h2>
+<section class="ltx_subsection" id="A1.SS1">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.1 </span>Synthesizing Tool Development</h3>
+<div class="ltx_para" id="A1.SS1.p1">
+<p class="ltx_p" id="A1.SS1.p1.1">We leveraged a prompt-engineering approach to develop the AI-enhanced negotiation tools: The development of these tools involved a iterative process of creating structured system prompts that guide the LLM in performing the synthesizing task. Each tool begins with a system prompt setup that outlines the role and expectations of the LLM.</p>
+<ul class="ltx_itemize" id="A1.I1">
+<li class="ltx_item" id="A1.I1.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I1.i1.p1">
+<p class="ltx_p" id="A1.I1.i1.p1.1">IoA Tool: “You are a highly structured and detail-oriented assistant specializing in negotiation analysis. Based on the provided information about a high-stakes situation, your task is to analyze and summarize the critical information to fill out an Island of Agreement (IoA) table and recommend negotiation strategies.”</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I1.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I1.i2.p1">
+<p class="ltx_p" id="A1.I1.i2.p1.1">Iceberg and CSS Tool: “You are an assistant in frontline negotiation, specializing in analyzing and summarizing critical information for high-stakes situations like crisis response, emergency management, or conflict resolution. Your task is to help users understand and articulate the positions, reasoning, and motives behind both their organization and the counterparty involved in a negotiation.”</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I1.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I1.i3.p1">
+<p class="ltx_p" id="A1.I1.i3.p1.1">Stakeholder Mapping Tool: “As the Negotiation Navigator, your role is to assist users in crafting clear and detailed stakeholder mapping visualizations, leveraging provided documents and evolving user inputs. You guide users through a systematic process involving greeting, information extraction, consistent graph design and creation using a standardized Python matplotlib script, adjustments, and analysis of stakeholder dynamics and negotiation paths.”</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para" id="A1.SS1.p2">
+<p class="ltx_p" id="A1.SS1.p2.1">Following the initial setup, the instructions then dive into the specific components of each negotiation tool along with step-by-step instructions and requirements on output formats.</p>
+</div>
+<div class="ltx_para" id="A1.SS1.p3">
+<p class="ltx_p" id="A1.SS1.p3.1">We enhanced our manual configuration instructions through interactions with the ChatGPT web interface and integrated feedback from humanitarian negotiation practitioners to ensure the tools’ practical relevance and effectiveness.</p>
+</div>
+<section class="ltx_paragraph" id="A1.SS1.SSS0.Px1">
+<h5 class="ltx_title ltx_title_paragraph">Island of Agreement (IoA)</h5>
+<div class="ltx_para" id="A1.SS1.SSS0.Px1.p1">
+<p class="ltx_p" id="A1.SS1.SSS0.Px1.p1.1">We give an example of how we instantiated our pipeline to output the Island of Agreement.
+We instructed the LLM to populate the IoA table in steps:</p>
+<ul class="ltx_itemize" id="A1.I2">
+<li class="ltx_item" id="A1.I2.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I2.i1.p1">
+<p class="ltx_p" id="A1.I2.i1.p1.1">Step 1: Sorting and qualifying elements - This initial step involves differentiating between ‘facts’—such as demographic data, logistical specifics of aid programs—and ‘norms’—including legal rights and operational priorities. The aim is to categorize these elements based on their relevance and the evidence supporting them.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I2.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I2.i2.p1">
+<p class="ltx_p" id="A1.I2.i2.p1.1">Step 2: Recognizing areas of promise and challenge - This involves identifying parts of the dialogue that are promising for fostering relationships and those that highlight critical issues needing negotiation.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I2.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I2.i3.p1">
+<p class="ltx_p" id="A1.I2.i3.p1.1">Step 3: Developing common understanding - The final step focuses on building a mutual understanding with counterparts regarding the negotiation’s starting point, emphasizing specific objectives.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para" id="A1.SS1.SSS0.Px1.p2">
+<p class="ltx_p" id="A1.SS1.SSS0.Px1.p2.1">For each category within the IoA table, the LLM assistant is instructed to provide structured lists of items such as:</p>
+<ul class="ltx_itemize" id="A1.I3">
+<li class="ltx_item" id="A1.I3.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I3.i1.p1">
+<p class="ltx_p" id="A1.I3.i1.p1.1">Contested Facts: [Fact1, Fact2, …]</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I3.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I3.i2.p1">
+<p class="ltx_p" id="A1.I3.i2.p1.1">Agreed Facts: [Fact1, Fact2, …]</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I3.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I3.i3.p1">
+<p class="ltx_p" id="A1.I3.i3.p1.1">Convergent Norms: [Norm1, Norm2, …]</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I3.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I3.i4.p1">
+<p class="ltx_p" id="A1.I3.i4.p1.1">Divergent Norms: [Norm1, Norm2, …]</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para" id="A1.SS1.SSS0.Px1.p3">
+<p class="ltx_p" id="A1.SS1.SSS0.Px1.p3.1">Furthermore, based on the analysis, recommendations are formulated on aspects to prioritize and those to avoid during the negotiation:</p>
+<ul class="ltx_itemize" id="A1.I4">
+<li class="ltx_item" id="A1.I4.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I4.i1.p1">
+<p class="ltx_p" id="A1.I4.i1.p1.1">Prioritize: [Item1, Item2, …]</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I4.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I4.i2.p1">
+<p class="ltx_p" id="A1.I4.i2.p1.1">Avoid: [Item1, Item2, …]</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para" id="A1.SS1.SSS0.Px1.p4">
+<p class="ltx_p" id="A1.SS1.SSS0.Px1.p4.1">We also instructed LLM to make the responses concise and structured for easy parsing. We noted in the instruction that the background and detailed case information will be provided by users. For the full instruction we used for IoA, see Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS7.SSS1" title="A.7.1 Iceberg/CSS ‣ A.7 GPT-4 Prompts ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.7.1</span></a>.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS1.SSS1">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.1.1 </span>Iceberg and Common Shared Space (CSS)</h4>
+<div class="ltx_para" id="A1.SS1.SSS1.p1">
+<p class="ltx_p" id="A1.SS1.SSS1.p1.1">We used a similar approach as what we used in IoA to develop our instructions for Iceberg and CSS. We instructed the LLM to provide the positions, reasoning, motives and values for the counterparty and the user’s organization respectively in a concise and easy-for-parsing format. For full instructions, see Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS7.SSS2" title="A.7.2 Island of Agreement ‣ A.7 GPT-4 Prompts ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.7.2</span></a>.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS1.SSS2">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.1.2 </span>Stakeholder Mapping</h4>
+<div class="ltx_para" id="A1.SS1.SSS2.p1">
+<p class="ltx_p" id="A1.SS1.SSS2.p1.1">We instructed the LLM to analyze documents methodically to ensure stakeholders, their roles, relationships, and the negotiation context are identified consistently, laying a solid foundation for accurate graphing. Emphasis was placed on identifying the protagonist and the counterparty.</p>
+</div>
+<div class="ltx_para" id="A1.SS1.SSS2.p2">
+<p class="ltx_p" id="A1.SS1.SSS2.p2.1">Next, we instructed the LLM to use a standardized <span class="ltx_text ltx_font_typewriter" id="A1.SS1.SSS2.p2.1.1">matplotlib</span> script to draft initial and subsequent stakeholder maps. The script is adaptive and includes the variables identified during the information extraction phase, ensuring a consistent and accurate representation of the negotiation landscape. Emphasis was again placed on proper plotting of the counterparty in red at the center of the graph.</p>
+</div>
+<div class="ltx_para" id="A1.SS1.SSS2.p3">
+<p class="ltx_p" id="A1.SS1.SSS2.p3.1">After creation of the graph, the tool will to offer recommendations to the user in identifying efficient negotiation paths, employing network analysis and shortest path algorithms to suggest strategic approaches. For the full set of instructions, see Appendix <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS7.SSS3" title="A.7.3 Stakeholder Mapping ‣ A.7 GPT-4 Prompts ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.7.3</span></a>.</p>
+</div>
+</section>
+</section>
+<section class="ltx_subsection" id="A1.SS2">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.2 </span>Tools for Frontline Humanitarian Negotiation Planning</h3>
+</section>
+<section class="ltx_subsection" id="A1.SS3">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.3 </span>Island of Agreement (IoA)</h3>
+<div class="ltx_para" id="A1.SS3.p1">
+<p class="ltx_p" id="A1.SS3.p1.1">The objective of IoA in negotiation is to systematically identify and categorize areas of agreement and disagreement between negotiating parties to facilitate productive dialogue and effective negotiation strategies <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</p>
+</div>
+<div class="ltx_para" id="A1.SS3.p2">
+<p class="ltx_p" id="A1.SS3.p2.1">The IoA table is divided into four distinct categories:</p>
+</div>
+<div class="ltx_para" id="A1.SS3.p3">
+<ul class="ltx_itemize" id="A1.I5">
+<li class="ltx_item" id="A1.I5.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I5.i1.p1">
+<p class="ltx_p" id="A1.I5.i1.p1.1">Contested Facts - Facts requiring further evidence for clarification.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I5.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I5.i2.p1">
+<p class="ltx_p" id="A1.I5.i2.p1.1">Agreed Facts - Established facts that form the basis for initiating dialogue.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I5.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I5.i3.p1">
+<p class="ltx_p" id="A1.I5.i3.p1.1">Convergent Norms - Norms where parties’ values align and can be emphasized as common ground.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I5.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I5.i4.p1">
+<p class="ltx_p" id="A1.I5.i4.p1.1">Divergent Norms - Areas of normative disagreement that require strategic negotiation.</p>
+</div>
+</li>
+</ul>
+</div>
+</section>
+<section class="ltx_subsection" id="A1.SS4">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.4 </span>Iceberg and Common Shared Space (CSS)</h3>
+<div class="ltx_para" id="A1.SS4.p1">
+<p class="ltx_p" id="A1.SS4.p1.1">The Iceberg and CSS framework helps uncover both the explicit demands and positions and also the underlying reasoning and values that influence these stances in humanitarian negotiation <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>. It divides the negotiation analysis into three connected layers, each representing a different depth of interaction and understanding, hence the “iceberg” <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F3" title="Figure 3 ‣ A.4 Iceberg and Common Shared Space (CSS) ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">3</span></a>:</p>
+<ul class="ltx_itemize" id="A1.I6">
+<li class="ltx_item" id="A1.I6.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I6.i1.p1">
+<p class="ltx_p" id="A1.I6.i1.p1.1">Positions (What): This is the visible tip of the iceberg. It represents the explicit demands or stances of both parties. It involves identifying and articulating the explicit positions of each party involved in the negotiation.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I6.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I6.i2.p1">
+<p class="ltx_p" id="A1.I6.i2.p1.1">Reasoning (How): This layer is beneath the surface of the ocean. It explores tactical reasoning that underpins these positions, providing insights into the strategies and logical constructs that lead to the formation of these stances.</p>
+</div>
+</li>
+<li class="ltx_item" id="A1.I6.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="A1.I6.i3.p1">
+<p class="ltx_p" id="A1.I6.i3.p1.1">Motives and Values (Why): This is the deepest layer. It discovers the core motives and values driving the parties’ reasoning and positions. This layer is crucial for identifying potential areas of convergence or divergence that could be leveraged to facilitate dialogue and compromise.</p>
+</div>
+</li>
+</ul>
+</div>
+<figure class="ltx_figure" id="A1.F3"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_square" height="297" id="A1.F3.g1" src="extracted/5633811/iceberg.jpg" width="359"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 3: </span>Graphic Example of Iceberg and CSS Framework <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite></figcaption>
+</figure>
+<section class="ltx_subsubsection" id="A1.SS4.SSS1">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.4.1 </span>Stakeholder Mapping</h4>
+<div class="ltx_para" id="A1.SS4.SSS1.p1">
+<p class="ltx_p" id="A1.SS4.SSS1.p1.1">Stakeholder mapping is designed to systematically identify and analyze the influence and interrelations of diverse actors within complex negotiation environments. This tool categorizes stakeholders along two principal axes: their positions on key issues (transformative to conservative) and their levels of influence (global to local, or other customized standards). By visualizing these dimensions, negotiators can strategically assess where stakeholders stand regarding the negotiation’s goals, and identify potential allies and adversaries <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite>.</p>
+</div>
+<figure class="ltx_figure" id="A1.F4"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="254" id="A1.F4.g1" src="extracted/5633811/stakeholder.jpg" width="359"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 4: </span>Example of Stakeholder Mapping <cite class="ltx_cite ltx_citemacro_citep">(Centre of Competence on Humanitarian Negotiation &amp; Bruderlein, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#bib.bib6" title="">2019</a>)</cite></figcaption>
+</figure>
+</section>
+</section>
+<section class="ltx_subsection" id="A1.SS5">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.5 </span>Stability of LLM-Generated Responses</h3>
+<div class="ltx_para" id="A1.SS5.p1">
+<p class="ltx_p" id="A1.SS5.p1.1">After achieving satisfactory outcomes through the ChatGPT web interface in designing our negotiation tools, we translated our instructions for Custom GPTs into system prompts and case information into user prompts for OpenAI API calls (model: gpt-4-0125-preview). We submitted identical prompts to each customized tool 30 times to evaluate their consistency and reliability.</p>
+</div>
+<div class="ltx_para" id="A1.SS5.p2">
+<p class="ltx_p" id="A1.SS5.p2.1">Similar to the methodology mentioned in the benchmarking step (section 5.4), we processed all texts using BERT. Pairwise comparisons of the LLM-generated responses were conducted to verify consistency.</p>
+</div>
+<div class="ltx_para" id="A1.SS5.p3">
+<p class="ltx_p" id="A1.SS5.p3.1">Cosine similarity heatmaps visualized the stability of responses over 30 calls for each case scenario, showing the pairwise cosine similarity scores between all generated responses and highlighting the model’s reliability.</p>
+</div>
+<div class="ltx_para" id="A1.SS5.p4">
+<p class="ltx_p" id="A1.SS5.p4.1">The heatmaps <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F5" title="Figure 5 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">5</span></a> <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F6" title="Figure 6 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">6</span></a> <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F7" title="Figure 7 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">7</span></a> <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F8" title="Figure 8 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">8</span></a> and summary statistics <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.T1" title="Table 1 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">1</span></a> indicate high degrees of similarity across responses for the Iceberg/CSS and IoA tools, with median cosine similarities consistently above 0.97 for most scenarios. These results suggest a high level of stability in the LLM outputs, supporting the model’s reliability in generating consistent responses.</p>
+</div>
+<div class="ltx_para" id="A1.SS5.p5">
+<p class="ltx_p" id="A1.SS5.p5.1">The heatmaps <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F9" title="Figure 9 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">9</span></a> and <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F10" title="Figure 10 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">10</span></a> indicate slightly lower degrees of similarity for the Stakeholder Mapping tool, with median centroid cosine similarities of about 0.94 for both FwB and HfA cases. These results still suggest a high level of stability, but with notable and outlier exemptions. For example, in contrast to IoA and Iceberg/CSS, the minimum centroid cosine similarity value is significantly lower at <math alttext="\approx 0.76-0.78" class="ltx_Math" display="inline" id="A1.SS5.p5.1.m1.1"><semantics id="A1.SS5.p5.1.m1.1a"><mrow id="A1.SS5.p5.1.m1.1.1" xref="A1.SS5.p5.1.m1.1.1.cmml"><mi id="A1.SS5.p5.1.m1.1.1.2" xref="A1.SS5.p5.1.m1.1.1.2.cmml"></mi><mo id="A1.SS5.p5.1.m1.1.1.1" xref="A1.SS5.p5.1.m1.1.1.1.cmml">≈</mo><mrow id="A1.SS5.p5.1.m1.1.1.3" xref="A1.SS5.p5.1.m1.1.1.3.cmml"><mn id="A1.SS5.p5.1.m1.1.1.3.2" xref="A1.SS5.p5.1.m1.1.1.3.2.cmml">0.76</mn><mo id="A1.SS5.p5.1.m1.1.1.3.1" xref="A1.SS5.p5.1.m1.1.1.3.1.cmml">−</mo><mn id="A1.SS5.p5.1.m1.1.1.3.3" xref="A1.SS5.p5.1.m1.1.1.3.3.cmml">0.78</mn></mrow></mrow><annotation-xml encoding="MathML-Content" id="A1.SS5.p5.1.m1.1b"><apply id="A1.SS5.p5.1.m1.1.1.cmml" xref="A1.SS5.p5.1.m1.1.1"><approx id="A1.SS5.p5.1.m1.1.1.1.cmml" xref="A1.SS5.p5.1.m1.1.1.1"></approx><csymbol cd="latexml" id="A1.SS5.p5.1.m1.1.1.2.cmml" xref="A1.SS5.p5.1.m1.1.1.2">absent</csymbol><apply id="A1.SS5.p5.1.m1.1.1.3.cmml" xref="A1.SS5.p5.1.m1.1.1.3"><minus id="A1.SS5.p5.1.m1.1.1.3.1.cmml" xref="A1.SS5.p5.1.m1.1.1.3.1"></minus><cn id="A1.SS5.p5.1.m1.1.1.3.2.cmml" type="float" xref="A1.SS5.p5.1.m1.1.1.3.2">0.76</cn><cn id="A1.SS5.p5.1.m1.1.1.3.3.cmml" type="float" xref="A1.SS5.p5.1.m1.1.1.3.3">0.78</cn></apply></apply></annotation-xml><annotation encoding="application/x-tex" id="A1.SS5.p5.1.m1.1c">\approx 0.76-0.78</annotation><annotation encoding="application/x-llamapun" id="A1.SS5.p5.1.m1.1d">≈ 0.76 - 0.78</annotation></semantics></math>.</p>
+</div>
+<div class="ltx_para" id="A1.SS5.p6">
+<p class="ltx_p" id="A1.SS5.p6.1">These computational validation results support Hypothesis 1, demonstrating that provided with detailed information, LLMs (ChatGPT) can consistently generate stable and reliable outputs across different negotiation frameworks and cases. The high similarity scores across repeated trials highlight the model’s ability to produce reliable and uniform outputs, essential for practical applications in humanitarian negotiations.</p>
+</div>
+<figure class="ltx_table" id="A1.T1">
+<figcaption class="ltx_caption"><span class="ltx_tag ltx_tag_table">Table 1: </span>Summary of Cosine Similarity Results of ChatGPT Responses
+<br class="ltx_break"/>This table summarizes the cosine similarity scores for various frameworks and cases. It includes the minimum, maximum, median, and average similarity scores for pair-wise comparisons between ChatGPT responses across different frameworks: Iceberg/CSS, IoA, and ShM. The text was processed with BERT before comparison to capture the semantic essence. The scores highlight ChatGPT’s response consistency, with higher average scores indicating greater consistency in generating similar responses across multiple calls.</figcaption>
+<table class="ltx_tabular ltx_guessed_headers ltx_align_middle" id="A1.T1.1">
+<thead class="ltx_thead">
+<tr class="ltx_tr" id="A1.T1.1.1.1">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_column ltx_th_row ltx_border_tt" id="A1.T1.1.1.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.1.1.1.1">Metric</span></th>
+<th class="ltx_td ltx_align_justify ltx_th ltx_th_column ltx_border_tt" id="A1.T1.1.1.1.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.1.1.2.1">
+<span class="ltx_p" id="A1.T1.1.1.1.2.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.1.1.2.1.1.1">Min</span></span>
+</span>
+</th>
+<th class="ltx_td ltx_align_justify ltx_th ltx_th_column ltx_border_tt" id="A1.T1.1.1.1.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.1.1.3.1">
+<span class="ltx_p" id="A1.T1.1.1.1.3.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.1.1.3.1.1.1">Max</span></span>
+</span>
+</th>
+<th class="ltx_td ltx_align_justify ltx_th ltx_th_column ltx_border_tt" id="A1.T1.1.1.1.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.1.1.4.1">
+<span class="ltx_p" id="A1.T1.1.1.1.4.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.1.1.4.1.1.1">Median</span></span>
+</span>
+</th>
+<th class="ltx_td ltx_nopad_r ltx_align_justify ltx_th ltx_th_column ltx_border_tt" id="A1.T1.1.1.1.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.1.1.5.1">
+<span class="ltx_p" id="A1.T1.1.1.1.5.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.1.1.5.1.1.1">Avg</span></span>
+</span>
+</th>
+</tr>
+</thead>
+<tbody class="ltx_tbody">
+<tr class="ltx_tr" id="A1.T1.1.2.1">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row ltx_border_t" id="A1.T1.1.2.1.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.2.1.1.1">Iceberg/CSS FwB</span></th>
+<td class="ltx_td ltx_align_justify ltx_border_t" id="A1.T1.1.2.1.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.2.1.2.1">
+<span class="ltx_p" id="A1.T1.1.2.1.2.1.1">0.9627</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify ltx_border_t" id="A1.T1.1.2.1.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.2.1.3.1">
+<span class="ltx_p" id="A1.T1.1.2.1.3.1.1">0.9907</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify ltx_border_t" id="A1.T1.1.2.1.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.2.1.4.1">
+<span class="ltx_p" id="A1.T1.1.2.1.4.1.1">0.9829</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify ltx_border_t" id="A1.T1.1.2.1.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.2.1.5.1">
+<span class="ltx_p" id="A1.T1.1.2.1.5.1.1">0.9821</span>
+</span>
+</td>
+</tr>
+<tr class="ltx_tr" id="A1.T1.1.3.2">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row" id="A1.T1.1.3.2.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.3.2.1.1">Iceberg/CSS HfA</span></th>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.3.2.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.3.2.2.1">
+<span class="ltx_p" id="A1.T1.1.3.2.2.1.1">0.9609</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.3.2.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.3.2.3.1">
+<span class="ltx_p" id="A1.T1.1.3.2.3.1.1">0.9892</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.3.2.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.3.2.4.1">
+<span class="ltx_p" id="A1.T1.1.3.2.4.1.1">0.9767</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify" id="A1.T1.1.3.2.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.3.2.5.1">
+<span class="ltx_p" id="A1.T1.1.3.2.5.1.1">0.9765</span>
+</span>
+</td>
+</tr>
+<tr class="ltx_tr" id="A1.T1.1.4.3">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row" id="A1.T1.1.4.3.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.4.3.1.1">IoA FwB</span></th>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.4.3.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.4.3.2.1">
+<span class="ltx_p" id="A1.T1.1.4.3.2.1.1">0.9474</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.4.3.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.4.3.3.1">
+<span class="ltx_p" id="A1.T1.1.4.3.3.1.1">0.9919</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.4.3.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.4.3.4.1">
+<span class="ltx_p" id="A1.T1.1.4.3.4.1.1">0.9788</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify" id="A1.T1.1.4.3.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.4.3.5.1">
+<span class="ltx_p" id="A1.T1.1.4.3.5.1.1">0.9763</span>
+</span>
+</td>
+</tr>
+<tr class="ltx_tr" id="A1.T1.1.5.4">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row" id="A1.T1.1.5.4.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.5.4.1.1">IoA HfA</span></th>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.5.4.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.5.4.2.1">
+<span class="ltx_p" id="A1.T1.1.5.4.2.1.1">0.9564</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.5.4.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.5.4.3.1">
+<span class="ltx_p" id="A1.T1.1.5.4.3.1.1">0.9895</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.5.4.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.5.4.4.1">
+<span class="ltx_p" id="A1.T1.1.5.4.4.1.1">0.9795</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify" id="A1.T1.1.5.4.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.5.4.5.1">
+<span class="ltx_p" id="A1.T1.1.5.4.5.1.1">0.9767</span>
+</span>
+</td>
+</tr>
+<tr class="ltx_tr" id="A1.T1.1.6.5">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row" id="A1.T1.1.6.5.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.6.5.1.1">ShM FwB</span></th>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.6.5.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.6.5.2.1">
+<span class="ltx_p" id="A1.T1.1.6.5.2.1.1">0.7658</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.6.5.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.6.5.3.1">
+<span class="ltx_p" id="A1.T1.1.6.5.3.1.1">0.9955</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify" id="A1.T1.1.6.5.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.6.5.4.1">
+<span class="ltx_p" id="A1.T1.1.6.5.4.1.1">0.9410</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify" id="A1.T1.1.6.5.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.6.5.5.1">
+<span class="ltx_p" id="A1.T1.1.6.5.5.1.1">0.9265</span>
+</span>
+</td>
+</tr>
+<tr class="ltx_tr" id="A1.T1.1.7.6">
+<th class="ltx_td ltx_align_left ltx_th ltx_th_row ltx_border_bb" id="A1.T1.1.7.6.1"><span class="ltx_text ltx_font_bold" id="A1.T1.1.7.6.1.1">ShM HfA</span></th>
+<td class="ltx_td ltx_align_justify ltx_border_bb" id="A1.T1.1.7.6.2">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.7.6.2.1">
+<span class="ltx_p" id="A1.T1.1.7.6.2.1.1">0.7842</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify ltx_border_bb" id="A1.T1.1.7.6.3">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.7.6.3.1">
+<span class="ltx_p" id="A1.T1.1.7.6.3.1.1">0.9929</span>
+</span>
+</td>
+<td class="ltx_td ltx_align_justify ltx_border_bb" id="A1.T1.1.7.6.4">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.7.6.4.1">
+<span class="ltx_p" id="A1.T1.1.7.6.4.1.1">0.9372</span>
+</span>
+</td>
+<td class="ltx_td ltx_nopad_r ltx_align_justify ltx_border_bb" id="A1.T1.1.7.6.5">
+<span class="ltx_inline-block ltx_align_top" id="A1.T1.1.7.6.5.1">
+<span class="ltx_p" id="A1.T1.1.7.6.5.1.1">0.9231</span>
+</span>
+</td>
+</tr>
+</tbody>
+</table>
+</figure>
+<figure class="ltx_figure" id="A1.F5"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="479" id="A1.F5.g1" src="extracted/5633811/cos_sim_BERT_iceberg_css_fwb.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 5: </span>Cosine Similarity of Iceberg and CSS on FwB Case
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the Iceberg/CSS framework-based (FwB) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.98, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+<figure class="ltx_figure" id="A1.F6"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="479" id="A1.F6.g1" src="extracted/5633811/cos_sim_BERT_iceberg_css_hfa.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 6: </span>Cosine Similarity of Iceberg and CSS on HfA Case
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the Iceberg/CSS framework-based (HfA) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.97, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+<figure class="ltx_figure" id="A1.F7"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="479" id="A1.F7.g1" src="extracted/5633811/cos_sim_BERT_IoA_fwb.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 7: </span>Cosine Similarity of IoA on FwB Case
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the IoA framework-based (FwB) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.97, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+<figure class="ltx_figure" id="A1.F8"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="479" id="A1.F8.g1" src="extracted/5633811/cos_sim_BERT_IoA_hfa.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 8: </span>Cosine Similarity of IoA on HfA Case
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the IoA framework-based (HfA) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.97, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+<figure class="ltx_figure" id="A1.F9"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="407" id="A1.F9.g1" src="extracted/5633811/cos_sim_BERT_shm_fwb.png" width="509"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 9: </span>Cosine Similarity of Stakeholder Mapping on FwB Case* 
+<br class="ltx_break"/>*Note the scale on Figures <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F9" title="Figure 9 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">9</span></a> and <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F10" title="Figure 10 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">10</span></a> (0.6 to 1) is far wider than on Figures <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F5" title="Figure 5 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">5</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F6" title="Figure 6 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">6</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F7" title="Figure 7 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">7</span></a>, <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.F8" title="Figure 8 ‣ A.5 Stability of LLM-Generated Responses ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">8</span></a> (0.94 to 1).
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the Stakeholder Mapping framework-based (FwB) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.94, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+<figure class="ltx_figure" id="A1.F10"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="407" id="A1.F10.g1" src="extracted/5633811/cos_sim_BERT_shm_hfa.png" width="509"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 10: </span>Cosine Similarity of Stakeholder Mapping on HfA Case*
+<br class="ltx_break"/>This heatmap visualizes the pairwise cosine similarity scores between ChatGPT responses for the Stakeholder Mapping framework-based (HfA) case. The texts were processed using BERT, and the heatmap highlights high consistency with median similarity scores above 0.93, indicating stable and reliable outputs across 30 calls.</figcaption>
+</figure>
+</section>
+<section class="ltx_subsection" id="A1.SS6">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.6 </span>Benchmarking LLM Responses Against Practitioner Responses</h3>
+<figure class="ltx_figure" id="A1.F11"><img alt="Refer to caption" class="ltx_graphics ltx_centering ltx_img_landscape" height="359" id="A1.F11.g1" src="extracted/5633811/benchmark_iceberg_css_hfa.png" width="598"/>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 11: </span>Cosine Similarity Scores Between Three Practitioners’ responses and GPT Responses (Iceberg/CSS framework for analyzing the Health for All case). Average Cosine Similarity achieved is <span class="ltx_text ltx_font_bold" id="A1.F11.2.1">0.92</span>.
+<br class="ltx_break"/>Using the same prompt, ChatGPT was called 30 times to generate responses. Each ChatGPT response was compared to each of the three practitioner responses, and the average similarity score was calculated. The comparison was conducted using BERT to preprocess texts and capture their semantic essence. The scores range from 0.91 to 0.94. It shows LLM-generated responses consistently match practitioner responses across multiple calls, validating the practical relevance and accuracy of LLM outputs in real-world negotiation contexts.</figcaption>
+</figure>
+</section>
+<section class="ltx_subsection" id="A1.SS7">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.7 </span>GPT-4 Prompts</h3>
+<section class="ltx_subsubsection" id="A1.SS7.SSS1">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.7.1 </span>Iceberg/CSS</h4>
+<div class="ltx_para" id="A1.SS7.SSS1.p1">
+<p class="ltx_p" id="A1.SS7.SSS1.p1.1">You are an assistant in frontline negotiation, specializing in analyzing and summarizing critical information for high-stakes situations like crisis response, emergency management, or conflict resolution. Your task is to help users understand and articulate the positions, reasoning, and motives behind both their organization and the counterparty involved in a negotiation. You guide users to provide background information and details about the case, then use the Iceberg and Common Shared Space (CSS) models to frame the negotiation landscape.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS1.p2">
+<p class="ltx_p" id="A1.SS7.SSS1.p2.1">Given the provided context, counterparty, and organization, along with three aspects that need to be addressed, summarize the position, reasoning, and motive and values for both parties.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS1.p3">
+<p class="ltx_p" id="A1.SS7.SSS1.p3.1">Organize this information into bullet points under each aspect, adhering to the following logic:
+For the Counterparty:
+Positions (What): Articulate the counterparty’s stance or demands.
+Reasoning (How): Assess the tactical reasoning that supports their positions.
+Motives and Values (Why): Identify the underlying motives and values driving their reasoning.
+For the User’s Organization:
+Motives and Values (Why): Start with the organization’s core motives and values relevant to the negotiation.
+Reasoning (How): Describe the logical or strategic reasoning stemming from these motives/values.
+Positions (What): Conclude with the organization’s positions or demands based on the reasoning.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS1.p4">
+<p class="ltx_p" id="A1.SS7.SSS1.p4.1">Your responses should be coherent with the provided context, aiding users in navigating the negotiation process effectively. You communicate in a formal and professional tone, avoiding flashy language, to mirror the communication style of negotiators.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS1.p5">
+<p class="ltx_p" id="A1.SS7.SSS1.p5.1">Please provide the response in a concise, structured format that can be easily parsed. User will provide you with background and details of the case.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS7.SSS2">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.7.2 </span>Island of Agreement</h4>
+<div class="ltx_para" id="A1.SS7.SSS2.p1">
+<p class="ltx_p" id="A1.SS7.SSS2.p1.1">You are a highly structured and detail-oriented assistant specializing in negotiation analysis. Based on the provided information about a high-stakes situation, your task is to analyze and summarize the critical information to fill out an Island of Agreement (IoA) table and recommend negotiation strategies. The IoA table consists of four categories: contested facts (facts to the clarified with factual evidence), agreed facts (points of agreement to start the dialogue), convergent norms (points to be underlined as convergent values), and divergent norms (points of divergence on norms to be negotiated).</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS2.p2">
+<p class="ltx_p" id="A1.SS7.SSS2.p2.1">Here is how you can populate the Island of Agreement table:
+Step 1 - Sorting and qualifying elements arising in a negotiation environment. Be sure to differentiate between negotiation facts and norms. Facts include number and features of the beneficiary population, location of this population, technical terms of the assistance programs (time, date, mode of operation), nutritional and health status of the population, etc. Norms include right of access to the beneficiary population, obligations of the parties, legal status of the population, and priority of the operation, etc.
+Step 2 - Recognizing which areas of the conversation are most/least promising in the establishment of a relationship and which concrete issues will need to be negotiated with the counterparts.
+Step 3 - Elaborating a common understanding with the counterpart on the point of departure of the discussion while underlining the specific objectives of the negotiation process.
+For each category, please provide a structured list of items. Follow this structured response format:
+- Contested Facts: Fact1, Fact2, …
+- Agreed Facts: Fact1, Fact2, …
+- Convergent Norms: Norm1, Norm2, …
+- Divergent Norms: Norm1, Norm2, …
+Based on the analysis, please also list recommendations on what to prioritize and what to avoid in the negotiation, formatted as follows:
+- Prioritize: Item1, Item2, …
+- Avoid: Item1, Item2, …
+Please provide the response in a concise, structured format that can be easily parsed. User will provide you with background and details of the case.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS7.SSS3">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.7.3 </span>Stakeholder Mapping</h4>
+<div class="ltx_para" id="A1.SS7.SSS3.p1">
+<p class="ltx_p" id="A1.SS7.SSS3.p1.1">As the Negotiation Navigator, your role is to assist users in crafting clear and detailed stakeholder mapping visualizations, leveraging provided documents and evolving user inputs. You guide users through a systematic process involving greeting, information extraction, consistent graph design and creation using a standardized Python ‘matplotlib‘ script, adjustments, and analysis of stakeholder dynamics and negotiation paths.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p2">
+<p class="ltx_p" id="A1.SS7.SSS3.p2.1">1. Greeting: Introduce your capabilities and request relevant documents and details about the negotiation parties.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p3">
+<p class="ltx_p" id="A1.SS7.SSS3.p3.1">2. Information Extraction: Analyze documents methodically to ensure stakeholders, their roles, relationships, and the negotiation context are identified consistently, laying a solid foundation for accurate graphing. Emphasize identifying a) the protagonist, or “primary” party in the negotiation context, and b) the counterparty (based on who most opposes the protagonist). Ensuring identification of the proper counterparty is paramount.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p4">
+<p class="ltx_p" id="A1.SS7.SSS3.p4.1">3. Graph Design and Creation: Use a standardized ‘matplotlib‘ script to draft initial and subsequent stakeholder maps. The script is adapted each time to include the variables identified during the information extraction phase, ensuring a consistent and accurate representation of the negotiation landscape. The X-axis represents stakeholders’ inclination towards change, from transformative (left) to conservative (right). The Y-axis is customizable based on the negotiation’s context, ranging from local (bottom, negative) to global (top, positive) influence. The counterparty, identified as the party with interests most opposing those of the protagonists, is always placed at the origin (0,0) and at the center of the graph, marked in red. The axes are displayed with scales, ranging from -10 to +10, and are colored black. Ensure that labels for each stakeholder are appropriately positioned next to their corresponding dots on the map for clarity. Plot the protagonist with a green dot. Ensure that you also label the counterparty red dot with the name of that stakeholder, with the label appropriately positioned next to the point. (The red dot should have a label — that of the counterparty).</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p5">
+<p class="ltx_p" id="A1.SS7.SSS3.p5.1">4. Adjustments: Solicit user feedback on stakeholder positions and relationships, refining the visualization for clarity.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p6">
+<p class="ltx_p" id="A1.SS7.SSS3.p6.1">5. Labeling and Dynamics: Label stakeholders directly and, if requested, plot influence relationships using dashed lines to indicate directionality.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p7">
+<p class="ltx_p" id="A1.SS7.SSS3.p7.1">6. Negotiation Path Analysis: Offer to identify efficient negotiation paths, employing network analysis and shortest path algorithms to suggest strategic approaches. The standard ‘matplotlib‘ script is provided to users upon request.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p8">
+<p class="ltx_p" id="A1.SS7.SSS3.p8.1">When users prompt for “create the map”, “show me the map”, “plot the map”, or semantically similar variants, execute the consistent ‘matplotlib‘ script previously discussed, and print out an image of that plot (after running it in python), instead of using DALL-E for image generation. Do not (in any case) output a DALL-E image generation.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p9">
+<p class="ltx_p" id="A1.SS7.SSS3.p9.1">Ensure that the plot is thorough, meaning that there is sufficient “spread” across the map (e.g. it would be an incorrect mapping if all of the stakeholders are in one quadrant). Do a check to ensure this is not the case. If it is the case, spread out the stakeholders based on their views.</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p10">
+<p class="ltx_p" id="A1.SS7.SSS3.p10.1">Standard matplotlib script:</p>
+</div>
+<div class="ltx_para" id="A1.SS7.SSS3.p11">
+<p class="ltx_p" id="A1.SS7.SSS3.p11.1"><span class="ltx_text ltx_font_typewriter" id="A1.SS7.SSS3.p11.1.1" style="font-size:90%;"><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.1.1" style="width:0.0pt;"></span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.1.2" style="width:469.8pt;">    import matplotlib.pyplot as plt</span></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.2" style="font-size:90%;width:469.8pt;">    import numpy as np</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.3" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.4" style="font-size:90%;width:469.8pt;">    # Initialize the plot</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.5" style="font-size:90%;width:469.8pt;">    fig, ax = plt.subplots()</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.6" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.7" style="font-size:90%;width:469.8pt;">    # Set the title and labels</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.8" style="font-size:90%;width:469.8pt;">    ax.set_title(’Stakeholder Map’)</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.9" style="font-size:90%;width:469.8pt;">    ax.set_xlabel(’Objective of Negotiation (Transformative to Conservative)’)</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.10" style="font-size:90%;width:469.8pt;">    ax.set_ylabel(’Identity of Stakeholders (Local to Global Influence)’)</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.11" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.12" style="font-size:90%;width:469.8pt;">    # Plot the counter party</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.13" style="font-size:90%;width:469.8pt;">    ax.plot(0, 0, ’ro’, label=’Counter Party’)  # ’ro’ for red circle</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.14" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.15" style="font-size:90%;width:469.8pt;">    # Adjust the axes</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.16" style="font-size:90%;width:469.8pt;">    ax.set_xlim(-10, 10)</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.17" style="font-size:90%;width:469.8pt;">    ax.set_ylim(-10, 10)</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.18" style="font-size:90%;width:469.8pt;">    ax.axhline(0, color=’black’)  # Add horizontal axis line</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.19" style="font-size:90%;width:469.8pt;">    ax.axvline(0, color=’black’)  # Add vertical axis line</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.20" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.21" style="font-size:90%;width:469.8pt;">    # Example of plotting another party (User party)</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.22" style="font-size:90%;width:469.8pt;">    # Variables x_user and y_user will be replaced with actual values from the extracted information</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.23" style="font-size:90%;width:469.8pt;">    x_user = 3  # Example x-coordinate for the user party</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.24" style="font-size:90%;width:469.8pt;">    y_user = 4  # Example y-coordinate for the user party</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.25" style="font-size:90%;width:469.8pt;">    ax.plot(x_user, y_user, ’bo’, label=’User Party’)  # ’bo’ for blue circle</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.26" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.27" style="font-size:90%;width:469.8pt;">    # Adding labels to the points</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.28" style="font-size:90%;width:469.8pt;">    for i, txt in enumerate([’Counter Party’, ’User Party’]):</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.29" style="font-size:90%;width:469.8pt;">        ax.annotate(txt, (x_user, y_user), textcoords="offset points", xytext=(0,10), ha=’center’)</span><span class="ltx_text ltx_inline-block" id="A1.SS7.SSS3.p11.1.30" style="width:469.8pt;"></span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.31" style="font-size:90%;width:469.8pt;">    # Show the plot</span><span class="ltx_text ltx_font_typewriter ltx_inline-block" id="A1.SS7.SSS3.p11.1.32" style="font-size:90%;width:469.8pt;">    plt.show()</span></p>
+</div>
+</section>
+</section>
+<section class="ltx_subsection" id="A1.SS8">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.8 </span>Interview guildelines</h3>
+<div class="ltx_para" id="A1.SS8.p1">
+<p class="ltx_p" id="A1.SS8.p1.1">Interview guidelines:</p>
+</div>
+<div class="ltx_para" id="A1.SS8.p2">
+<p class="ltx_p" id="A1.SS8.p2.1">Part 1: Understanding the process of using islands of agreement, stakeholder mapping and iceberg in negotiators’ workflow.</p>
+</div>
+<div class="ltx_para" id="A1.SS8.p3">
+<p class="ltx_p" id="A1.SS8.p3.1">(30 minutes) Can you walk me through your process of preparing for a negotiation, starting from when you first receive information about a case?
+* At which point in your preparation do you start using the Island of Agreement visualization?
+* What type of information do you typically include in this visualization?
+* How does the Island of Agreement help you approach your negotiations?</p>
+</div>
+<div class="ltx_para" id="A1.SS8.p4">
+<p class="ltx_p" id="A1.SS8.p4.1">Similarly, how do you incorporate the Iceberg visualization into your workflow?
+* How do you determine the interests, rationale, and motives to include in the Iceberg?
+* How does this visualization affect the strategies or approaches you might use?</p>
+</div>
+<div class="ltx_para" id="A1.SS8.p5">
+<p class="ltx_p" id="A1.SS8.p5.1">When it comes to Stakeholder Mapping, how do you identify and prioritize stakeholders?
+* How do you decide which stakeholders to engage with first, and how does the visualization assist with this?
+* Overall, how do these three visualizations complement each other in your preparation?</p>
+</div>
+<div class="ltx_para" id="A1.SS8.p6">
+<p class="ltx_p" id="A1.SS8.p6.1">Part 2: After showing the video of using Iceberg –
+Where do you think these tools should be used in your other workflows?
+* Outside of your preparation phase, can you identify other areas or tasks in your workflow where an AI tool might be beneficial?
+* Thinking about your entire negotiation process, are there repetitive tasks that you believe could be streamlined or supported by AI?
+* When considering the integration of AI tools, what are your primary expectations or desired outcomes?
+* Are there specific situations or contexts where you’d prefer not to rely on an AI tool, even if it’s available?
+* How do you envision the ideal collaboration between frontline negotiators and AI tools? What does that partnership look like to you?</p>
+</div>
+</section>
+<section class="ltx_subsection" id="A1.SS9">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.9 </span>Opportunities for LLM in humanitarian negotiation</h3>
+<section class="ltx_subsubsection" id="A1.SS9.SSS1">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.9.1 </span>Context analysis</h4>
+<div class="ltx_para" id="A1.SS9.SSS1.p1">
+<p class="ltx_p" id="A1.SS9.SSS1.p1.1">Due to the rapidly changing scenarios and conditions faced during frontline negotiations, negotiators often deal with long documents, unstructured texts, and the need to update their preparation in light of new information. Some negotiators have already begun using ChatGPT for context analysis. One participant mentioned that many steps during context analysis could potentially be automated by AI:</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS1.p2">
+<p class="ltx_p" id="A1.SS9.SSS1.p2.1"><span class="ltx_text ltx_font_italic" id="A1.SS9.SSS1.p2.1.1">“On applying certain tools and and providing guidance and and support on analysis is where artificial intelligence can be a game changer. [AI can help finding] what is your position, interest, and needs, and my own. […]But I think there’s a lot of pipes on on that process that can be automatized and and support by AI”</span> (P10)</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS1.p3">
+<p class="ltx_p" id="A1.SS9.SSS1.p3.1">In fact, some negotiators have already started using ChatGPT to summarize cases for them. However, prompting still poses challenges. Negotiators expressed a desire for more support on how to effectively use ChatGPT and similar tools:</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS1.p4">
+<p class="ltx_p" id="A1.SS9.SSS1.p4.1"><span class="ltx_text ltx_font_italic" id="A1.SS9.SSS1.p4.1.1">“I am not a professional user for ChatGPT. I’m managing to get what I want, but if there is any support, or any tricks, let’s say, or any let’s say official or or something more professional. So I will be very happy.”</span> (P2)</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS1.p5">
+<p class="ltx_p" id="A1.SS9.SSS1.p5.1">These insights suggest that LLMs can enhance problem-solving capabilities of frontline negotiators by providing novel insights and perspectives (Hypothesis 3).</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS9.SSS2">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.9.2 </span>Support argument ideation/ devil’s advocate</h4>
+<div class="ltx_para" id="A1.SS9.SSS2.p1">
+<p class="ltx_p" id="A1.SS9.SSS2.p1.1">Negotiation requires creativity to generate the best pathway to the optimal outcome, <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS2.p1.1.1">“showing [the counterparty] that that outcome could be positive for them as well.”</span> (P13) To achieve this goal, negotiators collaborate to discuss multiple different pathways with their colleagues. During this process, negotiators suggest that LLMs can propose alternative plans for them to consider, thereby widening their options. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS2.p1.1.2">“It’s not an official opinion, but I just don’t want to let my brain be single minded. […] Maybe AI could be an eye opener for the other way around and proposing secondary solutions and options.”</span> (P3) These insights support Hypothesis 3, which suggests that LLMs can enhance the problem-solving capabilities of frontline negotiators by providing novel insights and perspectives to help negotiators avoid a narrow focus.</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS2.p2">
+<p class="ltx_p" id="A1.SS9.SSS2.p2.1">Another negotiator concurred, proposing that LLMs can find alternative middle grounds. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS2.p2.1.1">“Finding creative solutions to be able to find new positions that can satisfy each other’s needs.”</span> (P10) The ability of LLMs to find new middle grounds also supports Hypothesis 2, as it shows the potential for LLMs to produce analyses and solutions comparable to those generated by experienced negotiators.</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS2.p3">
+<p class="ltx_p" id="A1.SS9.SSS2.p3.1">Additionally, during context analysis, LLMs can pinpoint where information is lacking, enabling negotiators to conduct more research to close the gap. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS2.p3.1.1">“You could cross check [with AI] what you’ve got. This is what I’ve got on this counterpart. Is there anything out there I’ve missed. That would be very useful.
+”</span> (P12) This supports our Hypothesis 5, indicating that frontline negotiators are likely to accept and integrate LLM tools into their workflows if these tools prove to be reliable and address key concerns.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS9.SSS3">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.9.3 </span>Support knowledge sharing</h4>
+<div class="ltx_para" id="A1.SS9.SSS3.p1">
+<p class="ltx_p" id="A1.SS9.SSS3.p1.1">Knowledge sharing between negotiators involves new negotiator training and sharing experiences of past cases. Sharing past cases is an important part of the negotiation process. Despite efforts, challenges remain in utilizing case studies due to the need for anonymization and the requirement for similar contextual relevance. For instance, a negotiator recounted how their colleague shared supposedly “similar” cases with differing contexts, which ultimately led to unsuccessful negotiations. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS3.p1.1.1">“[My colleagues] give us previous experiences where people have negotiated in similar situations. So we use that [experience on our current case] … sat together with that [prior case] with my team. And then we looked and looked, and then turned out those were really unrealistic in the context where we were.”</span> (P5)</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS3.p2">
+<p class="ltx_p" id="A1.SS9.SSS3.p2.1">Another negotiator shared the same concern over the limitations of knowledge sharing, citing the loss of institutional memory as a major challenge. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS3.p2.1.1">“I think one of the challenges we have in our organization. I think it’s happening in most of the organizations is institutional memory. We that the more like we lose all this incredible knowledge about how negotiations went 20 years ago, when we face the same people with the same challenges.”</span> They emphasized the importance of capturing the strategies and common ground found in past negotiations, rather than just the outcomes. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS3.p2.1.2">But what I care about is the strategy. What was the common ground that was found in that moment? So having a dataset that can propose not only from your organization, your own institutional memory, but probably like from others that could be probably an interesting thing.”</span> They suggested that a dataset of decontextualized cases could be a valuable resource, but noted that confidentiality agreements often prevent organizations from learning from each other’s experiences. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS3.p2.1.3">“But at the same time [confidentiality] prevents all the community to learn from one another, and to maybe expect those lessons. Maybe AI can be trusted enough that these cases can be decontextualized.”</span> (P10)</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS3.p3">
+<p class="ltx_p" id="A1.SS9.SSS3.p3.1">Sharing past experiences while maintaining confidentiality could not only inspire new negotiation strategies but also help anticipate an opponent’s future moves based on their past decisions. <span class="ltx_text ltx_font_italic" id="A1.SS9.SSS3.p3.1.1">“Having a lot of information on past decisions they’ve made or having an insight into their foreign policy is quite important. If you know, on any of these big global forums, this country took that certain position. You can put them on a spectrum – where they fall on that spectrum in terms of this position. […] So there’s to me a way to understand where they sit on these policy spectrums.”</span> (P11)</p>
+</div>
+<div class="ltx_para" id="A1.SS9.SSS3.p4">
+<p class="ltx_p" id="A1.SS9.SSS3.p4.1">Here we see that LLMs have the potential to provide negotiators with comprehensive historical data and alternative perspectives, enhancing their problem-solving capabilities (Hypothesis 3). However, at the same time, there are also significant ethical and practical concerns regarding confidentiality and data privacy, which must be addressed (Hypothesis 4).</p>
+</div>
+</section>
+</section>
+<section class="ltx_subsection" id="A1.SS10">
+<h3 class="ltx_title ltx_title_subsection">
+<span class="ltx_tag ltx_tag_subsection">A.10 </span>Concerns Over LLM in Negotiation</h3>
+<section class="ltx_subsubsection" id="A1.SS10.SSS1">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.1 </span>Confidentiality</h4>
+<div class="ltx_para" id="A1.SS10.SSS1.p1">
+<p class="ltx_p" id="A1.SS10.SSS1.p1.1">The information that the negotiators have to handle often require meticulous consideration over confidentiality. For example, during negotiation training, real cases for education purposes are anonymized. Negotiators proposed that common confidentiality practices should be applied to usage of LLMs too. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS1.p1.1.1">“[Confidentiality] is a very big concern. And that is why when we are doing training of our staffs, we can just say, country A, country B, or country C. There’s a way you can quote these cases, and not really making it clear that, for example, ‘okay, this is from Congo. This is from Cameroon’. We can replicate the practice here working with the AI things, because when it comes to data, it is very sensitive in these conflict areas. We need to really protect those who are coming out to share those information. It’s very important.”</span> (P5)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS1.p2">
+<p class="ltx_p" id="A1.SS10.SSS1.p2.1">Moreover, negotiators felt that they were not equipped with adequate understanding of LLM, particularly concerning privacy and the appropriate usage of sensitive information.
+<span class="ltx_text ltx_font_italic" id="A1.SS10.SSS1.p2.1.1">“I found it interesting that my organization has already put in place some kind of restrictions on the way we should, or we can use AI but we are still in the beginning of steps of understanding the the capabilities and also the the potential consequences, and so on. The guidance we have received is still very vague and very broad. there will be more guidance, and restrictions when we want to use ChatGPT or other similar tools.”</span> (P8)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS1.p3">
+<p class="ltx_p" id="A1.SS10.SSS1.p3.1">These concerns support Hypothesis 4, highlighting the significant ethical and practical issues that arise with the deployment of LLMs in humanitarian negotiations, especially data confidentiality. The need for clear guidance and understanding underscores the importance of addressing these issues to ensure the ethical application of LLMs.</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS1.p4">
+<p class="ltx_p" id="A1.SS10.SSS1.p4.1">Although there’s hesitation over confidentiality, negotiators who have been using ChatGPT in their workflow gradually felt more comfortable after using the tool for a while.
+<span class="ltx_text ltx_font_italic" id="A1.SS10.SSS1.p4.1.1">“[Confidentiality] is actually what I was very worried about at the start. When I started, I was dealing with high security things in [country A], and I was like would not put any security things in there. Will there be information breaches? But with ease of use, and seeing how useful it was, I then started to feel much more comfortable. I still don’t put high security things or security protocols or confidential documents into it. But I feel much more at ease, say, to put transcripts in and, like, ask for summaries of this, where I think at the beginning I would not have. I would not do that if it was a high stakes discussion that I didn’t want anyone to know about.”</span> (P4)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS1.p5">
+<p class="ltx_p" id="A1.SS10.SSS1.p5.1">This gradual increase in comfort suggests that, as negotiators become more familiar with LLMs and their capabilities, they are likely to accept and integrate these tools into their workflows, provided that their key concerns are addressed. This aligns with Hypothesis 5, indicating that frontline negotiators are likely to accept and integrate LLM tools into their workflows if these tools prove to be reliable, accurate, and address key concerns.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS10.SSS2">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.2 </span>(Western) Bias in LLM</h4>
+<div class="ltx_para" id="A1.SS10.SSS2.p1">
+<p class="ltx_p" id="A1.SS10.SSS2.p1.1">However, negotiators expressed concerns about the embedded Western bias within LLM like ChatGPT, which significantly impacts their utility in diverse cultural contexts. One negotiator highlighted that the current system, designed to support negotiation teams, predominantly reflects the perspectives of its creators—individuals with a specific level of English proficiency, education, and cultural understanding. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS2.p1.1.1">“With bias, with certain bias, and so on.”</span> (P12) This inherent bias is problematic because the tool is intended for field teams worldwide, not just the developers. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS2.p1.1.2">“You know, this is meant to be useful for them, not for me to be honest.”</span> (P12)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS2.p2">
+<p class="ltx_p" id="A1.SS10.SSS2.p2.1">To address this, it is crucial to collect feedback from a broad range of users, especially from those in non-Western settings such as Nigeria and Myanmar. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS2.p2.1.1">“You need a lot, a lot of feedback, but not from us, not from us white people based in Barcelona. No, you really need to go to Nigeria, to Myanmar, and talk to the field teams and get their inputs on all these.”</span> The bias within the LLM not only potentially affects users from non-Western backgrounds but also Western users, as negotiations often occur across different cultural boundaries. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS2.p2.1.2">“But to me, yeah, you really want to avoid that bias. I don’t want to just draw information from a Western point of view, when I can draw information from that context or country [of where the negotiatons happen].”</span> (P12)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS2.p3">
+<p class="ltx_p" id="A1.SS10.SSS2.p3.1">These concerns strongly support Hypothesis 4, underscoring the need to address biases within LLMs to ensure their effective and equitable use in diverse cultural contexts. By incorporating diverse feedback, it is possible to mitigate these biases and improve the relevance and fairness of LLM-generated outputs.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS10.SSS3">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.3 </span>Public opinion/ mandators opinions on AI</h4>
+<div class="ltx_para" id="A1.SS10.SSS3.p1">
+<p class="ltx_p" id="A1.SS10.SSS3.p1.1">Negotiators often work within the red-lines and limits set by their mandators, and work for the well-being of the negotiation subjects such as local communities that are affected. The mandators’ opinions and those of the public on whether and how negotiators use LLMs can impact whether or not they use them. One negotiator voiced concerns over using LLMs as granted without <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS3.p1.1.1">“taking the time to really explain and understand what the perception of local communities is [on AI].”</span> Similarly, mandators such as governments’ opinion on LLMs can impact the usage of LLMs in negotiation. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS3.p1.1.2">“[…] I’m not sure governments would be very happy or trustful to know that we’re using AI in order to negotiate for them. […]”</span>(P10)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS3.p2">
+<p class="ltx_p" id="A1.SS10.SSS3.p2.1">One negotiator argued that the doubts come from lack of understanding of these tools. More public education about the limitations and benefits of these tools will help better integrate LLMs into negotiators’ workflow. “I feel if there were loads of people who understood it a lot better, they’d be able to [feel better about using LLM in negotiation], because we all have these myths about what this stands for. So people like the public, they draw in a myth, and then they’re worried about it. But I feel if there’s like a whole education that should happen on the reality of these tools and what they can offer. Because I don’t think people are very well informed.” (P12)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS3.p3">
+<p class="ltx_p" id="A1.SS10.SSS3.p3.1">These insights support Hypothesis 5, suggesting that with adequate education and understanding, both the public and mandators may become more accepting of LLM tools, facilitating their integration into negotiation workflows. Addressing these concerns through comprehensive education could lead to broader acceptance and more effective use of LLMs in humanitarian negotiations.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS10.SSS4">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.4 </span>Accuracy and trust</h4>
+<div class="ltx_para" id="A1.SS10.SSS4.p1">
+<p class="ltx_p" id="A1.SS10.SSS4.p1.1">Similar to other AI tools, negotiators are concerned over LLM’s accuracy in negotiation tasks. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p1.1.1">“This is talking about my experience, but you cannot depend on it entirely 100%, because it’s still a tool.”</span> (P2) Often times confusing or inaccurate answers force the users to consider the reasons behind LLMs’ generation of such answers.
+<span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p1.1.2">“When I’m putting like this question to AI, ‘tell me, what are the major milestone dates in Greek history?’ AI might come up with 2 different set of milestones. So my question is, what’s the backend of these results? To which extent should I rely on it?”</span> (P3)
+Another negotiator mentioned a similar point, citing that without knowing the source of why LLM generates certain answers, they are not able to rely on these systems. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p1.1.3">“what information is the AI basing this on? And why is it choosing some … those specific documents to answer your question? I don’t know. I’d be curious to know what the parameters (that the LLM generates based based on) are. ”</span>(P12)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS4.p2">
+<p class="ltx_p" id="A1.SS10.SSS4.p2.1">Current LLMs do not explicitly attach what training data or information in the prompt made them to generate certain content. Due to this constraint, negotiators recommend constant checks and balances on the certainties that the LLM articulates.</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS4.p3">
+<p class="ltx_p" id="A1.SS10.SSS4.p3.1">These concerns highlight the importance of transparency and reliability in LLM-generated responses, supporting Hypothesis 4.</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS4.p4">
+<p class="ltx_p" id="A1.SS10.SSS4.p4.1">However, there are exceptions to when even inaccurate results <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p4.1.1">can</span> be acceptable. One scenario is when under time constrains, some information is better than no information at all. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p4.1.2">“But at least when we are short of time, it’s better than nothing.”</span> (P2)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS4.p5">
+<p class="ltx_p" id="A1.SS10.SSS4.p5.1">Additionally, negotiators recognize that while LLMs may not always produce accurate results, these outputs can still serve as a significant source of inspiration, as discussed in section <a class="ltx_ref" href="https://arxiv.org/html/2405.20195v2#A1.SS9.SSS2" title="A.9.2 Support argument ideation/ devil’s advocate ‣ A.9 Opportunities for LLM in humanitarian negotiation ‣ Appendix A Appendix ‣ Using Large Language Models for Humanitarian Frontline Negotiation: Opportunities and Considerations"><span class="ltx_text ltx_ref_tag">A.9.2</span></a>. Participants expressed confidence in their ability to discern and correct any inaccuracies, viewing the tool’s input as a starting point for deeper reflection and ideation. One negotiator explained, <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p5.1.1">“Even if AI is not right, we can tell that’s not right. Because of this reason, it’s totally okay when things are not correct, because it allows us to realize what we actually think, and challenges our preconceived notions or ideas. This, I think, is excellent even in just making us think more about what do we believe, and have we really thought about all of the steps and the key elements.”</span> They likened the AI to an <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p5.1.2">“aspiring partner”</span> that, despite its flaws, can stimulate further questioning and refinement of their ideas (P4). For example, <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS4.p5.1.3">“I will sometimes put a transcript from a discussion in preparing for negotiations. I have discussions with different network. I will say, ’what are questions I didn’t ask? What are things I should have asked for further elaboration?’ And it comes up with things. And I take that for the next kind of discussion I’m having with people to realize what information is missing,”</span> shared another negotiator.</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS4.p6">
+<p class="ltx_p" id="A1.SS10.SSS4.p6.1">These insights support Hypothesis 3, demonstrating that LLMs can enhance the problem-solving capabilities of frontline negotiators by providing novel insights and perspectives, even when the outputs are not entirely accurate.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS10.SSS5">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.5 </span>Limitations of Automation</h4>
+<div class="ltx_para" id="A1.SS10.SSS5.p1">
+<p class="ltx_p" id="A1.SS10.SSS5.p1.1">LLM may not and should not replace the human side of negotiation. Negotiators argued that process in negotiation is inherently human centered.
+<span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p1.1.1">“And a big part of most negotiations continues to be the human side, the human touch in the relationship between the 2 negotiators that are able to reach an agreement, and then even convince their own people that this is a good thing to go now.”</span> (P10) Even for information retreival, which is considered tasks where automation plays a big part in, some information is not readily online. For example, information about non-state armed groups requires the negotiators to gather information through in person meetings. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p1.1.2">“ If it’s with local non0state armed groups, we won’t find very much history of them online.”</span> (P4) Other negotiators confirmed the in-person labor that they have to go through. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p1.1.3">“The the key part of my job is actually to tour the region and engage with different levels [of groups]. It can be technical levels, too, but mostly at the level of ministers, or including prime ministers or things like that.”</span> (P8)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS5.p2">
+<p class="ltx_p" id="A1.SS10.SSS5.p2.1">In addition to the source of information itself, the way that negotiators prepare information to feed into ChatGPT requires considerate human effort as well. For example, meeting notes, emails or phone call records have to be prepared into documents before they can be utilized. Depending on the negotiators, there may not even be structured notes. This way, using LLMs may create extra work for negotiators who do not prepare structured notes. After being shown the video of the Iceberg tool, P11 noted <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p2.1.1">“if this [case file put into ChatGPT] originates from already notes or meetings … I think sometimes we don’t have those notes. […] I have a phone call. I write 2 points. Then I make another phone call. I follow up… So I wouldn’t have the script, the source for this [to be put into ChatGPT]. […] I don’t know how well one has to write the original documents for ChatGPT, to produce a good iceberg, for example. So the UN would would have plenty of meeting notes like this, because there are always people who do it. I personally have more of my notebooks […] and I make more action points. I don’t write structured notes. […] I guess people in the field may be not as structured. Sometimes you have confidential meetings that have no notes at all.</span> (P11) They continued to mention that potentially the desire to use ChatGPT can make one more organized, because ChatGPT requires text input. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p2.1.2"> “On the other hand, it may also enable a negotiator, who is maybe all over the place to be more structured. And so it can be a positive thing. I don’t know how many and how many have produced the notes. […]”</span> (P11) Another negotiator pointed out the limitations faced by some of their colleagues: <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS5.p2.1.3">“Our negotiators are usually locally recruited staff that have very basic [limited] skills to interact with with AI, and also not the best skills in English, for instance. Or also be able to do proper reports that that are able to give AI to, you know the tools, to be able to analyze properly a situation.”</span> (P10)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS5.p3">
+<p class="ltx_p" id="A1.SS10.SSS5.p3.1">These concerns support Hypothesis 4, which addresses the ethical and practical limitations of deploying LLMs in humanitarian negotiations. The human-centered nature of negotiation processes and the varying levels of preparation and technical skills among negotiators underscore the necessity for human oversight and the complementary use of LLMs rather than full automation.</p>
+</div>
+</section>
+<section class="ltx_subsubsection" id="A1.SS10.SSS6">
+<h4 class="ltx_title ltx_title_subsubsection">
+<span class="ltx_tag ltx_tag_subsubsection">A.10.6 </span>Overreliance</h4>
+<div class="ltx_para" id="A1.SS10.SSS6.p1">
+<p class="ltx_p" id="A1.SS10.SSS6.p1.1">Negotators are concerend over-automating the negotiation process might affect one’s ability to conduct negotiation.
+<span class="ltx_text ltx_font_italic" id="A1.SS10.SSS6.p1.1.1">“I think that all these tools will shrink our brains because we will start relying on them. Like, it’s the same as with GPS. Ever since it’s been in use. We started to think about, where do we go? So we are blindly relying on automated maps. And then that is how orientation decreases our observation of the environment. We stopped noticing importance roots. You’re just out of sudden, you are there? How? You don’t know, because machine was leading you.”</span> (P3) Specifically, insights may come from the manual process of conducting the analysis. <span class="ltx_text ltx_font_italic" id="A1.SS10.SSS6.p1.1.2">“I think it’s important to do your own analysis. I think that information and intelligence comes from doing proper analysis and and getting yourself to a certain spot. So I mean I do use ChatGPT to do summaries for me. My worry is lack of engagement in the analysis.”</span> (P4)</p>
+</div>
+<div class="ltx_para" id="A1.SS10.SSS6.p2">
+<p class="ltx_p" id="A1.SS10.SSS6.p2.1">These concerns highlight the importance of maintaining human engagement in the negotiation process and support Hypothesis 4, which emphasizes the need to consider ethical and practical limitations when deploying LLMs in negotiation settings. Ensuring that negotiators remain actively involved in analysis and decision-making processes is crucial for maintaining the quality and effectiveness of negotiations.</p>
+</div>
+<div class="ltx_pagination ltx_role_newpage"></div>
+</section>
+</section>
+</section>
+</article>

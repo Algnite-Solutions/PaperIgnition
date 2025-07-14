@@ -2,10 +2,10 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models.users import ResearchDomain
+from backend.app.models.users import ResearchDomain
 
-from .db_utils import get_db
-from .routers import auth, users, papers
+from backend.app.db_utils import get_db
+from backend.app.routers import auth, users, papers
 
 app = FastAPI(title="AIgnite API", description="学术论文推荐微信小程序API")
 

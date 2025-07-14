@@ -81,6 +81,13 @@ class UserPaperRecommendation(Base):
     username = Column(String(50), ForeignKey("users.username"), index=True)
     paper_id = Column(String(50), index=True)  # 论文外部ID (arXiv ID等)
     
+    # 添加从论文数据库中获取的数据
+    title = Column(String(255))
+    authors = Column(String(255))
+    abstract = Column(Text, nullable=True)  # 添加论文摘要字段
+    url = Column(String(255), nullable=True)
+    blog = Column(Text, nullable=True)  # 存储论文的blog内容
+    
     # 推荐特定元数据
     recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)

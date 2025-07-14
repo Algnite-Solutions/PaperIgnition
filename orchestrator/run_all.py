@@ -88,7 +88,7 @@ def main():
     # TODO: use the real paper_pull.fetch_daily_papers
     # Given the directory of the json files, index the papers
     json_dir = "./orchestrator/jsons"
-    papers = paper_pull.dummy_paper_fetch(json_dir)
+    papers = paper_pull.fetch_daily_papers()
     print(f"Fetched {len(papers)} papers.")
 
     # Load config and get API URL

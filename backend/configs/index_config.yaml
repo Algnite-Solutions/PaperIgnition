@@ -1,0 +1,20 @@
+# Index Service Configuration
+index_api_url: "http://localhost:8002"
+
+# Vector Database Configuration
+vector_db:
+  model_name: "BAAI/bge-base-en-v1.5"
+  vector_dim: 768
+  db_path: "vector_db/test_db"
+
+# Metadata Database Configuration
+metadata_db:
+  db_url: "postgresql://postgres:ch20031021@localhost/AIgnite"
+
+# MinIO Configuration
+minio_db:
+  endpoint: localhost:9081
+  access_key: XOrv2wfoWfPypp2zGIae
+  secret_key: k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3
+  bucket_name: aignite-test-papers
+  secure: false 

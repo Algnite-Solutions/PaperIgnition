@@ -7,7 +7,7 @@ INDEX_SERVICE:
     db_path: "vector_db/test_db"
 
   metadata_db:
-    db_url: "postgresql://postgres:11111@localhost:5432/paperignition"
+    db_url: "postgresql://postgres:ch20031021@localhost/AIgnite"
 
   minio_db:
     endpoint: localhost:9081
@@ -18,10 +18,10 @@ INDEX_SERVICE:
 
 USER_DB:
   db_user: postgres
-  db_password: "11111"
+  db_password: "ch20031021"
   db_host: localhost
   db_port: "5432"
-  db_name: paperignition_user
+  db_name: AIgnite
 
 PAPER_STORAGE:
   json_folder: ""
