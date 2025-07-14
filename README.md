@@ -17,7 +17,7 @@ node -v
 npm -v
 ```
 
-Install pnpm `npm install -g pnpm`
+Install pnpm `sudo npm install -g pnpm`
 
 export PYTHONPATH=/path/to/your/PaperIgnition
 
@@ -33,18 +33,19 @@ CREATE ROLE postgres WITH LOGIN SUPERUSER;
 # create role (ubuntu)
 sudo service postgresql start
 sudo -u postgres psql
+ALTER USER postgres WITH PASSWORD '11111';
 
 # create user database
 CREATE DATABASE paperignition_user;
 
-python backend/user_db_service/db_init.py
+python scripts/user_db_init.py
 ```
 
 2. Start DB Backend
 ```
 CREATE DATABASE paperignition;
 
-python backend/scripts/paper_db_init.py
+python scripts/paper_db_init.py
 ```
 
 3. Init Index Service and test

@@ -1,0 +1,21 @@
+{
+    "doc_id": "2405.20540v1",
+    "title": "Fully Unconstrained Online Learning",
+    "authors": [
+        "Ashok Cutkosky",
+        "Zakaria Mhammedi"
+    ],
+    "categories": [
+        "cs.LG",
+        "math.OC",
+        "stat.ML"
+    ],
+    "published_date": "2024-05-30 23:41:01+00:00",
+    "abstract": "We provide an online learning algorithm that obtains regret\n$G\\|w_\\star\\|\\sqrt{T\\log(\\|w_\\star\\|G\\sqrt{T})} + \\|w_\\star\\|^2 + G^2$ on\n$G$-Lipschitz convex losses for any comparison point $w_\\star$ without knowing\neither $G$ or $\\|w_\\star\\|$. Importantly, this matches the optimal bound\n$G\\|w_\\star\\|\\sqrt{T}$ available with such knowledge (up to logarithmic\nfactors), unless either $\\|w_\\star\\|$ or $G$ is so large that even\n$G\\|w_\\star\\|\\sqrt{T}$ is roughly linear in $T$. Thus, it matches the optimal\nbound in all cases in which one can achieve sublinear regret, which arguably\nmost \"interesting\" scenarios.",
+    "text_chunks": [],
+    "figure_chunks": [],
+    "table_chunks": [],
+    "metadata": {},
+    "pdf_path": "D:\\PaperIgnition\\PaperIgnition\\orchestrator\\pdfs\\2405.20540v1.pdf",
+    "HTML_path": null
+}

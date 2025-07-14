@@ -1,0 +1,18 @@
+{
+    "doc_id": "2405.20194v8",
+    "title": "Occam Gradient Descent",
+    "authors": [
+        "B. N. Kausik"
+    ],
+    "categories": [
+        "cs.LG"
+    ],
+    "published_date": "2024-05-30 15:58:22+00:00",
+    "abstract": "Deep learning neural network models must be large enough to adapt to their\nproblem domain, while small enough to avoid overfitting training data during\ngradient descent. To balance these competing demands, overprovisioned deep\nlearning models such as transformers are trained for a single epoch on large\ndata sets, and hence inefficient with both computing resources and training\ndata. In response to these inefficiencies, we exploit learning theory to derive\nOccam Gradient Descent, an algorithm that interleaves adaptive reduction of\nmodel size to minimize generalization error, with gradient descent on model\nweights to minimize fitting error. In contrast, traditional gradient descent\ngreedily minimizes fitting error without regard to generalization error. Our\nalgorithm simultaneously descends the space of weights and topological size of\nany neural network without modification. With respect to loss, compute and\nmodel size, our experiments show (a) on image classification benchmarks, linear\nand convolutional neural networks trained with Occam Gradient Descent\noutperform traditional gradient descent with or without post-train pruning; (b)\non a range of tabular data classification tasks, neural networks trained with\nOccam Gradient Descent outperform traditional gradient descent, as well as\nRandom Forests; (c) on natural language transformers, Occam Gradient Descent\noutperforms traditional gradient descent.",
+    "text_chunks": [],
+    "figure_chunks": [],
+    "table_chunks": [],
+    "metadata": {},
+    "pdf_path": "D:\\PaperIgnition\\PaperIgnition\\orchestrator\\pdfs\\2405.20194v8.pdf",
+    "HTML_path": null
+}

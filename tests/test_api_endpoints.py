@@ -10,7 +10,7 @@ from backend.configs.config import load_index_config
 
 config = load_index_config()
 
-BASE_URL = config['index_api_url']
+BASE_URL = config['host']
 
 # Create temporary directory for test files
 TEMP_DIR = tempfile.mkdtemp()
