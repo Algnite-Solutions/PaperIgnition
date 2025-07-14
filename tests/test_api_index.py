@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, Any
 from AIgnite.data.docset import DocSet, TextChunk, ChunkType, DocSetList
 from backend.index_service.db_utils import load_config
+import sqlalchemy
 
 config = load_config()
 
@@ -19,7 +20,8 @@ TEMP_DIR = tempfile.mkdtemp()
 config['vector_db']['db_path'] = os.path.join(TEMP_DIR, config['vector_db']['db_path'])
 
 # Create necessary directories
-print(config['vector_db']['db_path'])
+
+print(config)
 os.makedirs(os.path.dirname(config['vector_db']['db_path']), exist_ok=True)
 
 # Create test PDF files
@@ -35,6 +37,17 @@ def setup_test_files():
 
 # Create test files
 test_pdfs = setup_test_files()
+
+def clean_metadata_db():
+    """Delete test papers from metadata_db before running tests."""
+    db_url = config['metadata_db']['db_url']
+    engine = sqlalchemy.create_engine(db_url)
+    with engine.connect() as conn:
+        conn.execute(
+            sqlalchemy.text("""
+                DELETE FROM papers WHERE doc_id IN ('paper_001', 'paper_002', 'paper_003', 'paper_004', 'paper_005');
+            """))
+        conn.commit()
 
 async def check_server_running(url: str, timeout: float = 5.0) -> bool:
     """Check if the API server is running and accessible."""
@@ -269,8 +282,9 @@ async def run_tests():
     """Run all tests in sequence."""
     print(f"\nRunning tests against {BASE_URL}")
     print("=" * 50)
-    
     try:
+        # Clean metadata_db before running tests
+        clean_metadata_db()
         # Check if server is running first
         if not await check_server_running(BASE_URL):
             return

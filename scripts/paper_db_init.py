@@ -9,6 +9,7 @@ from AIgnite.db.metadata_db import MetadataDB, Base
 from AIgnite.db.vector_db import VectorDB
 from AIgnite.db.image_db import MinioImageDB
 
+
 from backend.index_service.db_utils import load_config
 
 

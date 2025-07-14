@@ -74,18 +74,26 @@ class FavoritePaper(Base):
 
 
 class UserPaperRecommendation(Base):
-    """只存储推荐关系，链接@Fang Guo的论文表与@Hui Chen的用户表，链接论文表的主键为paper_id，用户表的主键为user_id"""
+    """
+    只存储推荐关系，链表@Fang Guo的论文表与@Hui Chen的用户表，链表论文表的主键为paper_id，用户表的主键为user_id
+    扩展字段：userid, paperid, title, authors, abstract, url, content, blog, reason
+    """
     __tablename__ = "paper_recommendations"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), ForeignKey("users.username"), index=True)
     paper_id = Column(String(50), index=True)  # 论文外部ID (arXiv ID等)
-    
-    # 推荐特定元数据
+    # 新增推荐相关字段
+    title = Column(String(255), nullable=True)
+    authors = Column(String(255), nullable=True)
+    abstract = Column(Text, nullable=True)
+    url = Column(String(255), nullable=True)
+    content = Column(Text, nullable=True)
+    blog = Column(Text, nullable=True)
+    # 原有推荐元数据
     recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)
-    relevance_score = Column(Float, nullable=True)  # 可选的相关性分数
-    recommendation_reason = Column(Text, nullable=True)  # 推荐原因
-    
+    relevance_score = Column(Float, nullable=True)
+    recommendation_reason = Column(Text, nullable=True)
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")

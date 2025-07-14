@@ -27,7 +27,7 @@ async def init_db():
     # 创建所有表
     async with engine.begin() as conn:
         # 删除现有表（如果需要重置）
-        # await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
         
         # 创建表
         await conn.run_sync(Base.metadata.create_all)
