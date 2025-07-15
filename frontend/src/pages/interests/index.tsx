@@ -30,7 +30,7 @@ const searchPapers = async (query: string): Promise<Paper[]> => {
     {
       id: '1001',
       title: 'Attention Is All You Need',
-      authors: 'Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin',
+      authors: ['Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin'],
       abstract: 'The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train.',
       tags: ['Deep Learning', 'NLP', 'Transformer'],
       submittedDate: '12 June, 2017',
@@ -39,7 +39,7 @@ const searchPapers = async (query: string): Promise<Paper[]> => {
     {
       id: '1002',
       title: 'BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding',
-      authors: 'Jacob Devlin, Ming-Wei Chang, Kenton Lee, Kristina Toutanova',
+      authors: ['Jacob Devlin, Ming-Wei Chang, Kenton Lee, Kristina Toutanova'],
       abstract: 'We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models, BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be fine-tuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial task-specific architecture modifications.',
       tags: ['Deep Learning', 'NLP', 'BERT'],
       submittedDate: '11 October, 2018',
@@ -48,7 +48,7 @@ const searchPapers = async (query: string): Promise<Paper[]> => {
     {
       id: '1003',
       title: 'GPT-4 Technical Report',
-      authors: 'OpenAI',
+      authors: ['OpenAI'],
       abstract: 'We report the development of GPT-4, a large-scale, multimodal model which can accept image and text inputs and produce text outputs. While less capable than humans in many real-world scenarios, GPT-4 exhibits human-level performance on various professional and academic benchmarks, including passing a simulated bar exam with a score around the top 10% of test takers. GPT-4 is a Transformer-based model pre-trained to predict the next token in a document, using both publicly available data and data licensed from third-party providers.',
       tags: ['GPT-4', 'Large Language Models', 'Multimodal'],
       submittedDate: '27 March, 2023',
