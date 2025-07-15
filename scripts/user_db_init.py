@@ -2,8 +2,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from backend.db.user_db import engine, Base, AsyncSessionLocal
-from backend.models.user import ResearchDomain, UserPaperRecommendation
+from backend.app.db_utils import engine, Base, AsyncSessionLocal
+from backend.app.models.users import ResearchDomain, UserPaperRecommendation
 
 # AI领域初始数据
 AI_DOMAINS = [
@@ -27,7 +27,7 @@ async def init_db():
     # 创建所有表
     async with engine.begin() as conn:
         # 删除现有表（如果需要重置）
-        # await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
         
         # 创建表
         await conn.run_sync(Base.metadata.create_all)
