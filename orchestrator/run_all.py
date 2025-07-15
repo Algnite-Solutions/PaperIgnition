@@ -112,6 +112,20 @@ def save_recommendations(username, papers, api_url):
         except Exception as e:
             print(f"❌ 推荐写入异常: {paper.get('paper_id')}，错误: {e}")
 
+def get_all_users(backend_api_url):
+    """
+    获取所有用户信息，返回用户字典列表（含 username, interests_description 等）
+    """
+    resp = requests.get(f"{backend_api_url}/api/users/all")
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_user_interest(username: str,backend_api_url):
+        response = requests.get(f"{backend_api_url}/api/users/by_email/{username}")
+        response.raise_for_status()
+        user_data = response.json()
+        return user_data.get("interests_description", [])
 
 def main():
 
@@ -148,66 +162,50 @@ def main():
     # 2. Index papers
     index_papers_via_api(papers, index_api_url)
 
+    # 新增：获取所有用户
+    all_users = get_all_users(backend_api_url)
+    print(f"✅ 共获取到 {len(all_users)} 个用户")
+
     
-    #3. Get user's interests
-    #health = check_connection_health(backend_api_url) 
-    #if health == "not_ready" or not health:
-    #    print("Attempting to initialize user database...")
-    #    if not initialize_database(backend_api_url, config):
-    #        print("Exiting due to failed user database initialization.")
-    #        sys.exit(1)
-    #    if not check_connection_health(backend_api_url):
-    #        print("Exiting due to failed health check after initialization.")
-    #        sys.exit(1)
-    def get_user_interest(username: str):
-        """
-            获取指定用户的研究兴趣（interests_description）,返回json，示例如下
-            ['大型语言模型', '图神经网络']
-        """
-        # 实际上username和user_email保持一致
-        response = requests.get(f"{backend_api_url}/api/users/by_email/{username}") 
-        response.raise_for_status() # Raises an exception for bad status codes (e.g., 404)
-        user_data = response.json()
-        return user_data.get("interests_description", [])
+    print([user.get("username") for user in all_users])
+    # 遍历所有用户
+    for user in all_users:
+        username = user.get("username")
+        interests = get_user_interest(username,backend_api_url)
+        print(f"\n=== 用户: {username}，兴趣: {interests} ===")
+        if not interests:
+            print(f"用户 {username} 无兴趣关键词，跳过推荐。")
+            continue
+        for query in interests:
+            print(f"[TF-IDF] 用户 {username} 兴趣: {query}")
+            papers = search_papers_via_api(index_api_url, query, 'tf-idf', 0.1)
+        for query in interests:
+            print(f"[VECTOR] 用户 {username} 兴趣: {query}")
+            papers = search_papers_via_api(index_api_url, query, 'vector', 0.5)
 
 
-
-    example_queries = get_user_interest("testuser1")
+        # 4. Generate blog digests for users
+        #print("Generating blog digests for users...")
+        #run_dummy_blog_generation(papers)
+        #print("Digest generation complete.")
     
-    
-    # 3. Search papers for example queries
-    for query in example_queries:
-        papers=search_papers_via_api(index_api_url, query, 'tf-idf', 0.1)
-    
-    for query in example_queries:
-        papers=search_papers_via_api(index_api_url, query, 'vector', 0.5)
-    
+        paper_infos = []
+        for paper in papers:
+            dummy_blog = "This is a dummy blog for paper " + paper.title
+            paper_infos.append({
+                "paper_id": paper.doc_id,
+                "title": paper.title,
+                "authors": ", ".join(paper.authors),
+                "abstract": paper.abstract,
+                "url": paper.HTML_path,
+                "content": paper.abstract,  # 或其他内容
+                "blog": dummy_blog,
+                "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
+                "relevance_score": 0.5
+            })
 
-    # TODO: use the real paper_pull.fetch_daily_papers
-
-    # 4. Generate blog digests for users
-    #print("Generating blog digests for users...")
-    #run_dummy_blog_generation(papers)
-    #print("Digest generation complete.")
-
-    paper_infos = []
-    for paper in papers:
-        dummy_blog = "This is a dummy blog for paper " + paper.title
-        paper_infos.append({
-            "paper_id": paper.doc_id,
-            "title": paper.title,
-            "authors": ", ".join(paper.authors),
-            "abstract": paper.abstract,
-            "url": paper.HTML_path,
-            "content": paper.abstract,  # 或其他内容
-            "blog": dummy_blog,
-            "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
-            "relevance_score": 0.5
-        })
-
-    # 5. Write recommendations
-    save_recommendations("testuser1", paper_infos, backend_api_url)
-
+        # 5. Write recommendations
+        save_recommendations(username, paper_infos, backend_api_url)
 
     
 if __name__ == "__main__":
