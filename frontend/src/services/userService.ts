@@ -4,7 +4,16 @@ import { API_BASE_URL } from '../config/api'; // Import the base URL
 // Function to get current user profile
 export const fetchUserProfile = async () => {
   try {
-    const token = Taro.getStorageSync('token'); // Get token from storage
+    // 统一使用localStorage获取token，确保跨平台兼容性
+    let token: string | null = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        token = localStorage.getItem('token');
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
+    }
+    
     if (!token) {
       throw new Error('Authentication token not found.');
     }
@@ -50,7 +59,16 @@ export const fetchResearchDomains = async () => {
 // Function to update user profile
 export const updateUserProfile = async (profileData: any) => {
   try {
-    const token = Taro.getStorageSync('token'); // Get token from storage
+    // 统一使用localStorage获取token，确保跨平台兼容性
+    let token: string | null = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        token = localStorage.getItem('token');
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
+    }
+    
     if (!token) {
       throw new Error('Authentication token not found.');
     }
