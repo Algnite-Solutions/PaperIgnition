@@ -17,8 +17,8 @@ INDEX_SERVICE:
     secure: false
 
 APP_SERVICE:
-  host: "http://localhost:8008"
-
+  host: "http://localhost:8000"
+  
 USER_DB:
   db_user: postgres
   db_password: "11111"

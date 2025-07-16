@@ -5,6 +5,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
 from pathlib import Path
 import os
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 def fetch_daily_papers() -> list[DocSet]:
     # Replace this with your actual fetcher
@@ -17,11 +19,9 @@ def fetch_daily_papers() -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    #decide date and divide time slot
-    today = datetime.now(timezone.utc).date()# - timedelta(days=2)
-    date_str = today.strftime("%Y%m%d")
-    #time_slots = divide_one_day_into(date_str, 3)
-    time_slots = divide_one_day_into('20240530', 3)
+    print("Now UTC:",get_time_str())
+    time_slots = divide_a_day_into(get_time_str(), 3)
+    # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
     os.makedirs(os.path.dirname(arxiv_pool_path), exist_ok=True)
@@ -99,14 +99,33 @@ def run_extractor_for_timeslot(start_str, end_str):
     extractor.serialize_docs()
 
 
-def divide_one_day_into(date: str, count: int):
-    time_sec = []
-    time_last = 24 / count
-    for i in range(count):
-        clock = int(i * time_last)
-        if clock >= 10:
-            time_sec.append(date + str(clock) + "00")
-        else:
-            time_sec.append(date + "0" + str(clock) + "00")
-    time_sec.append(date + "2359")
-    return time_sec
+
+def get_time_str(location = "Asia/Shanghai"):
+    # 设定本地时区（可根据需要修改）
+    local_tz = ZoneInfo(location)  # 例如上海
+    # 获取本地当前时间，精确到分钟
+    local_now = datetime.now(local_tz).replace(second=0, microsecond=0)
+    # 转换为UTC时间
+    utc_now = local_now.astimezone(ZoneInfo("UTC"))
+    # 转为指定格式字符串
+    utc_str = utc_now.strftime("%Y%m%d%H%M")
+    return utc_str
+
+
+# 新增函数
+def divide_a_day_into(time: str, count: int):
+    """
+    输入: time (如202507150856), count (如3)
+    输出: 将[前一天同一时刻, 输入时刻]分成count份，返回每个分段的时间点字符串数组（精确到分钟，格式为%Y%m%d%H%M），包含头尾。
+    """
+    from datetime import datetime, timedelta
+    fmt = "%Y%m%d%H%M"
+    end_time = datetime.strptime(time, fmt)
+    start_time = end_time - timedelta(days=1)
+    total_minutes = int((end_time - start_time).total_seconds() // 60)
+    step = total_minutes / count
+    result = []
+    for i in range(count + 1):
+        t = start_time + timedelta(minutes=round(i * step))
+        result.append(t.strftime(fmt))
+    return result

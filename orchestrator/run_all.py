@@ -1,5 +1,5 @@
 import paper_pull
-#from generate_blog import run_dummy_blog_generation
+from generate_blog import run_batch_generation
 #from backend.index_service import index_papers
 import requests
 import os
@@ -132,11 +132,10 @@ def main():
     # TODO: use the real paper_pull.fetch_daily_papers
     # Given the directory of the json files, index the papers
     #json_dir = "./orchestrator/jsons"
-    '''
+    
     papers = paper_pull.fetch_daily_papers()
     print(f"Fetched {len(papers)} papers.")
-    '''
-
+    
     papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
     # Load config and get API URL
@@ -185,13 +184,18 @@ def main():
 
 
         # 4. Generate blog digests for users
-        #print("Generating blog digests for users...")
-        #run_dummy_blog_generation(papers)
-        #print("Digest generation complete.")
+        print("Generating blog digests for users...")
+        run_batch_generation(papers)
+        print("Digest generation complete.")
+
     
         paper_infos = []
         for paper in papers:
-            dummy_blog = "This is a dummy blog for paper " + paper.title
+            try:
+                with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
+                    blog = file.read()
+            except FileNotFoundError:
+                blog = None  # 或者其他处理方式
             paper_infos.append({
                 "paper_id": paper.doc_id,
                 "title": paper.title,
@@ -199,7 +203,7 @@ def main():
                 "abstract": paper.abstract,
                 "url": paper.HTML_path,
                 "content": paper.abstract,  # 或其他内容
-                "blog": dummy_blog,
+                "blog": blog,
                 "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
                 "relevance_score": 0.5
             })
