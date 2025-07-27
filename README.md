@@ -20,6 +20,7 @@ npm -v
 Install pnpm `sudo npm install -g pnpm`
 
 export PYTHONPATH=/path/to/your/PaperIgnition
+$env:PYTHONPATH = "D:\PaperIgnition\PaperIgnition"
 
 ## Initialize Databases (DB Backend)
 

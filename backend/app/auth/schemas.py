@@ -36,6 +36,7 @@ class UserOut(UserBase):
     id: int
     is_active: Optional[bool] = True
     interests_description: Optional[List[str]] = None
+    research_interests_text: Optional[str] = None
     username: str
     email: EmailStr
     
@@ -58,5 +59,6 @@ class UserProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     push_frequency: Optional[str] = None
     interests_description: Optional[List[str]] = None
+    research_interests_text: Optional[str] = None
     research_domain_ids: Optional[List[int]] = None
  

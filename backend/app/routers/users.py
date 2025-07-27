@@ -39,6 +39,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
         "email": current_user.email,
         "is_active": current_user.is_active,
         "interests_description": current_user.interests_description or [],
+        "research_interests_text": current_user.research_interests_text,
         "research_domain_ids": research_domain_ids
     }
 
@@ -83,6 +84,7 @@ async def update_interests(
         "email": user.email,
         "is_active": user.is_active,
         "interests_description": user.interests_description or [],
+        "research_interests_text": user.research_interests_text,
         "research_domain_ids": updated_domain_ids
     }
 
@@ -106,6 +108,8 @@ async def update_user_profile(
         current_user.push_frequency = profile_data.push_frequency
     if profile_data.interests_description is not None:
         current_user.interests_description = profile_data.interests_description
+    if profile_data.research_interests_text is not None:
+        current_user.research_interests_text = profile_data.research_interests_text
         
     if profile_data.research_domain_ids is not None:
         result = await db.execute(select(ResearchDomain).where(ResearchDomain.id.in_(profile_data.research_domain_ids)))
@@ -118,7 +122,7 @@ async def update_user_profile(
     await db.commit()
     await db.refresh(current_user)
     
-    return current_user 
+    return current_user
 
 @router.get("/all", response_model=List[UserOut])
 async def get_all_users_info(db: AsyncSession = Depends(get_db)):
@@ -139,6 +143,7 @@ async def get_all_users_info(db: AsyncSession = Depends(get_db)):
             "email": user.email,
             "is_active": user.is_active,
             "interests_description": user.interests_description or [],
+            "research_interests_text": user.research_interests_text,
             "research_domain_ids": research_domain_ids
         })
     return response_users 
@@ -170,5 +175,6 @@ async def get_user_by_email(
         "email": user.email,
         "is_active": user.is_active,
         "interests_description": user.interests_description or [],
+        "research_interests_text": user.research_interests_text,
         "research_domain_ids": research_domain_ids
     } 

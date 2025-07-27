@@ -107,6 +107,16 @@
         }
       }
       
+      .interests-text {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        padding: 4px 0;
+        display: block;
+      }
+      
       .keywords-container {
         display: flex;
         flex-wrap: wrap;
@@ -150,6 +160,17 @@
           }
         }
       }
+    }
+    
+    .description-input {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      min-height: 100px;
+      height: 150px;
+      resize: none;
     }
     
     .button-container {

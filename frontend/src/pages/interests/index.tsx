@@ -1,4 +1,4 @@
-import { View, Text, Input, Picker } from '@tarojs/components'
+import { View, Text, Input, Picker, Textarea } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
@@ -8,7 +8,8 @@ import {
   saveInterestsFailure,
   saveInterestsWithDescription,
   setInterestDescription,
-  loginSuccess
+  loginSuccess,
+  setResearchInterestsText
 } from '../../store/slices/userSlice'
 import { addFavorite, removeFavorite } from '../../store/slices/favoritesSlice'
 import { AtTabs, AtTabsPane, AtIcon, AtToast, AtTag } from 'taro-ui'
@@ -21,7 +22,7 @@ import { API_BASE_URL } from '../../config/api'
 import './index.scss'
 
 // 模拟搜索论文API调用
-const searchPapers = async (query: string): Promise<Paper[]> => {
+const searchPapers = async (query: string): Promise<any[]> => {
   // 模拟API延时
   await new Promise(resolve => setTimeout(resolve, 500))
   
@@ -93,9 +94,10 @@ const Interests = () => {
   
   const [currentTab, setCurrentTab] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Paper[]>([])
+  const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [interestDescription, setLocalInterestDescription] = useState(interests.description || '')
+  const [researchInterestsText, setLocalResearchInterestsText] = useState(interests.research_interests_text || '')
   const [aiDomains, setLocalAiDomains] = useState(AI_DOMAINS.map(d => ({...d, active: false})))
   const [isFromRegistration, setIsFromRegistration] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
@@ -184,6 +186,12 @@ const Interests = () => {
           const joinedInterests = backendInterests.join('、')
           dispatch(setInterestDescription(joinedInterests)) // Update Redux
           setLocalInterestDescription(joinedInterests) // Update local state for controlled input
+          
+          // Also set research interests text if available
+          if (userData.research_interests_text) {
+            dispatch(setResearchInterestsText(userData.research_interests_text))
+            setLocalResearchInterestsText(userData.research_interests_text)
+          }
 
           // Update AI domain tags based on fetched interests
           const updatedAiDomains = AI_DOMAINS.map(domain => {
@@ -266,10 +274,10 @@ const Interests = () => {
     }
   }
   
-  // 处理兴趣描述变更
+  // 处理兴趣描述变更 - 修改为只处理研究兴趣文本
   const handleDescriptionChange = (e) => {
     const value = e.detail.value
-    setLocalInterestDescription(value)
+    setLocalResearchInterestsText(value)
   }
   
   // 处理搜索查询变更
@@ -277,7 +285,7 @@ const Interests = () => {
     setSearchQuery(e.detail.value)
   }
   
-  // 处理AI领域选择
+  // 处理AI领域选择 - 修改为不影响文本输入框
   const handleDomainClick = (index: number) => {
     const updatedDomains = [...aiDomains]
     updatedDomains[index].active = !updatedDomains[index].active
@@ -349,7 +357,11 @@ const Interests = () => {
       return;
     }
 
-    let updateData: { interests_description?: string[]; push_frequency?: 'daily' | 'weekly' } = {};
+    let updateData: { 
+      interests_description?: string[]; 
+      push_frequency?: 'daily' | 'weekly';
+      research_interests_text?: string;
+    } = {};
 
     try {
       let interestsList: string[] = [];
@@ -366,7 +378,8 @@ const Interests = () => {
 
       updateData = { 
         interests_description: interestsList,
-        push_frequency: frequency
+        push_frequency: frequency,
+        research_interests_text: researchInterestsText
       };
 
       console.log('[ Interests Page handleSave ] ==> Constructed updateData (with push_frequency):', updateData);
@@ -426,7 +439,10 @@ const Interests = () => {
       console.log('[ Interests Page handleSave ] ==> API Response (from fetch wrapper):', apiResponse);
 
       if (responseOk) { // Check was fetchResponse.ok
-        dispatch(saveInterestsWithDescription(interestDescription))
+        dispatch(saveInterestsWithDescription({
+          description: interestDescription,
+          research_interests_text: researchInterestsText
+        }))
         
         if (Taro && typeof Taro.showToast === 'function') {
           Taro.showToast({
@@ -660,6 +676,28 @@ const Interests = () => {
                 <Text>{domain.name}</Text>
               </View>
             ))}
+          </View>
+        </View>
+        
+        {/* 研究兴趣描述文本输入 */}
+        <View className='interest-description'>
+          <View className='section-title'>
+            <AtIcon value='edit-pencil' size='18' color='#4A89DC' />
+            <Text>研究兴趣描述（可选）</Text>
+          </View>
+          <View className='domains-subtitle'>
+            <Text>请描述您的研究方向和兴趣，帮助我们更精准地推荐相关论文</Text>
+          </View>
+          <View className='textarea-container'>
+            <Textarea
+              className='description-input'
+              placeholder='例如：我主要研究自然语言处理中的大型语言模型应用...'
+              value={researchInterestsText}
+              onInput={handleDescriptionChange}
+              maxlength={200}
+              autoHeight
+              placeholderStyle='color: #999; font-size: 14px;'
+            />
           </View>
         </View>
         
