@@ -1,6 +1,7 @@
 
 from pydantic import BaseModel
 from typing import List, Optional
+from AIgnite.data.docset import DocSet
 
 # TODO(@Fang Guo): 下面需要使用 AIgnite的Paper模型， 不应该重复定义
 
@@ -12,12 +13,28 @@ class PaperBase(BaseModel):
     abstract: str
     url: Optional[str] = None
 
+    @classmethod
+    def from_docset(cls, docset: DocSet):
+        return cls(
+            id=docset.doc_id,
+            title=docset.title,
+            authors=", ".join(docset.authors),
+            abstract=docset.abstract,
+            url=docset.HTML_path
+        )
+
 class PaperDetail(PaperBase):
     markdownContent: str
 
 # TODO(@Qi): Delete this function
 class PaperRecommendation(BaseModel):
     paper_id: str
+    title: Optional[str] = None
+    authors: Optional[str] = None
+    abstract: Optional[str] = None
+    url: Optional[str] = None
+    content: Optional[str] = None
+    blog: Optional[str] = None
     recommendation_reason: Optional[str] = None
     relevance_score: Optional[float] = None
 

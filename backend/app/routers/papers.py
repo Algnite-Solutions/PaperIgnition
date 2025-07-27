@@ -8,7 +8,6 @@ from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
 
-
 router = APIRouter(prefix="/papers", tags=["papers"])
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
@@ -79,18 +78,11 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
             recommendation_reason=rec.recommendation_reason,
             relevance_score=rec.relevance_score
         )
-        
-        # 添加到数据库
         db.add(new_rec)
         await db.commit()
         await db.refresh(new_rec)
-        
         return {"message": "推荐记录添加成功", "id": new_rec.id}
-        
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(status_code=400, detail="该推荐记录已存在或数据不合法")
     except Exception as e:
         await db.rollback()
-        print(f"添加推荐记录时发生错误: {str(e)}")  # 添加日志
+        print(f"添加推荐记录时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail="添加推荐记录失败")

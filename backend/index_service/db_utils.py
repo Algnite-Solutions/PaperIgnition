@@ -31,6 +31,8 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         FileNotFoundError: If config file not found
         ValueError: If required configuration sections are missing or if loading fails
     """
+
+    #print('111 ENTERED LOAD CONFIG')
     if not config_path:
         config_path = os.environ.get("PAPERIGNITION_CONFIG", str(DEFAULT_CONFIG_PATH))
         

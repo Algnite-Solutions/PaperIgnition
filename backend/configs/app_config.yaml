@@ -16,6 +16,9 @@ INDEX_SERVICE:
     bucket_name: aignite-test-papers
     secure: false
 
+APP_SERVICE:
+  host: "http://localhost:8000"
+  
 USER_DB:
   db_user: postgres
   db_password: "ch20031021"
