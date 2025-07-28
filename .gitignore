@@ -188,3 +188,6 @@ node_modules/
 .DS_Store
 .swc
 *.local
+
+orchestrator/
+vector_store/

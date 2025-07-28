@@ -1,10 +1,12 @@
+import yaml
+from pathlib import Path
+from typing import Dict, Any, Optional
+import os
+import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from ..index_service.db_utils import load_config as load_index_service_config
-from pathlib import Path
-import yaml
-import os
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 from backend.configs.config import load_backend_config
 
 def load_config(config_path: str | None = None) -> dict:
@@ -34,10 +36,10 @@ def load_config(config_path: str | None = None) -> dict:
 config = load_config()
 # 从环境变量读取配置（带默认值）
 DB_USER = config.get("db_user", "postgres")
-DB_PASSWORD = config.get("db_password", "11111")
+DB_PASSWORD = config.get("db_password", "ch20031021")
 DB_HOST = config.get("db_host", "localhost")
 DB_PORT = config.get("db_port", "5432")
-DB_NAME = config.get("db_name", "paperignition_user")
+DB_NAME = config.get("db_name", "AIgnite")
 
 INDEX_SERVICE_URL = config.get("INDEX_SERVICE", {}).get("host", "http://localhost:8002")
 
@@ -73,37 +75,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.commit()
         except Exception:
             await session.rollback()
-            raise
-
-# 为测试提供的函数，使用测试数据库
-def get_test_db_url() -> str:
-    """
-    获取测试数据库URL
-    """
-    test_config = config['database']['test']
-    return (
-        f"postgresql+asyncpg://{test_config['user']}:{test_config['password']}"
-        f"@{test_config['host']}:{test_config['port']}/{test_config['name']}"
-    )
-
-# 创建测试数据库引擎
-def create_test_engine():
-    """
-    创建测试数据库引擎
-    """
-    return create_async_engine(
-        get_test_db_url(),
-        echo=True,
-        future=True
-    )
-
-# 创建测试会话工厂
-def create_test_session_factory(engine):
-    """
-    创建测试会话工厂
-    """
-    return sessionmaker(
-        engine, 
-        class_=AsyncSession, 
-        expire_on_commit=False
-    ) 
+            raise 
