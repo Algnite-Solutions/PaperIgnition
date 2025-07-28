@@ -36,10 +36,10 @@ def load_config(config_path: str | None = None) -> dict:
 config = load_config()
 # 从环境变量读取配置（带默认值）
 DB_USER = config.get("db_user", "postgres")
-DB_PASSWORD = config.get("db_password", "ch20031021")
+DB_PASSWORD = config.get("db_password", "11111")
 DB_HOST = config.get("db_host", "localhost")
 DB_PORT = config.get("db_port", "5432")
-DB_NAME = config.get("db_name", "AIgnite")
+DB_NAME = config.get("db_name", "paperignition_user")
 
 INDEX_SERVICE_URL = config.get("INDEX_SERVICE", {}).get("host", "http://localhost:8002")
 
