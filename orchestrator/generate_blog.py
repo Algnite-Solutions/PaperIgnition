@@ -47,6 +47,8 @@ def get_user_interest(username: str):
     return user_data.get("interests_description", [])
 
 generator = GeminiBlogGenerator(data_path="../imgs/", output_path="./orchestrator/blogs/")
+#使用时，将GeminiBlogGenerator替换为Qwen_32B
+#generator = Qwen_32B(data_path="../imgs/", output_path="./orchestrator/blogs/")
 
 def run_batch_generation(papers):
     blog = generator.generate_digest(papers)
