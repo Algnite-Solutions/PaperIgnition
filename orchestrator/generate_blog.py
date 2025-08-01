@@ -1,5 +1,10 @@
 import requests
-from AIgnite.generation.generator import GeminiBlogGenerator
+from AIgnite.generation.generator import GeminiBlogGenerator, AsyncvLLMGenerator
+from AIgnite.data.docset import DocSet
+import os
+import json
+import yaml
+import asyncio
 #from backend.index_service import index_papers, find_similar
 #from backend.user_service import get_all_users, get_user_interest
 
@@ -46,12 +51,65 @@ def get_user_interest(username: str):
     user_data = response.json()
     return user_data.get("interests_description", [])
 
-generator = GeminiBlogGenerator(data_path="../imgs/", output_path="./orchestrator/blogs/")
-#使用时，将GeminiBlogGenerator替换为Qwen_32B
-#generator = Qwen_32B(data_path="../imgs/", output_path="./orchestrator/blogs/")
 
-def run_batch_generation(papers):
+def run_Gemini_blog_generation(papers):
+    generator = GeminiBlogGenerator(
+        data_path="../orchestrator/imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/blogByGemini")
     blog = generator.generate_digest(papers)
 
-def run_dummy_blog_generation(papers):
-    blog = generator.generate_digest(papers)
+
+
+async def run_batch_generation(papers):
+    generator = AsyncvLLMGenerator(
+        model_name="Qwen/Qwen3-32B", 
+        api_base="http://localhost:5666/v1",
+        data_path="../orchestrator/imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/blogByQwen")
+    
+    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    system_prompt = config['prompts']['blog_generation']['system_prompt']
+    user_prompt_template = config['prompts']['blog_generation']['user_prompt_template']
+
+    prompts = []
+    for paper in papers:
+        # 准备图片路径
+        image_path = generator.data_path
+        
+        prompt = user_prompt_template.format(
+            title=paper.title, 
+            authors=paper.authors, 
+            abstract=paper.abstract, 
+            text_chunks=paper.text_chunks,
+            image_path=image_path,
+            arxiv_id=paper.doc_id
+        )
+        if len(paper.text_chunks) > 10000:
+            prompt = prompt[:10000]
+        prompts.append(prompt)
+    try:
+        blog = await generator.batch_generate(prompts=prompts, max_tokens=2048, papers=papers)
+        return blog
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+async def main():
+    papers = []
+    for file in os.listdir("/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"):
+        if len(papers) >= 10:
+            break
+        with open(f"/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons/{file}", "r") as f:
+            data = json.load(f)
+            papers.append(DocSet(**data))
+            print(file)
+    
+    blog = await run_batch_generation(papers)
+    #blog = run_Gemini_blog_generation(papers)
+    #print("Blog generation completed:", blog)
+
+if __name__ == "__main__":
+    asyncio.run(main())

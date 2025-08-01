@@ -7,6 +7,7 @@ from backend.app.db_utils import load_config as load_backend_config
 from AIgnite.data.docset import DocSetList, DocSet
 import httpx
 import sys
+import yaml
 
 def initialize_database(api_url, config):
     try:
@@ -207,7 +208,8 @@ def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
-    config = load_backend_config(config_path)
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
     index_api_url = config['INDEX_SERVICE']["host"]
     backend_api_url = config['APP_SERVICE']["host"]
     print("backend：",backend_api_url)

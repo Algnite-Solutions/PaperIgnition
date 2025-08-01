@@ -7,7 +7,7 @@ from backend.app.db_utils import load_config as load_backend_config
 from AIgnite.data.docset import DocSetList, DocSet
 import httpx
 import sys
-
+import asyncio
 def initialize_database(api_url, config):
     try:
         payload = {"config": config}
@@ -150,7 +150,7 @@ def fetch_daily_papers(index_api_url: str, config):
     # 2. Index papers
     index_papers_via_api(papers, index_api_url)
 
-def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
+async def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
     """
     Generate blog digests for existing users based on their interests.
     This function is a placeholder and should be replaced with the actual implementation.
@@ -179,7 +179,8 @@ def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
 
         # 4. Generate blog digests for users
         print("Generating blog digests for users...")
-        run_batch_generation(all_papers)
+        #run_batch_generation(all_papers)
+        blog = await run_batch_generation(papers)
         print("Digest generation complete.")
 
     
@@ -219,7 +220,7 @@ def main():
     #print("Daily paper fetch complete.")
 
     print("Starting blog generation for existing users...")
-    blog_generation_for_existing_user(index_api_url, backend_api_url)
+    asyncio.run(blog_generation_for_existing_user(index_api_url, backend_api_url))
     print("Blog generation for existing users complete.")
     
 if __name__ == "__main__":
