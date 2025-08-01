@@ -27,14 +27,25 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
     
     papers = []
     for rec in recommendations:
+        # 确保所有字段都有值，避免None值导致验证错误
+        paper_id = rec[0] or ""
+        title = rec[1] or ""
+        authors = rec[2] or ""
+        abstract = rec[3] or ""
+        url = rec[4]  # url允许为None
+        
         # 构建符合PaperBase模型的数据
         paper_data = {
-            "id": rec[0],       # paper_id
-            "title": rec[1],    # title
-            "authors": rec[2],  # authors
-            "abstract": rec[3], # abstract
-            "url": rec[4]       # url
+            "id": paper_id,
+            "title": title,
+            "authors": authors,
+            "abstract": abstract
         }
+        
+        # 只有当url不为None时才添加到字典
+        if url is not None:
+            paper_data["url"] = url
+            
         papers.append(PaperBase(**paper_data))
     
     return papers
