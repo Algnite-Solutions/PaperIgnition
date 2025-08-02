@@ -8,8 +8,11 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-def fetch_daily_papers() -> list[DocSet]:
+def fetch_daily_papers(time=None) -> list[DocSet]:
     # Replace this with your actual fetcher
+    if time is None:
+        time = get_time_str()
+    print(f"fetching papers for {time}")
     docs = []
     # set up
     base_dir = os.path.dirname(__file__)
@@ -19,8 +22,7 @@ def fetch_daily_papers() -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    print("Now UTC:",get_time_str())
-    time_slots = divide_a_day_into(get_time_str(), 3)
+    time_slots = divide_a_day_into(time, 6)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
