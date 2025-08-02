@@ -2,15 +2,15 @@ let apiBaseUrl: string;
 
 // Standard way to check for production environment
 if (process.env.NODE_ENV === 'production') {
-  apiBaseUrl = process.env.REACT_APP_PROD_API_BASE_URL || 'https://your-production-api.com'; // 生产环境API
+  apiBaseUrl = process.env.REACT_APP_PROD_API_BASE_URL || 'http://127.0.0.1:8000'; // 生产环境API
 } 
 // Check for a specific custom environment variable for a staging/test API
 else if (process.env.REACT_APP_USE_STAGING_API === 'true') {
-  apiBaseUrl = process.env.REACT_APP_STAGING_API_BASE_URL || 'https://your-staging-api.com'; // 测试环境API
+  apiBaseUrl = process.env.REACT_APP_STAGING_API_BASE_URL || 'http://127.0.0.1:8000'; // 测试环境API
 } 
 // Default to development environment for all other cases
 else {
-  apiBaseUrl = process.env.REACT_APP_DEV_API_BASE_URL || 'http://localhost:8000'; // 开发环境API (你的FastAPI后端)
+  apiBaseUrl = process.env.REACT_APP_DEV_API_BASE_URL || 'http://127.0.0.1:8000'; // 开发环境API (你的FastAPI后端)
 }
 
 export const API_BASE_URL = apiBaseUrl;

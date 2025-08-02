@@ -20,8 +20,10 @@ npm -v
 Install pnpm `sudo npm install -g pnpm`
 
 export PYTHONPATH=/path/to/your/PaperIgnition
+$env:PYTHONPATH = "D:\PaperIgnition\PaperIgnition"
 
 ## Initialize Databases (DB Backend)
+
 In the PaperIgnition rootfolder, perform followings steps. 
 1. Init User DB
 source code: backend/user_db/
@@ -58,6 +60,7 @@ python tests/test_api_endpoints.py
 
 
 ## Start Web Backend
+
 backend/app
 ```
  # 开发环境
@@ -74,6 +77,7 @@ pnpm run dev:h5
 ```
 
 ## Orchestrator
+
 PaperIgnition orchestrator runs regularly to update the paperDB and generate user recommendations.
 ```
 mkdir -p ./orchestrator/blogs/

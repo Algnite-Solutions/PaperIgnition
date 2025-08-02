@@ -58,7 +58,7 @@ Enter VectorGraphRAG, a promising hybrid approach that combines the power of vec
 
 Integrating high-performance vector search into a graph database is challenging. TigerVector tackles this through several key innovations:
 
-**A Unified Data Model:** TigerVector introduces a new \`embedding\` attribute type for vertices. This isn't just a list of floats; it explicitly manages crucial metadata like dimensionality, the model used, index type, and similarity metric. This dedicated type facilitates managing different types of embeddings and ensures compatibility during queries.
+**A Unified Data Model:** TigerVector introduces a new `embedding` attribute type for vertices. This isn't just a list of floats; it explicitly manages crucial metadata like dimensionality, the model used, index type, and similarity metric. This dedicated type facilitates managing different types of embeddings and ensures compatibility during queries.
 
 **Decoupled Storage:** Recognizing that vector embeddings are often much larger than other attributes, TigerVector stores vectors separately in "embedding segments." These segments mirror the vertex partitioning of the graph, ensuring related vector and graph data reside together for efficient processing. This decoupling also optimizes updates and index management.
 
@@ -67,9 +67,9 @@ Integrating high-performance vector search into a graph database is challenging.
 **Leveraging MPP Architecture:** Built within TigerGraph's Massively Parallel Processing (MPP) architecture, TigerVector distributes vector data and processing across multiple machines. Vector indexes (currently supporting HNSW) are built per segment, and queries are parallelized, with results merged by a coordinator.
 ![Figure 5](https://cdn.pixabay.com/photo/2025/05/07/18/46/lake-9585821_1280.jpg): Distributed Query Processing. The coordinator prepares top-k vector search requests in the send queue and dispatches requests to worker servers. Each worker conducts top-k search locally and sends IDs and distances as results back to the response pool in the coordinator.
 
-**GSQL Integration:** TigerVector integrates vector search into TigerGraph's GSQL query language. This includes adding \`VECTOR_DIST\` to \`ORDER BY...LIMIT\` syntax for declarative search and introducing a flexible \`VectorSearch()\` function. This function allows vector search results to be easily composed with graph query blocks, enabling complex hybrid queries.
+**GSQL Integration:** TigerVector integrates vector search into TigerGraph's GSQL query language. This includes adding `VECTOR_DIST` to `ORDER BY...LIMIT` syntax for declarative search and introducing a flexible `VectorSearch()` function. This function allows vector search results to be easily composed with graph query blocks, enabling complex hybrid queries.
 
-**Advanced Hybrid Search:** TigerVector supports powerful query patterns beyond simple vector similarity, including filtered vector search and vector search on graph patterns. The \`VectorSearch()\` function can accept a vertex set from a graph query as a filter, allowing users to find similar items *within* a specific graph context (e.g., find similar posts written by people Alice knows).
+**Advanced Hybrid Search:** TigerVector supports powerful query patterns beyond simple vector similarity, including filtered vector search and vector search on graph patterns. The `VectorSearch()` function can accept a vertex set from a graph query as a filter, allowing users to find similar items *within* a specific graph context (e.g., find similar posts written by people Alice knows).
 ![Figure 6](https://cdn.pixabay.com/photo/2025/05/07/18/46/lake-9585821_1280.jpg): Demonstration of Combing Community Detection and Vector Search. The Person vertices are partitioned into three communities, colored green, blue, and yellow. The top-k Posts from each community are colored red.
 
 **Efficient Updates:** TigerVector supports transactional updates to vector data, leveraging TigerGraph's MVCC scheme and employing background vacuum processes to incrementally merge delta records into vector indexes. This ensures updates are atomic and efficient.

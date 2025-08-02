@@ -38,6 +38,8 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     # 关联关系
     interests_description = Column(ARRAY(TEXT), nullable=True)  # 用户研究兴趣关键词数组
+    research_interests_text = Column(Text, nullable=True)  # 用户主观研究兴趣描述文本
+    rewrite_interest = Column(Text, nullable=True)  # LLM重写后的兴趣描述
     research_domains = relationship("ResearchDomain", secondary=user_domain_association, back_populates="users")
     favorite_papers = relationship("FavoritePaper", back_populates="user")
     recommended_papers = relationship("UserPaperRecommendation", back_populates="user")

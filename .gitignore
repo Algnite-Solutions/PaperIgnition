@@ -188,3 +188,12 @@ node_modules/
 .DS_Store
 .swc
 *.local
+
+vector_store/
+orchestrator/blogs
+orchestrator/htmls
+orchestrator/pdfs
+orchestrator/imgs
+orchestrator/jsons
+orchestrator/html_url_storage
+vector_db

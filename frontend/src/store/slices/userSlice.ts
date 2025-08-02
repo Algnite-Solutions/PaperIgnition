@@ -13,6 +13,7 @@ export interface UserState {
   interests: {
     paperIds: string[]
     description: string
+    research_interests_text?: string
   }
   loading: boolean
   error: string | null
@@ -49,6 +50,9 @@ const userSlice = createSlice({
     },
     setInterestDescription: (state, action: PayloadAction<string>) => {
       state.interests.description = action.payload
+    },
+    setResearchInterestsText: (state, action: PayloadAction<string>) => {
+      state.interests.research_interests_text = action.payload
     },
     registerStart: (state) => {
       state.loading = true
@@ -106,8 +110,9 @@ const userSlice = createSlice({
       state.isConfiguring = false
       state.error = null
     },
-    saveInterestsWithDescription: (state, action: PayloadAction<string>) => {
-      state.interests.description = action.payload
+    saveInterestsWithDescription: (state, action: PayloadAction<{ description: string; research_interests_text: string; }>) => {
+      state.interests.description = action.payload.description
+      state.interests.research_interests_text = action.payload.research_interests_text
       state.interests.paperIds = state.selectedPapers
       state.loading = false
       state.isConfiguring = false
@@ -129,6 +134,7 @@ export const {
   setFrequency,
   setInterests,
   setInterestDescription,
+  setResearchInterestsText,
   registerStart,
   registerSuccess,
   registerFailure,

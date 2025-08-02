@@ -1,9 +1,9 @@
-import { View, Text, Input, CheckboxGroup, Checkbox } from '@tarojs/components'
+import { View, Text, Input, CheckboxGroup, Checkbox, Textarea } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { AtIcon } from 'taro-ui'
-import { setInterestDescription, saveInterestsWithDescription } from '../../store/slices/userSlice'
+import { setInterestDescription, saveInterestsWithDescription, setResearchInterestsText } from '../../store/slices/userSlice'
 import CustomButton from '../../components/ui/Button'
 import { API_BASE_URL } from '../../config/api'
 import './index.scss'
@@ -15,18 +15,21 @@ interface UserProfile {
   email: string;
   is_active: boolean;
   interests_description: string[]; // This is a list of strings
+  research_interests_text?: string; // Add this field
   research_domain_ids: number[]; // This is a list of domain IDs (still fetched, but not used for editing on this page)
   push_frequency?: string; 
 }
 
 const ResearchInterestsPage = () => {
   const dispatch = useAppDispatch();
+  const storeInterests = useAppSelector(state => state.user.interests);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [description, setDescription] = useState(''); 
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]); 
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [researchInterestsText, setResearchInterestsText] = useState('');
   
   const [popularKeywords] = useState([
     'AI', '机器学习', '深度学习', '自然语言处理', '计算机视觉',
@@ -39,6 +42,12 @@ const ResearchInterestsPage = () => {
     const loadInitialData = async () => {
       setLoading(true);
       try {
+        // Initialize from Redux store if available
+        if (storeInterests.research_interests_text) {
+          console.log('Using research interests text from Redux store:', storeInterests.research_interests_text);
+          setResearchInterestsText(storeInterests.research_interests_text);
+        }
+        
         // Fetch current user's profile (which includes interests)
         const token = localStorage.getItem('token');
         if (!token) {
@@ -65,6 +74,10 @@ const ResearchInterestsPage = () => {
         const userInterestsDesc = (userProfile.interests_description || []).join(', ');
         setDescription(userInterestsDesc);
         
+        // Add more detailed logging to debug the research_interests_text field
+        console.log('Research interests text from API:', userProfile.research_interests_text);
+        setResearchInterestsText(userProfile.research_interests_text || '');
+        
         if (userInterestsDesc) {
           const keywordsArray = userInterestsDesc
             .split(',')
@@ -74,6 +87,7 @@ const ResearchInterestsPage = () => {
         }
         
         dispatch(setInterestDescription(userInterestsDesc));
+        dispatch(setResearchInterestsText(userProfile.research_interests_text || ''));
 
       } catch (error) {
         console.error('加载研究兴趣页面数据失败:', error);
@@ -105,6 +119,11 @@ const ResearchInterestsPage = () => {
     setDescription(newKeywords.join(', ')); 
   };
 
+  const handleResearchInterestsTextChange = (e) => {
+    setResearchInterestsText(e.detail.value);
+    dispatch(setResearchInterestsText(e.detail.value));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -121,6 +140,7 @@ const ResearchInterestsPage = () => {
       // Only sending interests_description, as domain selection is removed from this page's UI
       const profileUpdateData = {
         interests_description: interestsListForBackend,
+        research_interests_text: researchInterestsText,
       };
 
       const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
@@ -137,7 +157,10 @@ const ResearchInterestsPage = () => {
         throw new Error(errorData.detail || '保存用户配置失败');
       }
       
-      dispatch(saveInterestsWithDescription(newDescription));
+      dispatch(saveInterestsWithDescription({
+        description: newDescription,
+        research_interests_text: researchInterestsText
+      }));
       
       Taro.showToast({
         title: '保存成功',
@@ -164,6 +187,12 @@ const ResearchInterestsPage = () => {
       </View>
     )
   }
+
+  // Debug research interests text
+  console.log('Rendering with research interests text:', {
+    localState: researchInterestsText,
+    reduxStore: storeInterests.research_interests_text
+  });
 
   return (
     <View className='research-interests-page'>
@@ -204,6 +233,13 @@ const ResearchInterestsPage = () => {
                 </View>
               )}
             </View>
+
+            <View className='section'>
+              <View className='section-header'>
+                <Text className='section-title'>我的研究兴趣描述</Text>
+              </View>
+              <Text className='interests-text'>{researchInterestsText || storeInterests.research_interests_text || '暂无描述'}</Text>
+            </View>
             
             {/* <View className='section'>
               <Text className='section-title'>热门研究领域</Text>
@@ -239,6 +275,17 @@ const ResearchInterestsPage = () => {
               </View>
             </View>
             
+            <View className='section'>
+              <Text className='section-title'>编辑研究兴趣描述</Text>
+              <Textarea
+                className='description-input'
+                value={researchInterestsText}
+                onInput={handleResearchInterestsTextChange}
+                placeholder='请详细描述您的研究方向、关注的具体问题、偏好的技术方法等'
+                maxlength={500}
+              />
+            </View>
+
             <View className='button-container'>
               {/* <CustomButton
                 type='default'

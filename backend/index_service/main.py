@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
-from .db_utils import init_databases, load_config
-from .routes import router
-from .service import paper_indexer
+from backend.index_service.db_utils import init_databases, load_config
+from backend.index_service.routes import router
+from backend.index_service.service import paper_indexer
 
 app = FastAPI()
 app.include_router(router)

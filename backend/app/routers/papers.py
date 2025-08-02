@@ -12,46 +12,62 @@ router = APIRouter(prefix="/papers", tags=["papers"])
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
 async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
-    """
-    检索UserPaperRecommendation表，返回指定用户的推荐论文基础信息列表（paper_info）
-    """
+    """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
+    # 直接从UserPaperRecommendation表获取论文信息
     result = await db.execute(
-        select(UserPaperRecommendation).where(UserPaperRecommendation.username == username)
+        select(
+            UserPaperRecommendation.paper_id,
+            UserPaperRecommendation.title,
+            UserPaperRecommendation.authors,
+            UserPaperRecommendation.abstract,
+            UserPaperRecommendation.url
+        ).where(UserPaperRecommendation.username == username)
     )
-    recs = result.scalars().all()
+    recommendations = result.all()
+    
     papers = []
-    for rec in recs:
-        papers.append(PaperBase(
-            id=rec.paper_id,
-            title=rec.title,
-            authors=rec.authors,
-            abstract=rec.abstract,
-            url=rec.url
-        ))
+    for rec in recommendations:
+        # 确保所有字段都有值，避免None值导致验证错误
+        paper_id = rec[0] or ""
+        title = rec[1] or ""
+        authors = rec[2] or ""
+        abstract = rec[3] or ""
+        url = rec[4]  # url允许为None
+        
+        # 构建符合PaperBase模型的数据
+        paper_data = {
+            "id": paper_id,
+            "title": title,
+            "authors": authors,
+            "abstract": abstract
+        }
+        
+        # 只有当url不为None时才添加到字典
+        if url is not None:
+            paper_data["url"] = url
+            
+        papers.append(PaperBase(**paper_data))
+    
     return papers
 
 @router.get("/paper_content/{paper_id}")
 async def get_paper_markdown_content(paper_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    检索UserPaperRecommendation表，返回指定论文的 markdown、blog 及推荐理由（blog, reason）
-    """
-    result = await db.execute(
-        select(UserPaperRecommendation).where(UserPaperRecommendation.paper_id == paper_id)
-    )
-    rec = result.scalars().first()
-    if not rec:
+    """根据paper_id返回论文的markdown内容"""
+    # 直接从UserPaperRecommendation表获取blog内容
+    result = await db.execute(select(UserPaperRecommendation.blog).where(UserPaperRecommendation.paper_id == paper_id))
+    paper = result.first()
+    
+    if not paper or not paper[0]:
         raise HTTPException(status_code=404, detail="Paper content not found")
-    return {
-        "paper_content": rec.content,
-        "blog": rec.blog,
-        "recommendation_reason": rec.recommendation_reason
-    }
+    
+    return paper[0]
 
+# 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
+# 接口为{backend_url}/api/papers/recommend
+# TODO(@Hui Chen): 需要添加安全验证
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
-async def add_paper_recommendation(username: str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
-    """
-    保存推荐记录到 UserPaperRecommendation 表，字段包括 userid, paperid, title, authors, abstract, url, content, blog, reason。
-    """
+async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
+    """根据username和paper详细信息插入推荐记录到UserPaperRecommendation表中"""
     try:
         # 验证用户是否存在
         user_result = await db.execute(
@@ -61,18 +77,7 @@ async def add_paper_recommendation(username: str, rec: PaperRecommendation, db: 
         if not user:
             raise HTTPException(status_code=404, detail=f"用户 {username} 不存在")
 
-        # 检查是否已存在该推荐记录（可选，防止重复）
-        exist_result = await db.execute(
-            select(UserPaperRecommendation).where(
-                UserPaperRecommendation.username == username,
-                UserPaperRecommendation.paper_id == rec.paper_id
-            )
-        )
-        exist_rec = exist_result.scalars().first()
-        if exist_rec:
-            raise HTTPException(status_code=400, detail="该推荐记录已存在")
-
-        # 创建推荐记录，保存所有字段
+        # 创建推荐记录（直接使用传入的数据）
         new_rec = UserPaperRecommendation(
             username=username,
             paper_id=rec.paper_id,
@@ -80,7 +85,6 @@ async def add_paper_recommendation(username: str, rec: PaperRecommendation, db: 
             authors=rec.authors,
             abstract=rec.abstract,
             url=rec.url,
-            content=rec.content,
             blog=rec.blog,
             recommendation_reason=rec.recommendation_reason,
             relevance_score=rec.relevance_score
