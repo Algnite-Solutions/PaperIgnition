@@ -45,7 +45,8 @@ def find_similar(
     query: str,
     top_k: int = 5,
     cutoff: float = 0.5,
-    strategy_type: Optional[str] = None
+    strategy_type: Optional[str] = None,
+    filters: Optional[Dict[str, Any]] = None
 ) -> List[Dict[str, Any]]:
     """Find papers similar to the query.
     
@@ -55,6 +56,7 @@ def find_similar(
         top_k: Number of results to return
         cutoff: Minimum similarity score to include in results
         strategy_type: Optional search strategy to use ('vector', 'tf-idf', 'hybrid')
+        filters: Optional filters to apply to the search
         
     Returns:
         List of dictionaries containing paper information and similarity scores
@@ -64,7 +66,8 @@ def find_similar(
             query=query,
             top_k=top_k,
             similarity_cutoff=cutoff,
-            strategy_type=strategy_type
+            strategy_type=strategy_type,
+            filters=filters
         )
     except Exception as e:
         logger.error(f"Failed to find similar papers: {str(e)}")
