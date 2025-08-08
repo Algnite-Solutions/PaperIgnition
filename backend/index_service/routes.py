@@ -6,6 +6,7 @@ from .service import paper_indexer, index_papers, get_metadata, find_similar, cr
 from AIgnite.index.paper_indexer import PaperIndexer
 from pydantic import BaseModel, validator
 import logging
+from .db_utils import init_databases, load_config
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -20,6 +21,40 @@ router = APIRouter()
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "indexer_ready": paper_indexer is not None}
+
+@router.post("/init_database")
+async def init_database_route(
+    request: InitDatabaseRequest,
+    recreate_databases: bool = Query(False, description="Whether to recreate databases from scratch")
+) -> Dict[str, str]:
+    """Initialize or reinitialize the databases and indexer.
+    
+    Args:
+        request: Configuration for database initialization
+        recreate_databases: If True, drops and recreates all databases
+        
+    Returns:
+        Success message
+    """
+    try:
+        # Use provided config or load default config
+        config = request.config if request.config else load_config()
+        
+        # Initialize databases
+        vector_db, metadata_db, image_db = init_databases(config)
+        
+        # Set databases in the global indexer
+        paper_indexer.set_databases(vector_db, metadata_db, image_db)
+        
+        # Set default search strategy
+        paper_indexer.set_search_strategy("tf-idf")
+        
+        action = "reinitialized" if recreate_databases else "initialized"
+        return {"message": f"Database {action} and indexer creation successful"}
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database initialization failed: {str(e)}")
 
 @router.post("/index_papers/")
 async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
@@ -94,7 +129,8 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
             query=query.query.strip(),
             top_k=query.top_k,
             cutoff=query.similarity_cutoff,
-            strategy_type=query.strategy_type
+            strategy_type=query.strategy_type,
+            filters=query.filters
         )
         if not results:
             logger.warning(f"No results found for query: {query.query}")

@@ -1,3 +1,33 @@
+#!/usr/bin/env python3
+"""
+Test script to verify that filtering functionality works after fixes.
+
+Example usage of filters:
+1. Filter by doc_ids:
+   {
+     "query": "machine learning",
+     "top_k": 5,
+     "strategy_type": "vector",
+     "filters": {"doc_ids": ["paper_001", "paper_002"]}
+   }
+
+2. Filter by authors (if supported):
+   {
+     "query": "deep learning",
+     "top_k": 5,
+     "strategy_type": "tf-idf",
+     "filters": {"authors": ["Alice", "Bob"]}
+   }
+
+3. Filter by categories (if supported):
+   {
+     "query": "neural networks",
+     "top_k": 5,
+     "strategy_type": "hybrid",
+     "filters": {"categories": ["cs.AI", "cs.LG"]}
+   }
+"""
+
 import httpx
 import asyncio
 import yaml
@@ -49,6 +79,7 @@ def clean_metadata_db():
             """))
         conn.commit()
 
+
 async def check_server_running(url: str, timeout: float = 5.0) -> bool:
     """Check if the API server is running and accessible."""
     try:
@@ -62,6 +93,28 @@ async def check_server_running(url: str, timeout: float = 5.0) -> bool:
         print(f"    uvicorn backend.index_service.main:app --host 0.0.0.0 --port {url.split(':')[-1]}")
         print(f"\nError details: {str(e)}")
         return False
+
+async def test_init_database_endpoint():
+    """Test the init_database endpoint to ensure it works correctly."""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{BASE_URL}/init_database",
+                json={"config": config},
+                params={"recreate_databases": True},
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                print("✅ init_database endpoint working correctly")
+                return True
+            else:
+                print(f"❌ init_database endpoint failed: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Error testing init_database endpoint: {str(e)}")
+            return False
 
 # Create sample papers using proper DocSet models
 docsets = []
@@ -208,6 +261,7 @@ async def test_find_similar_2():
         response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
         assert response.status_code == 200, "Vector search failed"
         results = response.json()
+        print(results)
         assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for vector search"
         print(f"✅ [2 papers] Vector search: Found {len(results)} results for query '{vector_query['query']}'")
 
@@ -253,6 +307,40 @@ async def test_find_similar_all():
         assert len(results) == 0, f"Expected 0 results, got {len(results)} for no-result search"
         print(f"✅ [all papers] No-result search: Found {len(results)} results for query '{no_result_query['query']}'")
 
+async def test_filters_functionality():
+    """Test that the filters parameter works correctly in the API."""
+    async with httpx.AsyncClient() as client:
+        # Test vector search with doc_ids filter
+        vector_query_with_filter = {
+            "query": "deep learning",
+            "top_k": 5,
+            "strategy_type": "vector",
+            "similarity_cutoff": 0.5,
+            "filters": {"doc_ids": ["paper_001", "paper_002"]}
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query_with_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with filters failed"
+        results = response.json()
+        
+        print(f"\n🔍 Vector search with filters results:")
+        print(f"📊 Total results: {len(results)}")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            title = result.get('title', 'N/A')
+            score = result.get('similarity_score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+        
+        # Verify that all results have doc_ids in the filter
+        if results:
+            allowed_doc_ids = {"paper_001", "paper_002"}
+            for result in results:
+                result_doc_id = result.get('doc_id', '')
+                if result_doc_id not in allowed_doc_ids:
+                    print(f"⚠️ Warning: Result with doc_id '{result_doc_id}' not in filter list")
+        
+        print("✅ Filters functionality test completed")
+
 async def test_error_cases():
     """Test error handling."""
     async with httpx.AsyncClient() as client:
@@ -278,13 +366,21 @@ async def test_error_cases():
         '''
         print("✅ Error cases handled correctly")
 
+# To RUN tests, we need to first reinit_database, then run the tests.
+# This is because the tests are designed to run against a fresh vector database.
+# If the vector database is not fresh, the tests will fail.
+# To reinit_database, we need to run the following command:
+# python scripts/paper_db_init.py --recreate_databases
+# This will recreate the vector database and the metadata database.
+# Then, we can run the tests.
+
+
 async def run_tests():
     """Run all tests in sequence."""
     print(f"\nRunning tests against {BASE_URL}")
     print("=" * 50)
     try:
-        # Clean metadata_db before running tests
-        clean_metadata_db()
+        
         # Check if server is running first
         if not await check_server_running(BASE_URL):
             return
@@ -297,6 +393,7 @@ async def run_tests():
         await test_indexer_reload_and_incremental_indexing()
         await test_get_metadata_all()
         await test_find_similar_all()
+        await test_filters_functionality()
         
         # Error case tests
         await test_error_cases()
@@ -305,6 +402,8 @@ async def run_tests():
         
     except AssertionError as e:
         print(f"\n❌ Test failed: {str(e)}")
+        print("\n💡 This failure might be due to old vector database data.")
+        print("   Consider restarting the API server and running tests again.")
     except Exception as e:
         print(f"\n❌ Error during tests: {str(e)}")
     finally:

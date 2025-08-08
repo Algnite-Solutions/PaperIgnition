@@ -20,6 +20,10 @@ class CustomerQuery(BaseModel):
         default=None,
         description="Search strategy to use ('vector', 'tf-idf', or 'hybrid')"
     )
+    filters: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional filters to apply to the search (e.g., {'doc_ids': ['doc1', 'doc2']})"
+    )
 
     @validator('query')
     def query_not_empty(cls, v):
