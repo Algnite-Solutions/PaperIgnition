@@ -7,7 +7,7 @@ INDEX_SERVICE:
     db_path: "vector_db/test_db"
 
   metadata_db:
-    db_url:"postgresql://postgres:11111@localhost:5432/paperignition"
+    db_url: "postgresql://postgres:11111@localhost:5432/paperignition"
     # db_url: "postgresql://postgres:ch20031021@localhost/AIgnite"
 
   minio_db:

@@ -125,6 +125,7 @@ if __name__ == "__main__":
     # When running this script directly, initialize the databases
     #try:
     config = load_config()
+    print(config)
     vector_db, metadata_db, image_db = init_databases(config)
     print("Databases initialized successfully")
     #except Exception as e:

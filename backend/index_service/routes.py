@@ -106,7 +106,13 @@ async def get_metadata_route(doc_id: str) -> Dict[str, Any]:
 
 @router.post("/find_similar/")
 async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
-    """Find papers similar to the query."""
+    """Find papers similar to the query.
+    
+    Supports advanced filtering with include/exclude structure:
+    - include: Must match conditions
+    - exclude: Must not match conditions
+    - Supported fields: categories, authors, published_date, doc_ids, title_keywords, abstract_keywords
+    """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
     
@@ -123,6 +129,42 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
         
         if query.strategy_type is not None and query.strategy_type not in ['vector', 'tf-idf', 'hybrid']:
             raise HTTPException(status_code=422, detail="strategy_type must be one of: 'vector', 'tf-idf', 'hybrid'")
+        
+        # Validate filter structure if provided
+        if query.filters:
+            if not isinstance(query.filters, dict):
+                raise HTTPException(
+                    status_code=422, 
+                    detail="Filters must be a dictionary"
+                )
+            
+            # Check for new structured format
+            if "include" in query.filters or "exclude" in query.filters:
+                # Validate include filters
+                if "include" in query.filters and not isinstance(query.filters["include"], dict):
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Include filters must be a dictionary"
+                    )
+                
+                # Validate exclude filters
+                if "exclude" in query.filters and not isinstance(query.filters["exclude"], dict):
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Exclude filters must be a dictionary"
+                    )
+                
+                # Check for unsupported fields
+                supported_fields = {'categories', 'authors', 'published_date', 'doc_ids', 'title_keywords', 'abstract_keywords'}
+                
+                for filter_type in ["include", "exclude"]:
+                    if filter_type in query.filters:
+                        for field in query.filters[filter_type]:
+                            if field not in supported_fields:
+                                raise HTTPException(
+                                    status_code=422,
+                                    detail=f"Unsupported filter field: {field}. Supported fields: {', '.join(sorted(supported_fields))}"
+                                )
         
         results = find_similar(
             paper_indexer,
