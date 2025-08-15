@@ -22,7 +22,25 @@ class CustomerQuery(BaseModel):
     )
     filters: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Optional filters to apply to the search (e.g., {'doc_ids': ['doc1', 'doc2']})"
+        description="""Optional filters to apply to the search. Supports new structured format:
+        {
+            "include": {
+                "categories": ["cs.AI", "cs.LG"],
+                "authors": ["John Doe"],
+                "published_date": ["2023-01-01", "2023-12-31"],
+                "doc_ids": ["doc1", "doc2"],
+                "title_keywords": ["machine learning"],
+                "abstract_keywords": ["neural networks"]
+            },
+            "exclude": {
+                "categories": ["cs.CR"],
+                "authors": ["Jane Smith"]
+            }
+        }
+        
+        Also supports backward compatibility with simple format:
+        {"doc_ids": ["doc1", "doc2"]}
+        """
     )
 
     @validator('query')

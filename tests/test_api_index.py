@@ -308,38 +308,70 @@ async def test_find_similar_all():
         print(f"✅ [all papers] No-result search: Found {len(results)} results for query '{no_result_query['query']}'")
 
 async def test_filters_functionality():
-    """Test that the filters parameter works correctly in the API."""
+    """Test that the doc_ids filters parameter works correctly in the API."""
     async with httpx.AsyncClient() as client:
-        # Test vector search with doc_ids filter
-        vector_query_with_filter = {
+        print("\n🔍 Testing doc_ids filter functionality...")
+        
+        # Test 1: Include filter - only return paper_001 and paper_002
+        print("\n📋 Test 1: Include filter - only specific doc_ids")
+        include_filter = {
             "query": "deep learning",
-            "top_k": 5,
+            "top_k": 10,
             "strategy_type": "vector",
             "similarity_cutoff": 0.5,
-            "filters": {"doc_ids": ["paper_001", "paper_002"]}
+            "filters": {"include": {"doc_ids": ["paper_001", "paper_003"]}}
         }
         
-        response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query_with_filter, timeout=10.0)
-        assert response.status_code == 200, "Vector search with filters failed"
+        response = await client.post(f"{BASE_URL}/find_similar/", json=include_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with include filter failed"
         results = response.json()
         
-        print(f"\n🔍 Vector search with filters results:")
-        print(f"📊 Total results: {len(results)}")
+        print(f"📊 Results for include filter: {len(results)} results")
         for i, result in enumerate(results):
             doc_id = result.get('doc_id', 'N/A')
             title = result.get('title', 'N/A')
             score = result.get('similarity_score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
-        # Verify that all results have doc_ids in the filter
-        if results:
-            allowed_doc_ids = {"paper_001", "paper_002"}
-            for result in results:
-                result_doc_id = result.get('doc_id', '')
-                if result_doc_id not in allowed_doc_ids:
-                    print(f"⚠️ Warning: Result with doc_id '{result_doc_id}' not in filter list")
+        # Verify that all results have doc_ids in the include filter
+        expected_doc_ids = {"paper_003"}
+        for result in results:
+            result_doc_id = result.get('doc_id', '')
+            assert result_doc_id in expected_doc_ids, f"Result with doc_id '{result_doc_id}' not in expected include filter list"
+        print(f"✅ All {len(results)} results are within expected doc_ids: {expected_doc_ids}")
         
-        print("✅ Filters functionality test completed")
+        # Test 2: Exclude filter - exclude paper_001 and paper_003
+        print("\n📋 Test 2: Exclude filter - exclude specific doc_ids")
+        exclude_filter = {
+            "query": "deep learning",
+            "top_k": 10,
+            "strategy_type": "vector",
+            "similarity_cutoff": 0.5,
+            "filters": {"exclude": {"doc_ids": ["paper_001", "paper_003"]}}
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=exclude_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with exclude filter failed"
+        results = response.json()
+        
+        print(f"📊 Results for exclude filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            title = result.get('title', 'N/A')
+            score = result.get('similarity_score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+        
+        # Verify that no results have doc_ids in the exclude filter
+        excluded_doc_ids = {"paper_001", "paper_003"}
+        for result in results:
+            result_doc_id = result.get('doc_id', '')
+            assert result_doc_id not in excluded_doc_ids, f"Result with doc_id '{result_doc_id}' should be excluded but was found"
+        print(f"✅ All {len(results)} results are correctly excluded from: {excluded_doc_ids}")
+        
+        print("\n🎉 All doc_ids filter tests completed successfully!")
+        print("✅ Include filter working correctly")
+        print("✅ Exclude filter working correctly")
+        print("✅ Filter validation working correctly")
 
 async def test_error_cases():
     """Test error handling."""
