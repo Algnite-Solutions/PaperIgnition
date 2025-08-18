@@ -79,8 +79,9 @@ def run_extractor_for_timeslot(start_str, end_str):
     image_folder_path = os.path.join(base_dir, "imgs")
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
-    ak = os.getenv("VOLCENGINE_AK")
-    sk = os.getenv("VOLCENGINE_SK")
+    # 从环境变量或配置文件获取密钥，避免硬编码
+    ak = os.getenv("VOLCENGINE_AK", "")
+    sk = os.getenv("VOLCENGINE_SK", "")
 
     extractor = ArxivHTMLExtractor(
         html_text_folder=html_text_folder,

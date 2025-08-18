@@ -196,4 +196,5 @@ orchestrator/pdfs
 orchestrator/imgs
 orchestrator/jsons
 orchestrator/html_url_storage
+orchestrator/tem_blog
 vector_db

@@ -49,7 +49,7 @@ def index_papers_via_api(papers, api_url):
     except Exception as e:
         print("Failed to index papers:", e)
 
-def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1):
+def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
     """Search papers using the /find_similar/ endpoint for a single query.
     Returns a list of DocSet objects corresponding to the results.
     """
@@ -57,7 +57,8 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         "query": query,
         "top_k": 1,
         "similarity_cutoff": similarity_cutoff,
-        "strategy_type": search_strategy
+        "strategy_type": search_strategy,
+        "filters": filters
     }
     try:
         response = httpx.post(f"{api_url}/find_similar/", json=payload, timeout=10.0)
@@ -70,6 +71,10 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
             score = r.get('score', r.get('similarity_score'))
             title = r.get('title', r.get('metadata', {}).get('title'))
             print(f"  doc_id: {r.get('doc_id')}, score: {score}, title: {title}")
+            
+            # Add empty comments field to r
+            r['comments'] = ""
+            
             # Create DocSet instance (handle missing fields gracefully)
             try:
                 docset = DocSet(**r)
@@ -103,7 +108,7 @@ def save_recommendations(username, papers, api_url):
                 f"{api_url}/api/papers/recommend",
                 params={"username": username},
                 json=data,
-                timeout=10.0
+                timeout=100.0
             )
             if resp.status_code == 201:
                 print(f"✅ 推荐写入成功: {paper.get('paper_id')}")
@@ -116,7 +121,7 @@ def get_all_users(backend_api_url):
     """
     获取所有用户信息，返回用户字典列表（含 username, interests_description 等）
     """
-    resp = requests.get(f"{backend_api_url}/api/users/all")
+    resp = requests.get(f"{backend_api_url}/api/users/all", timeout=100.0)
     resp.raise_for_status()
     return resp.json()
 
@@ -143,8 +148,8 @@ def fetch_daily_papers(index_api_url: str, config):
             print("Exiting due to failed health check after initialization.")
             sys.exit(1)
 
-    #papers = paper_pull.fetch_daily_papers()
-    papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
+    papers = paper_pull.fetch_daily_papers()
+    #papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
 
     # 2. Index papers
@@ -160,27 +165,41 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print([user.get("username") for user in all_users])
     for user in all_users:
         username = user.get("username")
-        '''if username != "qizhu@gmail.com":
-            continue'''
+        if username != "test@tongji.edu.cn":
+            continue
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:
             print(f"用户 {username} 无兴趣关键词，跳过推荐。")
             continue
         all_papers = []
-        for query in interests:
+        '''for query in interests:
             print(f"[TF-IDF] 用户 {username} 兴趣: {query}")
             papers = search_papers_via_api(index_api_url, query, 'tf-idf', 0.1)
-            all_papers.extend(papers)
+            all_papers.extend(papers)'''
         for query in interests:
             print(f"[VECTOR] 用户 {username} 兴趣: {query}")
             papers = search_papers_via_api(index_api_url, query, 'vector', 0.1)
             all_papers.extend(papers)
 
+        # 添加去重逻辑：确保论文ID不重复
+        seen_paper_ids = set()
+        unique_papers = []
+        for paper in all_papers:
+            if paper.doc_id not in seen_paper_ids:
+                seen_paper_ids.add(paper.doc_id)
+                unique_papers.append(paper)
+        
+        print(f"去重前论文数量: {len(all_papers)}")
+        print(f"去重后论文数量: {len(unique_papers)}")
+        
+        # 使用去重后的论文列表
+        all_papers = unique_papers
+
         # 4. Generate blog digests for users
         print("Generating blog digests for users...")
         #run_batch_generation(all_papers)
-        blog = await run_batch_generation(papers)
+        blog = await run_batch_generation(all_papers)
         print("Digest generation complete.")
 
     

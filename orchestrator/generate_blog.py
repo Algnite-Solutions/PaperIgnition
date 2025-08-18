@@ -64,8 +64,8 @@ async def run_batch_generation(papers):
     generator = AsyncvLLMGenerator(
         model_name="Qwen/Qwen3-32B", 
         api_base="http://localhost:5666/v1",
-        data_path="../orchestrator/imgs/", 
-        output_path="/data3/guofang/peirongcan/PaperIgnition/blogByQwen")
+        data_path="../imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
     
     config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
     with open(config_path, "r") as f:
