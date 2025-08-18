@@ -85,17 +85,17 @@ class UserPaperRecommendation(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), ForeignKey("users.username"), index=True)
     paper_id = Column(String(50), index=True)  # 论文外部ID (arXiv ID等)
-    # 新增推荐相关字段
     title = Column(String(255), nullable=True)
     authors = Column(String(255), nullable=True)
     abstract = Column(Text, nullable=True)
     url = Column(String(255), nullable=True)
     content = Column(Text, nullable=True)
     blog = Column(Text, nullable=True)
-    # 原有推荐元数据
     recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)
     relevance_score = Column(Float, nullable=True)
     recommendation_reason = Column(Text, nullable=True)
+    submitted = Column(String(255), nullable=True)  # 提交信息
+    comment = Column(Text, nullable=True)  # 评论
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")
