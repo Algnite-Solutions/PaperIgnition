@@ -197,3 +197,4 @@ orchestrator/imgs
 orchestrator/jsons
 orchestrator/html_url_storage
 vector_db
+backend/app/db_utils.py

@@ -2,7 +2,8 @@ let apiBaseUrl: string;
 
 // Standard way to check for production environment
 if (process.env.NODE_ENV === 'production') {
-  apiBaseUrl = process.env.REACT_APP_PROD_API_BASE_URL || 'http://127.0.0.1:8000'; // 生产环境API
+  // 生产环境使用nginx代理，直接使用相对路径
+  apiBaseUrl = process.env.REACT_APP_PROD_API_BASE_URL || '/api'; // 生产环境API (通过nginx代理)
 } 
 // Check for a specific custom environment variable for a staging/test API
 else if (process.env.REACT_APP_USE_STAGING_API === 'true') {
