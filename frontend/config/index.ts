@@ -23,7 +23,7 @@ export default defineConfig<'vite'>(async (merge, { command, mode }) => {
       // Vite will load .env files based on mode (NODE_ENV)
       // These values from Node.js process.env are then passed to the client-side process.env
       'process.env.REACT_APP_DEV_API_BASE_URL': JSON.stringify(process.env.REACT_APP_DEV_API_BASE_URL || 'http://127.0.0.1:8000'),//http://10.0.1.226:8080
-      'process.env.REACT_APP_PROD_API_BASE_URL': JSON.stringify(process.env.REACT_APP_PROD_API_BASE_URL || 'https://your-production-api.com'),
+      'process.env.REACT_APP_PROD_API_BASE_URL': JSON.stringify(process.env.REACT_APP_PROD_API_BASE_URL || ''),
       'process.env.REACT_APP_STAGING_API_BASE_URL': JSON.stringify(process.env.REACT_APP_STAGING_API_BASE_URL || 'https://your-staging-api.com'),
       'process.env.REACT_APP_USE_STAGING_API': JSON.stringify(process.env.REACT_APP_USE_STAGING_API || 'false'),
       // It's crucial to also pass NODE_ENV itself if your src/config/api.ts relies on it directly for logic
