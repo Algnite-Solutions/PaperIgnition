@@ -87,7 +87,9 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
             url=rec.url,
             blog=rec.blog,
             recommendation_reason=rec.recommendation_reason,
-            relevance_score=rec.relevance_score
+            relevance_score=rec.relevance_score,
+            submitted=rec.submitted,  
+            comment=rec.comment        
         )
         db.add(new_rec)
         await db.commit()

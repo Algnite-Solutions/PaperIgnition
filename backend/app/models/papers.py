@@ -37,6 +37,8 @@ class PaperRecommendation(BaseModel):
     blog: Optional[str] = None
     recommendation_reason: Optional[str] = None
     relevance_score: Optional[float] = None
+    submitted: Optional[str] = None  # 提交信息
+    comment: Optional[str] = None    # 评论
 
 # 模拟论文数据
 MOCK_PAPERS = [

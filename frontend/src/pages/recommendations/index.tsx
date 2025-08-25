@@ -40,6 +40,7 @@ const Recommendations = () => {
       
       if (response.ok) {
         const papers = await response.json()
+        console.log(papers)
         dispatch(fetchRecommendationsSuccess({
           papers: papers,
           hasMore: false // 暂时设为false，后续可根据分页需求调整

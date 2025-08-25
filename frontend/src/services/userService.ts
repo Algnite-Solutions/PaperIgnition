@@ -19,7 +19,7 @@ export const fetchUserProfile = async () => {
     }
 
     const response = await Taro.request({
-      url: `${API_BASE_URL}/api/users/me`,
+      url: `${API_BASE_URL}/users/me`,
       method: 'GET',
       header: {
         'Authorization': `Bearer ${token}`
@@ -74,7 +74,7 @@ export const updateUserProfile = async (profileData: any) => {
     }
 
     const response = await Taro.request({
-      url: `${API_BASE_URL}/api/users/me/profile`,
+      url: `${API_BASE_URL}/users/me/profile`,
       method: 'PUT',
       data: profileData,
       header: {
