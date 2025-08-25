@@ -199,3 +199,4 @@ orchestrator/html_url_storage
 orchestrator/tem_blog
 vector_db
 backend/app/db_utils.py
+frontend/pnpm-lock.yaml
