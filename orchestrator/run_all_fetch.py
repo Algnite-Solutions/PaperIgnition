@@ -71,15 +71,34 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
             score = r.get('score', r.get('similarity_score'))
             title = r.get('title', r.get('metadata', {}).get('title'))
             print(f"  doc_id: {r.get('doc_id')}, score: {score}, title: {title}")
-            # Create DocSet instance (handle missing fields gracefully)
+            
+            # Create DocSet instance with proper field handling
             try:
-                docset = DocSet(**r)
-            except TypeError:
-                # If the API response has extra fields, filter them
-                docset_fields = {k: v for k, v in r.items() if k in DocSet.__fields__}
-                docset = DocSet(**docset_fields)
-            print(f"[DocSet] Created with title: {docset.title}")  # Confirm DocSet creation
-            docsets.append(docset)
+                # Prepare data with required fields and defaults
+                docset_data = {
+                    'doc_id': r.get('doc_id'),
+                    'title': r.get('title', 'Unknown Title'),
+                    'authors': r.get('authors', ['Unknown Author']),
+                    'categories': r.get('categories', ['Unknown Category']),
+                    'published_date': r.get('published_date', '2025-01-01'),
+                    'abstract': r.get('abstract', 'No abstract available'),
+                    'text_chunks': r.get('text_chunks', []),
+                    'figure_chunks': r.get('figure_chunks', []),
+                    'table_chunks': r.get('table_chunks', []),
+                    'metadata': r.get('metadata', {}),
+                    'pdf_path': r.get('pdf_path', ''),
+                    'HTML_path': r.get('HTML_path')
+                }
+                
+                # Create DocSet instance
+                docset = DocSet(**docset_data)
+                print(f"[DocSet] Created with title: {docset.title}")
+                docsets.append(docset)
+                
+            except Exception as e:
+                print(f"  Error: Failed to create DocSet: {e}")
+                continue
+                
         return docsets
     except Exception as e:
         print(f"Failed to search for query '{query}':", e)
@@ -150,6 +169,7 @@ def fetch_daily_papers(index_api_url: str, config):
 
     # 2. Index papers
     index_papers_via_api(papers, index_api_url)
+    return papers
 
 def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
     """
