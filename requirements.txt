@@ -9,3 +9,4 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4 
 psycopg2-binary
 schedule
+requests>=2.28.0

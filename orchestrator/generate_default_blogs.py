@@ -163,7 +163,7 @@ def fetch_daily_papers(index_api_url: str, config):
             print("Exiting due to failed health check after initialization.")
             sys.exit(1)
 
-    papers = paper_pull.fetch_daily_papers("202508090000")
+    papers = paper_pull.fetch_daily_papers()
     #papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
 
@@ -204,12 +204,16 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print("Digest generation complete.")
 
     paper_infos = []
-    for paper in all_papers:
+    batch_size = 100
+    batch_count = 0
+    
+    for i, paper in enumerate(all_papers):
         try:
             with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
                 blog = file.read()
         except FileNotFoundError:
             blog = None  # 或者其他处理方式
+        
         paper_infos.append({
             "paper_id": paper.doc_id,
             "title": paper.title,
@@ -221,9 +225,18 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
             "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
             "relevance_score": 0.5
         })
-
-    # 5. Write recommendations
-    save_recommendations(username, paper_infos, backend_api_url)
+        
+        # 每生成100篇就保存一次
+        if len(paper_infos) >= batch_size:
+            batch_count += 1
+            print(f"💾 Saving batch {batch_count} ({len(paper_infos)} papers)...")
+            save_recommendations(username, paper_infos, backend_api_url)
+            paper_infos = []  # 清空当前批次
+    
+    # 保存剩余的论文（如果不足100篇）
+    if paper_infos:
+        print(f"💾 Saving final batch ({len(paper_infos)} papers)...")
+        save_recommendations(username, paper_infos, backend_api_url)
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")

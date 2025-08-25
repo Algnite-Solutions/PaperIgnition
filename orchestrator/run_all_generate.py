@@ -55,7 +55,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     """
     payload = {
         "query": query,
-        "top_k": 1,
+        "top_k": 3,
         "similarity_cutoff": similarity_cutoff,
         "strategy_type": search_strategy,
         "filters": filters
@@ -165,21 +165,51 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print([user.get("username") for user in all_users])
     for user in all_users:
         username = user.get("username")
-        if username != "test@tongji.edu.cn":
-            continue
+        '''if username != "test@tongji.edu.cn":
+            continue'''
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:
             print(f"用户 {username} 无兴趣关键词，跳过推荐。")
             continue
+        
+        # 获取用户已有的论文推荐，用于过滤
+        try:
+            import requests
+            user_papers_response = requests.get(f"{backend_api_url}/api/papers/recommendations/{username}")
+            if user_papers_response.status_code == 200:
+                user_existing_papers = user_papers_response.json()
+                existing_paper_ids = [paper["id"] for paper in user_existing_papers if paper.get("id")]
+                print(f"用户 {username} 已有 {len(existing_paper_ids)} 篇论文推荐")
+                print(f"已有论文ID: {existing_paper_ids[:5]}...")  # 只显示前5个
+            else:
+                existing_paper_ids = []
+                print(f"获取用户 {username} 已有论文失败，状态码: {user_papers_response.status_code}")
+        except Exception as e:
+            print(f"获取用户 {username} 已有论文时出错: {e}")
+            existing_paper_ids = []
+        
         all_papers = []
         '''for query in interests:
             print(f"[TF-IDF] 用户 {username} 兴趣: {query}")
             papers = search_papers_via_api(index_api_url, query, 'tf-idf', 0.1)
             all_papers.extend(papers)'''
+        
         for query in interests:
             print(f"[VECTOR] 用户 {username} 兴趣: {query}")
-            papers = search_papers_via_api(index_api_url, query, 'vector', 0.1)
+            
+            # 构建过滤器，排除用户已有的论文ID
+            if existing_paper_ids:
+                filter_params = {
+                    "exclude": {
+                        "doc_ids": existing_paper_ids
+                    }
+                }
+                print(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
+                papers = search_papers_via_api(index_api_url, query, 'vector', 0.1, filter_params)
+            else:
+                papers = search_papers_via_api(index_api_url, query, 'vector', 0.1)
+            
             all_papers.extend(papers)
 
         # 添加去重逻辑：确保论文ID不重复
@@ -198,32 +228,35 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
 
         # 4. Generate blog digests for users
         print("Generating blog digests for users...")
-        #run_batch_generation(all_papers)
-        blog = await run_batch_generation(all_papers)
-        print("Digest generation complete.")
+        if all_papers:
+            #run_batch_generation(all_papers)
+            blog = await run_batch_generation(all_papers)
+            print("Digest generation complete.")
 
-    
-        paper_infos = []
-        for paper in all_papers:
-            try:
-                with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
-                    blog = file.read()
-            except FileNotFoundError:
-                blog = None  # 或者其他处理方式
-            paper_infos.append({
-                "paper_id": paper.doc_id,
-                "title": paper.title,
-                "authors": ", ".join(paper.authors),
-                "abstract": paper.abstract,
-                "url": paper.HTML_path,
-                "content": paper.abstract,  # 或其他内容
-                "blog": blog,
-                "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
-                "relevance_score": 0.5
-            })
+            paper_infos = []
+            for paper in all_papers:
+                try:
+                    with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
+                        blog = file.read()
+                except FileNotFoundError:
+                    blog = None  # 或者其他处理方式
+                paper_infos.append({
+                    "paper_id": paper.doc_id,
+                    "title": paper.title,
+                    "authors": ", ".join(paper.authors),
+                    "abstract": paper.abstract,
+                    "url": paper.HTML_path,
+                    "content": paper.abstract,  # 或其他内容
+                    "blog": blog,
+                    "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
+                    "relevance_score": 0.5
+                })
 
-        # 5. Write recommendations
-        save_recommendations(username, paper_infos, backend_api_url)
+            # 5. Write recommendations
+            save_recommendations(username, paper_infos, backend_api_url)
+        else:
+            print("没有找到相关论文，跳过博客生成和推荐保存")
+            return
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")

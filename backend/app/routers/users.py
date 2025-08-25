@@ -8,14 +8,19 @@ from sqlalchemy.orm import selectinload
 import asyncio
 import logging
 from sqlalchemy import and_
+import requests
+import yaml
+from pathlib import Path
+import sys
+import os
 # 从rewrite.py导入翻译相关函数，而不是整个函数
 from ..scripts.rewrite import get_openai_client, translate_text
 
 # 设置日志
 logger = logging.getLogger(__name__)
 
-from ..models.users import User, ResearchDomain, user_domain_association
-from ..db_utils import get_db
+from ..models.users import User, ResearchDomain, user_domain_association, UserPaperRecommendation
+from ..db_utils import get_db, INDEX_SERVICE_URL
 
 from ..auth.schemas import UserOut, UserProfileUpdate
 from ..auth.utils import get_current_user
@@ -35,6 +40,55 @@ class RewriteInterestUpdate(BaseModel):
     rewrite_interest: str
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
+    """Search papers using the /find_similar/ endpoint for a single query.
+    Returns a list of paper dictionaries corresponding to the results.
+    """
+    payload = {
+        "query": query,
+        "top_k": 3,
+        "similarity_cutoff": similarity_cutoff,
+        "strategy_type": search_strategy,
+        "filters": filters
+    }
+    try:
+        response = requests.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)
+        response.raise_for_status()
+        results = response.json()
+        logger.info(f"搜索结果数量: {len(results)} for query '{query}'")
+        return results
+    except Exception as e:
+        logger.error(f"搜索论文失败 '{query}': {e}")
+        return []
+
+def save_recommendations(username, papers, backend_api_url):
+    """保存推荐论文到数据库"""
+    for paper in papers:
+        data = {
+            "paper_id": paper.get("doc_id"),
+            "title": paper.get("title", ""),
+            "authors": paper.get("authors", ""),
+            "abstract": paper.get("abstract", ""),
+            "url": paper.get("url", ""),
+            "content": paper.get("content", ""),
+            "blog": paper.get("blog", ""),
+            "recommendation_reason": paper.get("recommendation_reason", ""),
+            "relevance_score": paper.get("score", 0.0)
+        }
+        try:
+            resp = requests.post(
+                f"{backend_api_url}/api/papers/recommend",
+                params={"username": username},
+                json=data,
+                timeout=30.0
+            )
+            if resp.status_code == 201:
+                logger.info(f"✅ 推荐写入成功: {paper.get('doc_id')}")
+            else:
+                logger.error(f"❌ 推荐写入失败: {paper.get('doc_id')}，原因: {resp.text}")
+        except Exception as e:
+            logger.error(f"❌ 推荐写入异常: {paper.get('doc_id')}，错误: {e}")
 
 @router.get("/me", response_model=UserOut)
 async def get_current_user_info(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -168,31 +222,158 @@ async def update_user_profile(
     # 检查research_interests_text是否有变化
     research_interests_changed = False
     new_research_interests_text = None
+    logger.info(f"用户 {current_user.username} 的interests_description为: {current_user.interests_description}")
     
     if profile_data.research_interests_text is not None and profile_data.research_interests_text != current_user.research_interests_text:
+        logger.info(f"更新用户 {current_user.username} 的research_interests_text")
         research_interests_changed = True
         new_research_interests_text = profile_data.research_interests_text
         current_user.research_interests_text = profile_data.research_interests_text
         logger.info(f"用户 {current_user.username} 的research_interests_text已更新: '{new_research_interests_text[:30]}...'")
         
     if profile_data.email is not None:
+        logger.info(f"更新用户 {current_user.username} 的email")
         current_user.email = profile_data.email
     if profile_data.push_frequency is not None:
+        logger.info(f"更新用户 {current_user.username} 的push_frequency")
         current_user.push_frequency = profile_data.push_frequency
     if profile_data.interests_description is not None:
+        logger.info(f"更新用户 {current_user.username} 的interests_description")
+         # 在这里增加一个推荐paper的逻辑
+        if current_user.interests_description == [] or current_user.interests_description == None:
+            logger.info(f"用户 {current_user.username} 的interests_description为空，更新为: {profile_data.interests_description}")
+            current_user.interests_description = profile_data.interests_description
+            try:
+                # 1. 获取BlogBot@gmail.com用户的推荐论文
+                blogbot_result = await db.execute(
+                    select(UserPaperRecommendation).where(
+                        UserPaperRecommendation.username == "BlogBot@gmail.com"
+                    )
+                )
+                blogbot_recommendations = blogbot_result.scalars().all()
+                
+                if blogbot_recommendations:
+                    logger.info(f"找到BlogBot用户推荐论文数量: {len(blogbot_recommendations)}")
+                    
+                    # 2. 使用用户的interests_description进行向量搜索
+                    all_recommendations = []
+                    
+                    # 获取用户已有的论文ID，避免重复推荐
+                    existing_rec_result = await db.execute(
+                        select(UserPaperRecommendation.paper_id).where(
+                            UserPaperRecommendation.username == current_user.username
+                        )
+                    )
+                    existing_paper_ids = [rec.paper_id for rec in existing_rec_result.scalars().all()]
+                    
+                    # 获取BlogBot用户推荐记录中的论文ID列表
+                    blogbot_paper_ids = [rec.paper_id for rec in blogbot_recommendations if rec.paper_id]
+                    logger.info(f"BlogBot推荐论文ID数量: {len(blogbot_paper_ids)}")
+                    
+                    # 为每个兴趣关键词进行搜索
+                    for interest in profile_data.interests_description:
+                        logger.info(f"为用户兴趣 '{interest}' 搜索相关论文")
+                        
+                        # 构建过滤器：包含BlogBot推荐的论文ID，排除用户已有的论文ID
+                        filter_params = {
+                            "include": {
+                                "doc_ids": blogbot_paper_ids
+                            }
+                        }
+                        
+                        if existing_paper_ids:
+                            filter_params["exclude"] = {
+                                "doc_ids": existing_paper_ids
+                            }
+                            logger.info(f"应用过滤器：包含 {len(blogbot_paper_ids)} 个BlogBot推荐论文，排除 {len(existing_paper_ids)} 个已有论文ID")
+                        else:
+                            logger.info(f"应用过滤器：包含 {len(blogbot_paper_ids)} 个BlogBot推荐论文")
+                        
+                        search_results = search_papers_via_api(
+                            INDEX_SERVICE_URL, 
+                            interest, 
+                            'vector', 
+                            0.1, 
+                            filter_params
+                        )
+                        
+                        # 将搜索结果添加到推荐列表
+                        for result in search_results:
+                            paper_id = result.get('doc_id')
+                            
+                            # 从BlogBot用户的推荐记录中获取对应的blog内容
+                            blogbot_blog_result = await db.execute(
+                                select(UserPaperRecommendation.blog).where(
+                                    and_(
+                                        UserPaperRecommendation.username == "BlogBot@gmail.com",
+                                        UserPaperRecommendation.paper_id == paper_id
+                                    )
+                                )
+                            )
+                            blogbot_blog = blogbot_blog_result.scalar_one_or_none()
+                            
+                            # 检查是否已经存在相同的推荐
+                            existing_rec = await db.execute(
+                                select(UserPaperRecommendation).where(
+                                    and_(
+                                        UserPaperRecommendation.username == current_user.username,
+                                        UserPaperRecommendation.paper_id == paper_id
+                                    )
+                                )
+                            )
+                            
+                            if not existing_rec.scalar_one_or_none():
+                                # 创建新的推荐记录
+                                # 处理authors字段：如果是列表则转换为字符串
+                                authors_data = result.get('authors', '')
+                                if isinstance(authors_data, list):
+                                    authors_data = ', '.join(authors_data)
+                                elif authors_data is None:
+                                    authors_data = ''
+                                
+                                new_recommendation = UserPaperRecommendation(
+                                    username=current_user.username,
+                                    paper_id=paper_id,
+                                    title=result.get('title', ''),
+                                    authors=authors_data,
+                                    abstract=result.get('abstract', ''),
+                                    url=result.get('url', ''),
+                                    content=result.get('content', ''),
+                                    blog=blogbot_blog or '',  # 使用从BlogBot记录中获取的blog内容
+                                    recommendation_reason=f"基于用户兴趣'{interest}'的向量搜索，从BlogBot推荐论文中筛选，相似度: {result.get('score', 0):.3f}",
+                                    relevance_score=result.get('score', 0.0)
+                                )
+                                db.add(new_recommendation)
+                                logger.info(f"为用户 {current_user.username} 添加推荐论文: {paper_id}")
+                    
+                    # 提交所有新的推荐记录
+                    await db.commit()
+                    logger.info(f"成功为用户 {current_user.username} 生成推荐论文")
+                    
+                else:
+                    logger.info("未找到BlogBot用户的推荐论文")
+                    
+            except Exception as e:
+                logger.error(f"生成推荐论文时出错: {e}")
+                # 不抛出异常，避免影响主流程
+        
         current_user.interests_description = profile_data.interests_description
         
+    # 处理研究领域更新
     if profile_data.research_domain_ids is not None:
+        logger.info(f"更新用户 {current_user.username} 的研究领域")
         result = await db.execute(select(ResearchDomain).where(ResearchDomain.id.in_(profile_data.research_domain_ids)))
         research_domains = result.scalars().all()
         if len(research_domains) != len(profile_data.research_domain_ids):
-             raise HTTPException(status_code=400, detail="一个或多个提供的研究领域ID无效。")
+            raise HTTPException(status_code=400, detail="一个或多个提供的研究领域ID无效。")
         current_user.research_domains = research_domains
-
+        
+    # 提交用户信息更新
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
     
+
     # 如果research_interests_text有变化，创建真正的后台任务进行翻译
     if research_interests_changed and new_research_interests_text:
         try:
