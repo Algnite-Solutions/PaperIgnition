@@ -1,5 +1,5 @@
 import paper_pull
-from generate_blog import run_batch_generation
+from generate_blog import run_batch_generation, run_batch_generation_abs, run_batch_generation_title
 #from backend.index_service import index_papers
 import requests
 import os
@@ -55,7 +55,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     """
     payload = {
         "query": query,
-        "top_k": 3,
+        "top_k": 5,
         "similarity_cutoff": similarity_cutoff,
         "strategy_type": search_strategy,
         "filters": filters
@@ -101,7 +101,9 @@ def save_recommendations(username, papers, api_url):
             "content": paper.get("content", ""),  # 必须补全
             "blog": paper.get("blog", ""),
             "recommendation_reason": paper.get("recommendation_reason", ""),
-            "relevance_score": paper.get("relevance_score", None)
+            "relevance_score": paper.get("relevance_score", None),
+            "blog_abs": paper.get("blog_abs", ""),
+            "blog_title": paper.get("blog_title", ""),
         }
         try:
             resp = httpx.post(
@@ -165,8 +167,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print([user.get("username") for user in all_users])
     for user in all_users:
         username = user.get("username")
-        '''if username != "test@tongji.edu.cn":
-            continue'''
+        if username != "test@tongji.edu.cn":
+            continue
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:
@@ -233,13 +235,20 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
             blog = await run_batch_generation(all_papers)
             print("Digest generation complete.")
 
+            blog_abs = await run_batch_generation_abs(all_papers)
+            blog_title = await run_batch_generation_title(all_papers)
             paper_infos = []
-            for paper in all_papers:
+            for i, paper in enumerate(all_papers):
                 try:
                     with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
                         blog = file.read()
                 except FileNotFoundError:
                     blog = None  # 或者其他处理方式
+                
+                # 获取对应的博客摘要和标题
+                blog_abs_content = blog_abs[i] if blog_abs and i < len(blog_abs) else None
+                blog_title_content = blog_title[i] if blog_title and i < len(blog_title) else None
+                
                 paper_infos.append({
                     "paper_id": paper.doc_id,
                     "title": paper.title,
@@ -249,14 +258,16 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
                     "content": paper.abstract,  # 或其他内容
                     "blog": blog,
                     "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
-                    "relevance_score": 0.5
+                    "relevance_score": 0.5,
+                    "blog_abs": blog_abs_content,
+                    "blog_title": blog_title_content,
                 })
 
             # 5. Write recommendations
             save_recommendations(username, paper_infos, backend_api_url)
         else:
             print("没有找到相关论文，跳过博客生成和推荐保存")
-            return
+            continue
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")

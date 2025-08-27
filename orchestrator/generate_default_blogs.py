@@ -106,7 +106,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
 
 def save_recommendations(username, papers, api_url):
     for paper in papers:
-        print(paper)
+        #print(paper)
         data = {
             "paper_id": paper.get("paper_id"),
             "title": paper.get("title", ""),
@@ -163,8 +163,8 @@ def fetch_daily_papers(index_api_url: str, config):
             print("Exiting due to failed health check after initialization.")
             sys.exit(1)
 
-    papers = paper_pull.fetch_daily_papers()
-    #papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
+    #papers = paper_pull.fetch_daily_papers()
+    papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
 
     # 2. Index papers
@@ -191,52 +191,57 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     # 使用去重后的论文列表
     all_papers = unique_papers
 
-    # 4. Generate blog digests for users
+    # 4. Generate blog digests for users in batches
     print("Generating blog digests for users...")
-    #run_batch_generation(all_papers)
-    try:
-        blog = await run_batch_generation(all_papers)
-        print("✅ Blog generation completed successfully")
-    except Exception as e:
-        print(f"❌ Blog generation failed: {e}")
-        return
     
-    print("Digest generation complete.")
-
-    paper_infos = []
-    batch_size = 100
-    batch_count = 0
+    batch_size = 50
+    total_papers = len(all_papers)
+    processed_count = 0
     
-    for i, paper in enumerate(all_papers):
+    for batch_start in range(0, total_papers, batch_size):
+        batch_end = min(batch_start + batch_size, total_papers)
+        batch_papers = all_papers[batch_start:batch_end]
+        
+        print(f"🔄 Processing batch {batch_start//batch_size + 1}: papers {batch_start+1}-{batch_end} of {total_papers}")
+        
         try:
-            with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
-                blog = file.read()
-        except FileNotFoundError:
-            blog = None  # 或者其他处理方式
-        
-        paper_infos.append({
-            "paper_id": paper.doc_id,
-            "title": paper.title,
-            "authors": ", ".join(paper.authors),
-            "abstract": paper.abstract,
-            "url": paper.HTML_path,
-            "content": paper.abstract,  # 或其他内容
-            "blog": blog,
-            "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
-            "relevance_score": 0.5
-        })
-        
-        # 每生成100篇就保存一次
-        if len(paper_infos) >= batch_size:
-            batch_count += 1
-            print(f"💾 Saving batch {batch_count} ({len(paper_infos)} papers)...")
+            # 生成当前批次的博客
+            await run_batch_generation(batch_papers)
+            print(f"✅ Blog generation completed for batch {batch_start//batch_size + 1}")
+            
+            # 立即处理并保存当前批次的论文
+            paper_infos = []
+            for paper in batch_papers:
+                try:
+                    with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
+                        blog = file.read()
+                except FileNotFoundError:
+                    blog = None
+                
+                paper_infos.append({
+                    "paper_id": paper.doc_id,
+                    "title": paper.title,
+                    "authors": ", ".join(paper.authors),
+                    "abstract": paper.abstract,
+                    "url": paper.HTML_path,
+                    "content": paper.abstract,
+                    "blog": blog,
+                    "recommendation_reason": f"This is a dummy recommendation reason for paper {paper.title}",
+                    "relevance_score": 0.5
+                })
+            
+            # 保存当前批次
+            print(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
             save_recommendations(username, paper_infos, backend_api_url)
-            paper_infos = []  # 清空当前批次
+            
+            processed_count += len(batch_papers)
+            print(f"📊 Progress: {processed_count}/{total_papers} papers processed")
+            
+        except Exception as e:
+            print(f"❌ Blog generation failed for batch {batch_start//batch_size + 1}: {e}")
+            continue
     
-    # 保存剩余的论文（如果不足100篇）
-    if paper_infos:
-        print(f"💾 Saving final batch ({len(paper_infos)} papers)...")
-        save_recommendations(username, paper_infos, backend_api_url)
+    print(f"🎉 All batches completed! Total processed: {processed_count}/{total_papers}")
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
