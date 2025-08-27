@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  paperignition-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paperignition-frontend
+    ports:
+      - "10086:10086"
+    environment:
+      - NODE_ENV=production
+      # 服务器配置 - 开发环境
+      - SERVER_NAME=localhost
+      - BACKEND_API_URL=http://10.0.1.226:8888
+    volumes:
+      # 挂载nginx日志目录
+      - ./logs:/var/log/nginx
+    restart: unless-stopped
+    networks:
+      - paperignition-network
+
+networks:
+  paperignition-network:
+    driver: bridge 

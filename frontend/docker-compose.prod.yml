@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  paperignition-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paperignition-frontend-prod
+    ports:
+      - "10086:10086"
+    environment:
+      - NODE_ENV=production
+      # 生产环境配置 - 根据实际服务器修改
+      - SERVER_NAME=120.55.55.116  # 修改为你的服务器公网IP
+      - BACKEND_API_URL=http://10.0.1.226:8888
+    volumes:
+      # 挂载nginx日志目录
+      - ./logs:/var/log/nginx
+    restart: always
+    networks:
+      - paperignition-network-prod
+    # 生产环境资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:10086/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  paperignition-network-prod:
+    driver: bridge 
