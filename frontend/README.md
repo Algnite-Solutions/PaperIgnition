@@ -1,4 +1,4 @@
-# PaperIgnition 前端 Docker 部署指南
+# PaperIgnition 前端 Docker 部署
 
 ## 🐳 Docker 部署方式
 
@@ -22,6 +22,13 @@ docker run -d -p 10086:10086 \
 
 ### 方式二：本地构建镜像
 
+#### 2.1 使用 Docker Compose（推荐）
+```bash
+# 一键构建并启动（支持本地和公网访问）
+docker-compose up -d --build
+```
+
+#### 2.2 手动构建
 ```bash
 # 1. 检查Docker环境
 docker info
@@ -34,7 +41,7 @@ docker images | grep paperignition-frontend
 
 # 4. 运行容器
 docker run -d -p 10086:10086 \
-  -e SERVER_NAME=你的服务器IP \
+  -e SERVER_NAME=0.0.0.0 \
   -e BACKEND_API_URL=http://10.0.1.226:8888 \
   --name paperignition-frontend \
   paperignition-frontend:latest

@@ -10,8 +10,8 @@ services:
       - "10086:10086"
     environment:
       - NODE_ENV=production
-      # 服务器配置 - 开发环境
-      - SERVER_NAME=localhost
+      # 通用配置 - 支持本地和公网访问
+      - SERVER_NAME=0.0.0.0
       - BACKEND_API_URL=http://10.0.1.226:8888
     volumes:
       # 挂载nginx日志目录
