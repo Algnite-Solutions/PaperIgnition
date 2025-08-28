@@ -167,8 +167,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print([user.get("username") for user in all_users])
     for user in all_users:
         username = user.get("username")
-        if username != "test@tongji.edu.cn":
-            continue
+        '''if username != "test@tongji.edu.cn":
+            continue'''
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:

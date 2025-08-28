@@ -171,7 +171,7 @@ async def translate_and_update_in_background(user_id: int, text_to_translate: st
         logger.info(f"开始后台翻译任务: 用户ID={user_id}, 文本='{text_to_translate[:30]}...'")
         
         # 初始化OpenAI客户端
-        client = get_openai_client()
+        client = get_openai_client(base_url="https://api.deepseek.com", api_key="sk-7d1b4bfa589c45f9a352d3e22623eec1")
         logger.info(f"OpenAI客户端初始化成功")
         
         # 翻译文本

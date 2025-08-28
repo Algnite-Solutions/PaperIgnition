@@ -17,18 +17,6 @@ from AIgnite.data.docset import DocSetList, DocSet
 import httpx
 import sys
 
-
-def initialize_database(api_url, config):
-    try:
-        payload = {"config": config}
-        response = httpx.post(f"{api_url}/init_database", json=payload, params={"recreate_databases": True}, timeout=60.0)
-        response.raise_for_status()
-        print("✅ Database and indexer initialized:", response.json())
-        return True
-    except Exception as e:
-        print("❌ Failed to initialize database/indexer:", e)
-        return False
-
 def check_connection_health(api_url, timeout=5.0):
     try:
         response = httpx.get(f"{api_url}/health", timeout=timeout)
@@ -126,9 +114,6 @@ def fetch_past_n_days_papers(n_days: int, index_api_url: str, config):
     health = check_connection_health(index_api_url)
     if health == "not_ready" or not health:
         print("Attempting to initialize index service...")
-        if not initialize_database(index_api_url, config):
-            print("Exiting due to failed indexer initialization.")
-            sys.exit(1)
         # Re-check health after initialization
         if not check_connection_health(index_api_url):
             print("Exiting due to failed health check after initialization.")

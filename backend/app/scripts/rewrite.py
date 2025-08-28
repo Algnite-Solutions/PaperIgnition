@@ -18,7 +18,7 @@ def translate_text(client, text):
     """使用Qwen翻译文本，并处理输出以获取纯翻译结果"""
     try:
         resp = client.chat.completions.create(
-            model="Qwen/Qwen3-32B",
+            model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "You are a professional translator. Translate the Chinese text to English accurately. ONLY return the translated English text without ANY explanations, thoughts, or additional content. Do not include phrases like 'Translation:', 'Here's the translation:', etc."},
                 {"role": "user", "content": f"Translate this Chinese text to English: {text}"}
