@@ -1,7 +1,30 @@
 import requests
 from openai import OpenAI
 import re
+import logging
+logger = logging.getLogger(__name__)
 
+def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
+    """Search papers using the /find_similar/ endpoint for a single query.
+    Returns a list of paper dictionaries corresponding to the results.
+    """
+    payload = {
+        "query": query,
+        "top_k": 3,
+        "similarity_cutoff": similarity_cutoff,
+        "strategy_type": search_strategy,
+        "filters": filters
+    }
+    try:
+        response = requests.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)
+        response.raise_for_status()
+        results = response.json()
+        logger.info(f"搜索结果数量: {len(results)} for query '{query}'")
+        return results
+    except Exception as e:
+        logger.error(f"搜索论文失败 '{query}': {e}")
+        return []
+        
 def get_openai_client(base_url="http://10.0.1.226:5666/v1", api_key="EMPTY"):
     """初始化OpenAI客户端"""
     return OpenAI(

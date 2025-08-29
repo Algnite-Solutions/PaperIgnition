@@ -13,8 +13,8 @@ import yaml
 from pathlib import Path
 import sys
 import os
-# 从rewrite.py导入翻译相关函数，而不是整个函数
-from ..scripts.rewrite import get_openai_client, translate_text
+# 从utils目录导入index_utils
+from ..utils.index_utils import get_openai_client, translate_text, search_papers_via_api
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -40,27 +40,6 @@ class RewriteInterestUpdate(BaseModel):
     rewrite_interest: str
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
-    """Search papers using the /find_similar/ endpoint for a single query.
-    Returns a list of paper dictionaries corresponding to the results.
-    """
-    payload = {
-        "query": query,
-        "top_k": 3,
-        "similarity_cutoff": similarity_cutoff,
-        "strategy_type": search_strategy,
-        "filters": filters
-    }
-    try:
-        response = requests.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)
-        response.raise_for_status()
-        results = response.json()
-        logger.info(f"搜索结果数量: {len(results)} for query '{query}'")
-        return results
-    except Exception as e:
-        logger.error(f"搜索论文失败 '{query}': {e}")
-        return []
 
 def save_recommendations(username, papers, backend_api_url):
     """保存推荐论文到数据库"""
