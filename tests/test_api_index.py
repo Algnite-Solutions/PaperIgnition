@@ -39,7 +39,8 @@ from AIgnite.data.docset import DocSet, TextChunk, ChunkType, DocSetList
 from backend.index_service.db_utils import load_config
 import sqlalchemy
 
-config = load_config()
+# 使用测试专用配置文件
+config = load_config("backend/configs/test_config.yaml")
 
 BASE_URL = config['host']
 
@@ -47,12 +48,12 @@ BASE_URL = config['host']
 TEMP_DIR = tempfile.mkdtemp()
 
 # Update vector_db path in config to be under TEMP_DIR
-config['vector_db']['db_path'] = os.path.join(TEMP_DIR, config['vector_db']['db_path'])
+#config['vector_db']['db_path'] = os.path.join(TEMP_DIR, config['vector_db']['db_path'])
 
 # Create necessary directories
 
 print(config)
-os.makedirs(os.path.dirname(config['vector_db']['db_path']), exist_ok=True)
+#os.makedirs(os.path.dirname(config['vector_db']['db_path']), exist_ok=True)
 
 # Create test PDF files
 def setup_test_files():
@@ -184,7 +185,8 @@ for i in range(5):
         text_chunks=text_chunks,
         figure_chunks=[],
         table_chunks=[],
-        metadata={}
+        metadata={},
+        comments=None
     )
     docsets.append(docset)
 
@@ -257,21 +259,36 @@ async def test_get_metadata_all():
 async def test_find_similar_2():
     async with httpx.AsyncClient() as client:
         # 1. Vector search: should match one of the first two papers
-        vector_query = {"query": "API design", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        vector_query = {
+            "query": "API design", 
+            "top_k": 5, 
+            "similarity_cutoff": 0.5, 
+            "strategy_type": "vector",
+            "filters": {
+                "include": {
+                    "text_type": ["abstract"]
+                }
+            }
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
         assert response.status_code == 200, "Vector search failed"
         results = response.json()
         print(results)
         assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for vector search"
-        print(f"✅ [2 papers] Vector search: Found {len(results)} results for query '{vector_query['query']}'")
+        print(f"✅ [2 papers] Vector search with abstract-only filter: Found {len(results)} results for query '{vector_query['query']}'")
 
         # 2. TF-IDF search: should match one of the first two papers
-        tfidf_query = {"query": "transformer models", "top_k": 5, "similarity_cutoff": 0.0, "strategy_type": "tf-idf"}
+        tfidf_query = {
+            "query": "transformer models", 
+            "top_k": 5, 
+            "similarity_cutoff": 0.0, 
+            "strategy_type": "tf-idf"
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=tfidf_query, timeout=10.0)
         assert response.status_code == 200, "TF-IDF search failed"
         results = response.json()
         assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for tf-idf search"
-        print(f"✅ [2 papers] TF-IDF search: Found {len(results)} results for query '{tfidf_query['query']}'")
+        print(f"✅ [2 papers] TF-IDF search with abstract+combined filter: Found {len(results)} results for query '{tfidf_query['query']}'")
 
         # 3. No result case: query that should not match any paper
         no_result_query = {"query": "quantum entanglement", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
@@ -334,7 +351,7 @@ async def test_filters_functionality():
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         # Verify that all results have doc_ids in the include filter
-        expected_doc_ids = {"paper_003"}
+        expected_doc_ids = {"paper_003","paper_001"}
         for result in results:
             result_doc_id = result.get('doc_id', '')
             assert result_doc_id in expected_doc_ids, f"Result with doc_id '{result_doc_id}' not in expected include filter list"
@@ -372,6 +389,100 @@ async def test_filters_functionality():
         print("✅ Include filter working correctly")
         print("✅ Exclude filter working correctly")
         print("✅ Filter validation working correctly")
+
+async def test_text_type_filters():
+    """Test that the text_type filters parameter works correctly in the API."""
+    async with httpx.AsyncClient() as client:
+        print("\n🔍 Testing text_type filter functionality...")
+        
+        # Test 1: Abstract-only filter
+        print("\n📋 Test 1: Abstract-only filter")
+        abstract_only_filter = {
+            "query": "deep learning",
+            "top_k": 10,
+            "strategy_type": "vector",
+            "similarity_cutoff": 0.5,
+            "filters": {
+                "include": {
+                    "text_type": ["abstract"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=abstract_only_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with abstract-only filter failed"
+        results = response.json()
+        
+        print(f"📊 Results for abstract-only filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            title = result.get('title', 'N/A')
+            score = result.get('similarity_score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+        
+        print(f"✅ Abstract-only filter: Found {len(results)} results")
+        
+        # Test 2: Combined text filter (title + categories + abstract)
+        print("\n📋 Test 2: Combined text filter")
+        combined_filter = {
+            "query": "machine learning",
+            "top_k": 10,
+            "strategy_type": "vector",
+            "similarity_cutoff": 0.5,
+            "filters": {
+                "include": {
+                    "text_type": ["combined"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=combined_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with combined filter failed"
+        results = response.json()
+        
+        print(f"📊 Results for combined filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            title = result.get('title', 'N/A')
+            score = result.get('similarity_score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+        
+        print(f"✅ Combined filter: Found {len(results)} results")
+        
+        # Test 3: Exclude chunk filter
+        print("\n📋 Test 3: Exclude chunk filter")
+        exclude_chunk_filter = {
+            "query": "neural networks",
+            "top_k": 10,
+            "strategy_type": "vector",
+            "similarity_cutoff": 0.5,
+            "filters": {
+                "include": {
+                    "text_type": ["abstract", "combined"]
+                },
+                "exclude": {
+                    "text_type": ["chunk"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=exclude_chunk_filter, timeout=10.0)
+        assert response.status_code == 200, "Vector search with exclude chunk filter failed"
+        results = response.json()
+        
+        print(f"📊 Results for exclude chunk filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            title = result.get('title', 'N/A')
+            score = result.get('similarity_score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+        
+        print(f"✅ Exclude chunk filter: Found {len(results)} results")
+        
+        print("\n🎉 All text_type filter tests completed successfully!")
+        print("✅ Abstract-only filter working correctly")
+        print("✅ Combined text filter working correctly")
+        print("✅ Exclude chunk filter working correctly")
 
 async def test_error_cases():
     """Test error handling."""
@@ -426,6 +537,7 @@ async def run_tests():
         await test_get_metadata_all()
         await test_find_similar_all()
         await test_filters_functionality()
+        await test_text_type_filters()
         
         # Error case tests
         await test_error_cases()

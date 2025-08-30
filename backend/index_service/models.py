@@ -30,13 +30,20 @@ class CustomerQuery(BaseModel):
                 "published_date": ["2023-01-01", "2023-12-31"],
                 "doc_ids": ["doc1", "doc2"],
                 "title_keywords": ["machine learning"],
-                "abstract_keywords": ["neural networks"]
+                "abstract_keywords": ["neural networks"],
+                "text_type": ["abstract", "chunk", "combined"]
             },
             "exclude": {
                 "categories": ["cs.CR"],
-                "authors": ["Jane Smith"]
+                "authors": ["Jane Smith"],
+                "text_type": ["chunk"]
             }
         }
+        
+        text_type filter supports three values:
+        - "abstract": Search only in paper abstracts
+        - "chunk": Search only in text chunks
+        - "combined": Search in title + categories + abstract combination
         
         Also supports backward compatibility with simple format:
         {"doc_ids": ["doc1", "doc2"]}

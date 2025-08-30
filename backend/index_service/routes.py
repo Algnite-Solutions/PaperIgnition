@@ -77,7 +77,8 @@ async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
                 text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
                 figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
                 table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
-                metadata=paper.metadata or {}
+                metadata=paper.metadata or {},
+                comments=paper.comments
             ))
         success = index_papers(paper_indexer, docsets)
         if not success:
@@ -155,7 +156,7 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
                     )
                 
                 # Check for unsupported fields
-                supported_fields = {'categories', 'authors', 'published_date', 'doc_ids', 'title_keywords', 'abstract_keywords'}
+                supported_fields = {'categories', 'authors', 'published_date', 'doc_ids', 'title_keywords', 'abstract_keywords', 'text_type'}
                 
                 for filter_type in ["include", "exclude"]:
                     if filter_type in query.filters:
