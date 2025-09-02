@@ -91,6 +91,8 @@ class UserPaperRecommendation(Base):
     url = Column(String(255), nullable=True)
     content = Column(Text, nullable=True)
     blog = Column(Text, nullable=True)
+    blog_title = Column(Text, nullable=True)  # 博客标题
+    blog_abs = Column(Text, nullable=True)    # 博客摘要
     recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)
     relevance_score = Column(Float, nullable=True)

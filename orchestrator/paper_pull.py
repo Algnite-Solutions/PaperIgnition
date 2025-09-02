@@ -22,7 +22,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 6)
+    time_slots = divide_a_day_into(time, 3)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
@@ -32,6 +32,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
         os.makedirs(path, exist_ok=True)
 
     #fetch daily papers in parallel
+    newly_fetched_ids = set()
     with ThreadPoolExecutor(max_workers=1) as executor:
         futures = []
         for i in range(len(time_slots) - 1):
@@ -40,19 +41,30 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
             futures.append(executor.submit(run_extractor_for_timeslot, start_str, end_str))
 
         for f in futures:
-            f.result()
+            result = f.result()
+            if result:  # 如果返回了新抓取的ID列表
+                newly_fetched_ids.update(result)
     
-    #summary docs from json
+    print(f"📊 新抓取论文ID数量: {len(newly_fetched_ids)}")
+    
+    #summary docs from json - only return newly fetched papers
+    new_docs = []
     for json_file in Path(json_output_path).glob("*.json"):
-        with open(json_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            try:
-                docset = DocSet(**data)
-                docs.append(docset)
-            except Exception as e:
-                print(f"Failed to parse {json_file.name}: {e}")
-
-    return docs
+        # 检查文件名是否包含新抓取的arxiv ID
+        file_name = json_file.stem  # 去掉.json扩展名
+        if file_name in newly_fetched_ids:
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                try:
+                    docset = DocSet(**data)
+                    new_docs.append(docset)
+                    print(f"✅ 新抓取论文: {docset.doc_id} - {docset.title}")
+                except Exception as e:
+                    print(f"Failed to parse {json_file.name}: {e}")
+    
+    print(f"📊 新抓取论文数量: {len(new_docs)}")
+    
+    return new_docs
 
 def dummy_paper_fetch(file_path: str) -> list[DocSet]:
     docs = []
@@ -79,8 +91,9 @@ def run_extractor_for_timeslot(start_str, end_str):
     image_folder_path = os.path.join(base_dir, "imgs")
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
-    ak = os.getenv("VOLCENGINE_AK")
-    sk = os.getenv("VOLCENGINE_SK")
+    # 从环境变量或配置文件获取密钥，避免硬编码
+    ak = os.getenv("VOLCENGINE_AK", "")
+    sk = os.getenv("VOLCENGINE_SK", "")
 
     extractor = ArxivHTMLExtractor(
         html_text_folder=html_text_folder,
@@ -98,15 +111,21 @@ def run_extractor_for_timeslot(start_str, end_str):
     extractor.pdf_parser_helper.docs = extractor.docs
     extractor.pdf_parser_helper.remain_docparser()
     extractor.docs = extractor.pdf_parser_helper.docs
+    
+    # 记录新抓取的论文ID
+    newly_fetched_ids = [doc.doc_id for doc in extractor.docs]
+    
     extractor.serialize_docs()
+    
+    return newly_fetched_ids
 
 
 
-def get_time_str(location = "Asia/Shanghai"):
+def get_time_str(location = "Asia/Shanghai", count_delay = 1):
     # 设定本地时区（可根据需要修改）
     local_tz = ZoneInfo(location)  # 例如上海
     # 获取本地当前时间，精确到分钟
-    local_now = datetime.now(local_tz).replace(second=0, microsecond=0)
+    local_now = (datetime.now(local_tz)-timedelta(days=count_delay)).replace(second=0, microsecond=0)
     # 转换为UTC时间
     utc_now = local_now.astimezone(ZoneInfo("UTC"))
     # 转为指定格式字符串

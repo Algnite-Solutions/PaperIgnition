@@ -64,8 +64,8 @@ async def run_batch_generation(papers):
     generator = AsyncvLLMGenerator(
         model_name="Qwen/Qwen3-32B", 
         api_base="http://localhost:5666/v1",
-        data_path="../orchestrator/imgs/", 
-        output_path="/data3/guofang/peirongcan/PaperIgnition/blogByQwen")
+        data_path="../imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
     
     config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
     with open(config_path, "r") as f:
@@ -91,8 +91,73 @@ async def run_batch_generation(papers):
             prompt = prompt[:10000]
         prompts.append(prompt)
     try:
-        blog = await generator.batch_generate(prompts=prompts, max_tokens=2048, papers=papers)
+        blog = await generator.batch_generate(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
         return blog
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+async def run_batch_generation_abs(papers):
+    generator = AsyncvLLMGenerator(
+        model_name="Qwen/Qwen3-32B", 
+        api_base="http://localhost:5666/v1",
+        data_path="../imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
+    
+    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    system_prompt = config['prompts']['blog_generation_abs']['system_prompt']
+    user_prompt_template = config['prompts']['blog_generation_abs']['user_prompt_template']
+
+    prompts = []
+    for paper in papers:  # 遍历 papers 而不是 blogs
+        try:
+            # 从磁盘读取博客文件
+            with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
+                blog_content = file.read()
+        except FileNotFoundError:
+            print(f"❌ Blog file not found for {paper.doc_id}")
+            continue
+        
+        prompt = user_prompt_template.format(
+            blog=blog_content
+        )
+        prompts.append(prompt)
+    
+    try:
+        abs = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
+        return abs
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+async def run_batch_generation_title(papers):
+    generator = AsyncvLLMGenerator(
+        model_name="Qwen/Qwen3-32B", 
+        api_base="http://localhost:5666/v1",
+        data_path="../imgs/", 
+        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
+    
+    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    system_prompt = config['prompts']['blog_generation_title']['system_prompt']
+    user_prompt_template = config['prompts']['blog_generation_title']['user_prompt_template']
+
+    prompts = []
+    for paper in papers:  # 遍历 papers 而不是 blogs
+        prompt = user_prompt_template.format(
+            title=paper.title
+        )
+        prompts.append(prompt)
+    
+    try:
+        titles = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
+        return titles
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -100,7 +165,7 @@ async def run_batch_generation(papers):
 async def main():
     papers = []
     for file in os.listdir("/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"):
-        if len(papers) >= 10:
+        if len(papers) >= 2:
             break
         with open(f"/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons/{file}", "r") as f:
             data = json.load(f)
@@ -108,6 +173,12 @@ async def main():
             print(file)
     
     blog = await run_batch_generation(papers)
+    
+    # 修改这里：传递 papers 而不是 blog
+    abs = await run_batch_generation_abs(papers)
+    print("摘要：",abs)
+    titles = await run_batch_generation_title(papers)
+    print("标题：",titles)
     #blog = run_Gemini_blog_generation(papers)
     #print("Blog generation completed:", blog)
 
