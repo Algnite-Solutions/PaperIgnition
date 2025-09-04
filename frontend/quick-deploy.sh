@@ -37,8 +37,25 @@ echo "✅ 构建成功！"
 # 获取当前目录的绝对路径
 CURRENT_DIR=$(pwd)
 DIST_PATH="$CURRENT_DIR/dist"
+WEB_ROOT="/var/www/paperignition"
 
 echo "📁 前端文件路径: $DIST_PATH"
+echo "🌐 Web根目录: $WEB_ROOT"
+
+# 创建Web根目录
+echo "📂 创建Web根目录..."
+sudo mkdir -p $WEB_ROOT
+
+# 复制构建文件到Web根目录
+echo "📋 复制构建文件到Web根目录..."
+sudo cp -r $DIST_PATH/* $WEB_ROOT/
+
+# 设置目录权限
+echo "🔐 设置目录权限..."
+sudo chown -R www-data:www-data $WEB_ROOT
+sudo chmod -R 755 $WEB_ROOT
+
+echo "✅ 文件部署完成！"
 
 # 创建nginx配置的备份
 if [ -f "/etc/nginx/sites-available/paperignition" ]; then
@@ -48,7 +65,7 @@ fi
 
 # 更新nginx配置文件中的路径
 echo "⚙️  更新nginx配置文件中的路径..."
-sed "s|/path/to/your/frontend/dist|$DIST_PATH|g" nginx.conf > nginx.conf.tmp
+sed "s|/var/www/paperignition|$WEB_ROOT|g" nginx.conf > nginx.conf.tmp
 mv nginx.conf.tmp nginx.conf
 
 # 复制nginx配置
@@ -76,9 +93,10 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "🎉 部署完成！"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📱 前端访问地址: http://47.84.81.246:10086/"
-    echo "🔗 API代理地址: http://47.84.81.246:10086/api/"
-    echo "📂 静态文件目录: $DIST_PATH"
+    echo "📱 前端访问地址: http://120.26.115.39:10086/"
+    echo "🔗 API代理地址: http://120.26.115.39:10086/api/"
+    echo "📂 构建文件目录: $DIST_PATH"
+    echo "🌐 Web根目录: $WEB_ROOT"
     echo "🔧 后端服务地址: 10.0.1.226:8888"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
