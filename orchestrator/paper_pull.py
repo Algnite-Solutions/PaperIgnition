@@ -33,7 +33,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
 
     #fetch daily papers in parallel
     newly_fetched_ids = set()
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = []
         for i in range(len(time_slots) - 1):
             start_str = time_slots[i]
@@ -71,9 +71,13 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
     path_obj = Path(file_path)
     
     if path_obj.is_dir():
+        i = 0
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
+                    i += 1
+                    if i > 3:
+                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")
