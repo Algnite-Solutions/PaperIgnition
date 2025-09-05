@@ -13,7 +13,7 @@ router = APIRouter(prefix="/papers", tags=["papers"])
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
 async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
     """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
-    # 直接从UserPaperRecommendation表获取论文信息
+    # 直接从UserPaperRecommendation表获取论文信息，按推荐日期降序排序（越晚的排越上面）
     result = await db.execute(
         select(
             UserPaperRecommendation.paper_id,
@@ -22,6 +22,7 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
             UserPaperRecommendation.abstract,
             UserPaperRecommendation.url
         ).where(UserPaperRecommendation.username == username)
+        .order_by(UserPaperRecommendation.recommendation_date.desc())
     )
     recommendations = result.all()
     

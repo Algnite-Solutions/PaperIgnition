@@ -44,7 +44,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     """
     payload = {
         "query": query,
-        "top_k": 5,
+        "top_k": 10,
         "similarity_cutoff": similarity_cutoff,
         "strategy_type": search_strategy,
         "filters": filters
@@ -61,18 +61,28 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
             title = r.get('title', r.get('metadata', {}).get('title'))
             print(f"  doc_id: {r.get('doc_id')}, score: {score}, title: {title}")
             
-            # Add empty comments field to r
-            r['comments'] = ""
-            
             # Create DocSet instance (handle missing fields gracefully)
             try:
-                docset = DocSet(**r)
-            except TypeError:
-                # If the API response has extra fields, filter them
-                docset_fields = {k: v for k, v in r.items() if k in DocSet.__fields__}
-                docset = DocSet(**docset_fields)
-            print(f"[DocSet] Created with title: {docset.title}")  # Confirm DocSet creation
-            docsets.append(docset)
+                # 为缺失的必需字段提供默认值
+                docset_data = {
+                    'doc_id': r.get('doc_id'),
+                    'title': title if title else 'Unknown Title',
+                    'authors': r.get('authors', []),
+                    'categories': r.get('categories', []),
+                    'published_date': r.get('published_date', ''),
+                    'abstract': r.get('abstract', ''),
+                    'pdf_path': r.get('pdf_path', ''),
+                    'HTML_path': r.get('HTML_path', ''),
+                    'comments': r.get('comments', ''),
+                    'score': score  # 保留相似度分数
+                }
+                
+                docset = DocSet(**docset_data)
+                print(f"[DocSet] Created with title: {docset.title}")
+                docsets.append(docset)
+            except Exception as e:
+                print(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
+                continue
         return docsets
     except Exception as e:
         print(f"Failed to search for query '{query}':", e)
