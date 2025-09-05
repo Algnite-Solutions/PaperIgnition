@@ -16,9 +16,8 @@ from backend.index_service.db_utils import load_config
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Global database instances for cleanup
-_vector_db_instance: Optional[VectorDB] = None
 
+'''
 def cleanup_databases():
     """Cleanup function to properly close database connections."""
     global _vector_db_instance
@@ -29,6 +28,7 @@ def cleanup_databases():
         except Exception as e:
             logger.error(f"Error during vector database cleanup: {str(e)}")
     _vector_db_instance = None
+'''
 
 def init_databases(
     config: Dict[str, Any],
@@ -50,7 +50,6 @@ def init_databases(
         RuntimeError: If database initialization fails
         ValueError: If configuration is invalid or missing required fields
     """
-    global _vector_db_instance
     logger.debug("Loading configuration and initializing databases...")
     
     # Load configuration if not provided
@@ -73,10 +72,10 @@ def init_databases(
     vector_db_path = config['vector_db']['db_path']
     print('VECTOR DB PATH: ', vector_db_path)
     
-    if recreate_databases and os.path.exists(f"{vector_db_path}.index"):
+    if recreate_databases and os.path.exists(f"{vector_db_path}/index.faiss"):
         logger.info("Removing existing vector database files...")
-        os.remove(f"{vector_db_path}.index")
-        os.remove(f"{vector_db_path}.entries")
+        os.remove(f"{vector_db_path}/index.faiss")
+        os.remove(f"{vector_db_path}/index.pkl")
         
     # Ensure vector database directory exists
     os.makedirs(os.path.dirname(vector_db_path), exist_ok=True)
@@ -124,7 +123,8 @@ def init_databases(
 if __name__ == "__main__":
     # When running this script directly, initialize the databases
     #try:
-    config = load_config()
+    config_path = 'backend/configs/test_config.yaml'
+    config = load_config(config_path)
     print(config)
     vector_db, metadata_db, image_db = init_databases(config)
     print("Databases initialized successfully")

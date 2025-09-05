@@ -16,6 +16,20 @@ It exposes service functions and FastAPI endpoints for initializing databases, c
 - `config.py`: Loads and validates YAML-based configuration for all database backends.
 - `index_service_setup.md`: Detailed setup guide for configuring and running the Index Service.
 
+## Advanced Features
+
+### Text Type Filtering
+The system supports advanced text type filtering through the `text_type` field, allowing users to precisely control which parts of papers are searched:
+
+- **`abstract`**: Search only in paper abstracts for faster, more focused results
+- **`chunk`**: Search in individual text chunks for detailed content matching
+- **`combined`**: Search in the combination of title, categories, and abstract for comprehensive coverage
+
+This feature is particularly useful for:
+- **Performance optimization**: Limiting search to abstracts can significantly improve search speed
+- **Result relevance**: Focusing on specific text types can improve result quality
+- **Search strategy**: Different text types may be more appropriate for different use cases
+
 ## Setup & Usage
 
 1. **Install dependencies** (see project root requirements).
@@ -52,11 +66,13 @@ The `/find_similar/` endpoint supports advanced filtering with a structured form
       "published_date": ["2023-01-01", "2023-12-31"],
       "doc_ids": ["doc1", "doc2"],
       "title_keywords": ["neural networks"],
-      "abstract_keywords": ["deep learning"]
+      "abstract_keywords": ["deep learning"],
+      "text_type": ["abstract", "chunk", "combined"]
     },
     "exclude": {
       "categories": ["cs.CR"],
-      "authors": ["Jane Smith"]
+      "authors": ["Jane Smith"],
+      "text_type": ["chunk"]
     }
   }
 }
@@ -69,6 +85,10 @@ The `/find_similar/` endpoint supports advanced filtering with a structured form
 - **doc_ids**: Array of specific document IDs
 - **title_keywords**: Keywords to search in paper titles
 - **abstract_keywords**: Keywords to search in paper abstracts
+- **text_type**: Array of text types to include/exclude in search:
+  - `"abstract"`: Search only in paper abstracts
+  - `"chunk"`: Search only in text chunks (document sections)
+  - `"combined"`: Search in title + categories + abstract combination
 
 #### Backward Compatibility
 Simple filter format is still supported:
@@ -92,6 +112,38 @@ curl -X POST http://localhost:8000/find_similar/ \
       "include": {
         "categories": ["cs.AI"],
         "published_date": ["2023-01-01", "2023-12-31"]
+      }
+    }
+  }'
+```
+
+### Example: Text Type Filtering
+```bash
+# Search only in paper abstracts (faster, more focused)
+curl -X POST http://localhost:8000/find_similar/ \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "neural networks",
+    "top_k": 10,
+    "filters": {
+      "include": {
+        "text_type": ["abstract"]
+      }
+    }
+  }'
+
+# Search in both abstracts and combined text, exclude chunks
+curl -X POST http://localhost:8000/find_similar/ \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "deep learning",
+    "top_k": 15,
+    "filters": {
+      "include": {
+        "text_type": ["abstract", "combined"]
+      },
+      "exclude": {
+        "text_type": ["chunk"]
       }
     }
   }'
