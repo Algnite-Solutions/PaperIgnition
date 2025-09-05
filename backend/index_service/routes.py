@@ -27,14 +27,19 @@ async def init_database_route(
     request: InitDatabaseRequest,
     recreate_databases: bool = Query(False, description="Whether to recreate databases from scratch")
 ) -> Dict[str, str]:
-    """Initialize or reinitialize the databases and indexer.
+    """Initialize or reinitialize the databases and indexer using AIgnite's architecture.
+    
+    This endpoint initializes the three-database architecture:
+    - MetadataDB (PostgreSQL): For paper metadata and full-text search
+    - VectorDB (FAISS): For semantic vector search
+    - MinioImageDB (MinIO): For image storage
     
     Args:
         request: Configuration for database initialization
         recreate_databases: If True, drops and recreates all databases
         
     Returns:
-        Success message
+        Success message indicating database initialization status
     """
     try:
         # Use provided config or load default config
@@ -47,7 +52,7 @@ async def init_database_route(
         paper_indexer.set_databases(vector_db, metadata_db, image_db)
         
         # Set default search strategy
-        paper_indexer.set_search_strategy("tf-idf")
+        #paper_indexer.set_search_strategy([("tf-idf", 0.1)])  # 使用正确的元组列表格式
         
         action = "reinitialized" if recreate_databases else "initialized"
         return {"message": f"Database {action} and indexer creation successful"}
@@ -58,7 +63,16 @@ async def init_database_route(
 
 @router.post("/index_papers/")
 async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
-    """Index a list of papers."""
+    """Index a list of papers using AIgnite's parallel storage architecture.
+    
+    This endpoint stores papers across multiple databases:
+    - MetadataDB (PostgreSQL): Paper metadata, PDF data, and text chunks
+    - VectorDB (FAISS): Vector embeddings for semantic search
+    - MinioImageDB (MinIO): Image data from figures
+    
+    The indexing process uses parallel storage to maximize performance and
+    provides detailed status reporting for each database type.
+    """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
     
@@ -90,7 +104,14 @@ async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
 
 @router.get("/get_metadata/{doc_id}")
 async def get_metadata_route(doc_id: str) -> Dict[str, Any]:
-    """Get metadata for a specific paper."""
+    """Get metadata for a specific paper from the MetadataDB.
+    
+    Args:
+        doc_id: The document ID of the paper
+        
+    Returns:
+        Dictionary containing paper metadata including title, abstract, authors, categories, etc.
+    """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
     
@@ -107,12 +128,24 @@ async def get_metadata_route(doc_id: str) -> Dict[str, Any]:
 
 @router.post("/find_similar/")
 async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
-    """Find papers similar to the query.
+    """Find papers similar to the query using AIgnite's modular search architecture.
+    
+    This endpoint leverages AIgnite's advanced search capabilities:
+    - Multiple search strategies (vector, tf-idf, hybrid)
+    - Advanced filtering with include/exclude structure
+    - Text type filtering (abstract, chunk, combined)
+    - Result combination with multiple data types
     
     Supports advanced filtering with include/exclude structure:
     - include: Must match conditions
     - exclude: Must not match conditions
-    - Supported fields: categories, authors, published_date, doc_ids, title_keywords, abstract_keywords
+    - Supported fields: categories, authors, published_date, doc_ids, title_keywords, abstract_keywords, text_type
+    - Supports result_include_types to specify which data types to include in results
+    
+    Text type filtering allows precise control over search scope:
+    - "abstract": Search only in paper abstracts (faster, more focused)
+    - "chunk": Search only in text chunks (detailed content matching)
+    - "combined": Search in title + categories + abstract combination (comprehensive coverage)
     """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
@@ -127,10 +160,7 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
             
         if query.similarity_cutoff is not None and not (0 <= query.similarity_cutoff <= 1):
             raise HTTPException(status_code=422, detail="similarity_cutoff must be between 0 and 1")
-        
-        if query.strategy_type is not None and query.strategy_type not in ['vector', 'tf-idf', 'hybrid']:
-            raise HTTPException(status_code=422, detail="strategy_type must be one of: 'vector', 'tf-idf', 'hybrid'")
-        
+    
         # Validate filter structure if provided
         if query.filters:
             if not isinstance(query.filters, dict):
@@ -167,13 +197,14 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
                                     detail=f"Unsupported filter field: {field}. Supported fields: {', '.join(sorted(supported_fields))}"
                                 )
         
+        
         results = find_similar(
             paper_indexer,
             query=query.query.strip(),
             top_k=query.top_k,
-            cutoff=query.similarity_cutoff,
-            strategy_type=query.strategy_type,
-            filters=query.filters
+            search_strategies=query.search_strategies,
+            filters=query.filters,
+            result_include_types=query.result_include_types
         )
         if not results:
             logger.warning(f"No results found for query: {query.query}")

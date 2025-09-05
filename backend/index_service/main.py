@@ -33,5 +33,5 @@ async def startup_event():
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {str(e)}")
 
     paper_indexer.set_databases(vector_db, metadata_db, image_db)
-    paper_indexer.set_search_strategy("tf-idf")  # or "vector", "tf-idf"
+    #paper_indexer.set_search_strategy([("tf-idf", 0.1)])  # 使用正确的元组列表格式
     print("✅ PaperIndexer initialized at startup.")

@@ -72,10 +72,10 @@ def init_databases(
     vector_db_path = config['vector_db']['db_path']
     print('VECTOR DB PATH: ', vector_db_path)
     
-    if recreate_databases and os.path.exists(f"{vector_db_path}.index"):
+    if recreate_databases and os.path.exists(f"{vector_db_path}/index.faiss"):
         logger.info("Removing existing vector database files...")
-        os.remove(f"{vector_db_path}.index")
-        os.remove(f"{vector_db_path}.entries")
+        os.remove(f"{vector_db_path}/index.faiss")
+        os.remove(f"{vector_db_path}/index.pkl")
         
     # Ensure vector database directory exists
     os.makedirs(os.path.dirname(vector_db_path), exist_ok=True)

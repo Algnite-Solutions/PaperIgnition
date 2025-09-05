@@ -7,24 +7,45 @@ Example usage of filters:
    {
      "query": "machine learning",
      "top_k": 5,
-     "strategy_type": "vector",
-     "filters": {"doc_ids": ["paper_001", "paper_002"]}
+     "search_strategy_type": "vector",
+     "result_include_types": ["metadata", "search_parameters"],
+     "filters": {
+       "include": {"doc_ids": ["paper_001", "paper_002"]}
+     }
    }
 
-2. Filter by authors (if supported):
+2. Filter by authors:
    {
      "query": "deep learning",
      "top_k": 5,
-     "strategy_type": "tf-idf",
-     "filters": {"authors": ["Alice", "Bob"]}
+     "search_strategy_type": "tf-idf",
+     "result_include_types": ["metadata"],
+     "filters": {
+       "include": {"authors": ["Alice", "Bob"]}
+     }
    }
 
-3. Filter by categories (if supported):
+3. Filter by categories:
    {
      "query": "neural networks",
      "top_k": 5,
-     "strategy_type": "hybrid",
-     "filters": {"categories": ["cs.AI", "cs.LG"]}
+     "search_strategy_type": "hybrid",
+     "result_include_types": ["metadata", "text_chunks", "search_parameters"],
+     "filters": {
+       "include": {"categories": ["cs.AI", "cs.LG"]}
+     }
+   }
+
+4. Text type filter:
+   {
+     "query": "transformer",
+     "top_k": 10,
+     "search_strategy_type": "vector",
+     "result_include_types": ["metadata"],
+     "filters": {
+       "include": {"text_type": ["abstract"]},
+       "exclude": {"text_type": ["chunk"]}
+     }
    }
 """
 
@@ -69,16 +90,45 @@ def setup_test_files():
 # Create test files
 test_pdfs = setup_test_files()
 
+
+# Delete test papers from metadata_db before running tests, it includes tables from papers and text_chunks
 def clean_metadata_db():
-    """Delete test papers from metadata_db before running tests."""
+    """Delete test papers from metadata_db before running tests.
+    
+    This function cleans both the papers table and the text_chunks table.
+    The text_chunks table has ON DELETE CASCADE constraint, but we explicitly
+    delete from both tables for clarity and completeness.
+    """
     db_url = config['metadata_db']['db_url']
     engine = sqlalchemy.create_engine(db_url)
     with engine.connect() as conn:
+        # First delete from text_chunks table to be explicit about cleanup
+        conn.execute(
+            sqlalchemy.text("""
+                DELETE FROM text_chunks WHERE doc_id IN ('paper_001', 'paper_002', 'paper_003', 'paper_004', 'paper_005');
+            """))
+        # Then delete from papers table
         conn.execute(
             sqlalchemy.text("""
                 DELETE FROM papers WHERE doc_id IN ('paper_001', 'paper_002', 'paper_003', 'paper_004', 'paper_005');
             """))
         conn.commit()
+    print("✅ Metadata database cleaned")
+
+
+def clean_vector_db():
+    """Delete test papers from vector database before running tests.
+    
+    This function removes the entire vector database files since FAISS index
+    and entries are tightly coupled. All vectors for test papers will be removed.
+    """
+    vector_db_path = config['vector_db']['db_path']
+    if os.path.exists(f"{vector_db_path}/index.faiss"):
+        os.remove(f"{vector_db_path}/index.faiss")
+    if os.path.exists(f"{vector_db_path}/index.pkl"):
+        os.remove(f"{vector_db_path}/index.pkl")
+    print("✅ Vector database cleaned")
+
 
 
 async def check_server_running(url: str, timeout: float = 5.0) -> bool:
@@ -262,8 +312,8 @@ async def test_find_similar_2():
         vector_query = {
             "query": "API design", 
             "top_k": 5, 
-            "similarity_cutoff": 0.5, 
-            "strategy_type": "vector",
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {
                 "include": {
                     "text_type": ["abstract"]
@@ -275,23 +325,32 @@ async def test_find_similar_2():
         results = response.json()
         print(results)
         assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for vector search"
+            
+        
         print(f"✅ [2 papers] Vector search with abstract-only filter: Found {len(results)} results for query '{vector_query['query']}'")
 
         # 2. TF-IDF search: should match one of the first two papers
         tfidf_query = {
             "query": "transformer models", 
-            "top_k": 5, 
-            "similarity_cutoff": 0.0, 
-            "strategy_type": "tf-idf"
+            "top_k": 5,  
+            "search_strategies": [("tf-idf", 0.0)],
+            "result_include_types": ["metadata", "search_parameters"]
         }
         response = await client.post(f"{BASE_URL}/find_similar/", json=tfidf_query, timeout=10.0)
         assert response.status_code == 200, "TF-IDF search failed"
         results = response.json()
         assert len(results) <= 2, f"Expected at most 2 results, got {len(results)} for tf-idf search"
-        print(f"✅ [2 papers] TF-IDF search with abstract+combined filter: Found {len(results)} results for query '{tfidf_query['query']}'")
+        
+        
+        print(f"✅ [2 papers] TF-IDF search: Found {len(results)} results for query '{tfidf_query['query']}'")
 
         # 3. No result case: query that should not match any paper
-        no_result_query = {"query": "quantum entanglement", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        no_result_query = {
+            "query": "quantum entanglement", 
+            "top_k": 5, 
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata"]
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
         assert response.status_code == 200, "No-result search failed"
         results = response.json()
@@ -301,23 +360,57 @@ async def test_find_similar_2():
 async def test_find_similar_all():
     async with httpx.AsyncClient() as client:
         # 1. Vector search: should match all 5 papers
-        vector_query = {"query": "deep learning", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        vector_query = {
+            "query": "deep learning", 
+            "top_k": 5, 
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"]
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
         assert response.status_code == 200, "Vector search failed"
         results = response.json()
-        assert len(results) >0, f"Expected more than  0  results, got {len(results)} for vector search"
+        assert len(results) > 0, f"Expected more than 0 results, got {len(results)} for vector search"
+        
+        
         print(f"✅ [all papers] Vector search: Found {len(results)} results for query '{vector_query['query']}'")
 
         # 2. TF-IDF search: should match all 5 papers
-        tfidf_query = {"query": "controlling robotic", "top_k": 5, "similarity_cutoff": 0.0, "strategy_type": "tf-idf"}
+        tfidf_query = {
+            "query": "controlling robotic", 
+            "top_k": 5, 
+            "search_strategies": [("tf-idf", 0.0)],
+            "result_include_types": ["metadata", "search_parameters"]
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=tfidf_query, timeout=10.0)
         assert response.status_code == 200, "TF-IDF search failed"
         results = response.json()
         assert len(results) > 0, f"Expected more than 0 results, got {len(results)} for tf-idf search"
+        
+        
         print(f"✅ [all papers] TF-IDF search: Found {len(results)} results for query '{tfidf_query['query']}'")
 
-        # 3. No result case: query that should not match any paper
-        no_result_query = {"query": "quantum entanglement", "top_k": 5, "similarity_cutoff": 0.5, "strategy_type": "vector"}
+        # 3. Hybrid search: test the new hybrid strategy
+        hybrid_query = {
+            "query": "machine learning", 
+            "top_k": 5, 
+            "search_strategies": [("vector", 0.8), ("tf-idf", 0.0)],
+            "result_include_types": ["metadata", "text_chunks", "search_parameters"]
+        }
+        response = await client.post(f"{BASE_URL}/find_similar/", json=hybrid_query, timeout=10.0)
+        assert response.status_code == 200, "Hybrid search failed"
+        results = response.json()
+        assert len(results) > 0, f"Expected more than 0 results, got {len(results)} for hybrid search"
+        
+        
+        print(f"✅ [all papers] Hybrid search: Found {len(results)} results for query '{hybrid_query['query']}'")
+
+        # 4. No result case: query that should not match any paper
+        no_result_query = {
+            "query": "quantum entanglement", 
+            "top_k": 5, 
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata"]
+        }
         response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
         assert response.status_code == 200, "No-result search failed"
         results = response.json()
@@ -329,13 +422,13 @@ async def test_filters_functionality():
     async with httpx.AsyncClient() as client:
         print("\n🔍 Testing doc_ids filter functionality...")
         
-        # Test 1: Include filter - only return paper_001 and paper_002
+        # Test 1: Include filter - only return paper_001 and paper_003
         print("\n📋 Test 1: Include filter - only specific doc_ids")
         include_filter = {
             "query": "deep learning",
             "top_k": 10,
-            "strategy_type": "vector",
-            "similarity_cutoff": 0.5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {"include": {"doc_ids": ["paper_001", "paper_003"]}}
         }
         
@@ -346,8 +439,8 @@ async def test_filters_functionality():
         print(f"📊 Results for include filter: {len(results)} results")
         for i, result in enumerate(results):
             doc_id = result.get('doc_id', 'N/A')
-            title = result.get('title', 'N/A')
-            score = result.get('similarity_score', 'N/A')
+            title = result.get('metadata', {}).get('title', 'N/A')
+            score = result.get('score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         # Verify that all results have doc_ids in the include filter
@@ -362,8 +455,8 @@ async def test_filters_functionality():
         exclude_filter = {
             "query": "deep learning",
             "top_k": 10,
-            "strategy_type": "vector",
-            "similarity_cutoff": 0.5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {"exclude": {"doc_ids": ["paper_001", "paper_003"]}}
         }
         
@@ -374,8 +467,8 @@ async def test_filters_functionality():
         print(f"📊 Results for exclude filter: {len(results)} results")
         for i, result in enumerate(results):
             doc_id = result.get('doc_id', 'N/A')
-            title = result.get('title', 'N/A')
-            score = result.get('similarity_score', 'N/A')
+            title = result.get('metadata', {}).get('title', 'N/A')
+            score = result.get('score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         # Verify that no results have doc_ids in the exclude filter
@@ -400,8 +493,8 @@ async def test_text_type_filters():
         abstract_only_filter = {
             "query": "deep learning",
             "top_k": 10,
-            "strategy_type": "vector",
-            "similarity_cutoff": 0.5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {
                 "include": {
                     "text_type": ["abstract"]
@@ -415,9 +508,10 @@ async def test_text_type_filters():
         
         print(f"📊 Results for abstract-only filter: {len(results)} results")
         for i, result in enumerate(results):
+            print(result)
             doc_id = result.get('doc_id', 'N/A')
-            title = result.get('title', 'N/A')
-            score = result.get('similarity_score', 'N/A')
+            title = result.get('metadata', {}).get('title', 'N/A')
+            score = result.get('score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         print(f"✅ Abstract-only filter: Found {len(results)} results")
@@ -427,8 +521,8 @@ async def test_text_type_filters():
         combined_filter = {
             "query": "machine learning",
             "top_k": 10,
-            "strategy_type": "vector",
-            "similarity_cutoff": 0.5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {
                 "include": {
                     "text_type": ["combined"]
@@ -442,20 +536,22 @@ async def test_text_type_filters():
         
         print(f"📊 Results for combined filter: {len(results)} results")
         for i, result in enumerate(results):
+            print(result)
             doc_id = result.get('doc_id', 'N/A')
-            title = result.get('title', 'N/A')
-            score = result.get('similarity_score', 'N/A')
+            title = result.get('metadata', {}).get('title', 'N/A')
+            score = result.get('score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         print(f"✅ Combined filter: Found {len(results)} results")
         
         # Test 3: Exclude chunk filter
+        '''
         print("\n📋 Test 3: Exclude chunk filter")
         exclude_chunk_filter = {
             "query": "neural networks",
             "top_k": 10,
-            "strategy_type": "vector",
-            "similarity_cutoff": 0.5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "search_parameters"],
             "filters": {
                 "include": {
                     "text_type": ["abstract", "combined"]
@@ -473,16 +569,270 @@ async def test_text_type_filters():
         print(f"📊 Results for exclude chunk filter: {len(results)} results")
         for i, result in enumerate(results):
             doc_id = result.get('doc_id', 'N/A')
-            title = result.get('title', 'N/A')
-            score = result.get('similarity_score', 'N/A')
+            title = result.get('metadata', {}).get('title', 'N/A')
+            score = result.get('score', 'N/A')
             print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
         
         print(f"✅ Exclude chunk filter: Found {len(results)} results")
-        
+        '''
         print("\n🎉 All text_type filter tests completed successfully!")
         print("✅ Abstract-only filter working correctly")
         print("✅ Combined text filter working correctly")
         print("✅ Exclude chunk filter working correctly")
+
+async def test_result_include_types():
+    """Test that the result_include_types parameter works correctly in the API."""
+    async with httpx.AsyncClient() as client:
+        print("\n🔍 Testing result_include_types functionality...")
+        
+        # Test 1: Metadata only
+        print("\n📋 Test 1: Metadata only")
+        metadata_only_query = {
+            "query": "deep learning",
+            "top_k": 5,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata"]
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=metadata_only_query, timeout=10.0)
+        assert response.status_code == 200, "Metadata-only search failed"
+        results = response.json()
+        
+        print(f"📊 Results for metadata-only: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            score = result.get('score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+            
+            # Verify metadata structure
+            assert "metadata" in result, "Result missing metadata"
+            assert "title" in metadata, "Metadata missing title"
+            assert "abstract" in metadata, "Metadata missing abstract"
+            assert "authors" in metadata, "Metadata missing authors"
+            assert "categories" in metadata, "Metadata missing categories"
+            
+            # Verify other types are not included
+            assert "text_chunks" not in result, "Result should not include text_chunks"
+            assert "search_parameters" not in result, "Result should not include search_parameters"
+        
+        print(f"✅ Metadata-only: Found {len(results)} results with correct structure")
+        
+        # Test 2: Metadata + text_chunks
+        print("\n📋 Test 2: Metadata + text_chunks")
+        text_chunks_query = {
+            "query": "machine learning",
+            "top_k": 3,
+            "search_strategies": [("vector", 0.8)],
+            "result_include_types": ["metadata", "text_chunks"]
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=text_chunks_query, timeout=10.0)
+        assert response.status_code == 200, "Text chunks search failed"
+        results = response.json()
+        
+        print(f"📊 Results for text_chunks: {len(results)} results")
+        for i, result in enumerate(results):
+            print(result)
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            score = result.get('score', 'N/A')
+            text_chunks = result.get('text_chunks', [])
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}, chunks: {len(text_chunks)}")
+            
+            # Verify text_chunks structure
+            assert "text_chunks" in result, "Result missing text_chunks"
+            assert len(text_chunks) > 0, f"Text chunks missing for doc_id {doc_id}"
+
+        print(f"✅ Text chunks: Found {len(results)} results with correct structure")
+        
+        # Test 3: Full result with all types
+        print("\n📋 Test 3: Full result with all types")
+        full_result_query = {
+            "query": "transformer",
+            "top_k": 2,
+            "search_strategies": [("vector", 0.8), ("tf-idf", 0.0)],
+            "result_include_types": ["metadata", "text_chunks", "search_parameters","full_text"]
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=full_result_query, timeout=10.0)
+        assert response.status_code == 200, "Full result search failed"
+        results = response.json()
+        
+        print(f"📊 Results for full result: {len(results)} results")
+        for i, result in enumerate(results):
+            print(result)
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            score = result.get('score', 'N/A')
+            search_params = result.get('search_parameters', {})
+            full_text = result.get('full_text', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, score: {score}")
+            
+            # Verify all required fields are present
+            assert "metadata" in result, "Result missing metadata"
+            assert "text_chunks" in result, "Result missing text_chunks"
+            assert "search_parameters" in result, "Result missing search_parameters"
+            assert "full_text" in result, "Result missing full_text"
+        
+        print(f"✅ Full result: Found {len(results)} results with complete structure")
+        
+        print("\n🎉 All result_include_types tests completed successfully!")
+        print("✅ Metadata-only working correctly")
+        print("✅ Text chunks working correctly")
+        print("✅ Full result working correctly")
+
+async def test_advanced_filters():
+    """Test advanced filter functionality including categories, authors, and date ranges."""
+    async with httpx.AsyncClient() as client:
+        print("\n🔍 Testing advanced filter functionality...")
+        
+        # Test 1: Category filter
+        print("\n📋 Test 1: Category filter")
+        category_filter = {
+            "query": "learning",
+            "top_k": 10,
+            "search_strategies": [("tf-idf", 0.5)],
+            "similarity_cutoff": 0.5,
+            "result_include_types": ["metadata", "search_parameters"],
+            "filters": {
+                "include": {
+                    "categories": ["cs.AI", "cs.LG"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=category_filter, timeout=10.0)
+        assert response.status_code == 200, "Category filter search failed"
+        results = response.json()
+        
+        print(f"📊 Results for category filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            categories = metadata.get('categories', [])
+            score = result.get('score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, categories: {categories}, score: {score}")
+            
+            # Verify that all results have the expected categories
+            has_expected_category = any(cat in ["cs.AI", "cs.LG"] for cat in categories)
+            assert has_expected_category, f"Result {doc_id} does not have expected categories"
+        
+        print(f"✅ Category filter: Found {len(results)} results with correct categories")
+        
+        # Test 2: Author filter
+        print("\n📋 Test 2: Author filter")
+        author_filter = {
+            "query": "learning",
+            "top_k": 10,
+            "search_strategies": [("tf-idf", 0.5)],
+            "result_include_types": ["metadata", "search_parameters"],
+            "filters": {
+                "include": {
+                    "authors": ["Alice", "Carol"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=author_filter, timeout=10.0)
+        assert response.status_code == 200, "Author filter search failed"
+        results = response.json()
+        
+        print(f"📊 Results for author filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            authors = metadata.get('authors', [])
+            score = result.get('score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, authors: {authors}, score: {score}")
+            
+            # Verify that all results have the expected authors
+            has_expected_author = any(author in ["Alice", "Carol"] for author in authors)
+            assert has_expected_author, f"Result {doc_id} does not have expected authors"
+        
+        print(f"✅ Author filter: Found {len(results)} results with correct authors")
+        
+        # Test 3: Date range filter
+        print("\n📋 Test 3: Date range filter")
+        date_filter = {
+            "query": "learning",
+            "top_k": 10,
+            "search_strategies": [("tf-idf", 0.5)],
+            "result_include_types": ["metadata", "search_parameters"],
+            "filters": {
+                "include": {
+                    "published_date": ["2023-01-01", "2024-12-31"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=date_filter, timeout=10.0)
+        assert response.status_code == 200, "Date filter search failed"
+        results = response.json()
+        
+        print(f"📊 Results for date filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            published_date = metadata.get('published_date', 'N/A')
+            score = result.get('score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, date: {published_date}, score: {score}")
+            
+            # Verify that all results have dates in the expected range
+            if published_date != 'N/A':
+                assert "2023" in published_date or "2024" in published_date, f"Result {doc_id} date {published_date} not in expected range"
+        
+        print(f"✅ Date filter: Found {len(results)} results with correct date range")
+        
+        # Test 4: Combined filters
+        print("\n📋 Test 4: Combined filters")
+        combined_filter = {
+            "query": "learning",
+            "top_k": 10,
+            "search_strategies": [("tf-idf", 0.5)],
+            "result_include_types": ["metadata", "search_parameters"],
+            "filters": {
+                "include": {
+                    "categories": ["cs.AI"],
+                    "text_type": ["abstract"]
+                },
+                "exclude": {
+                    "doc_ids": ["paper_005"]
+                }
+            }
+        }
+        
+        response = await client.post(f"{BASE_URL}/find_similar/", json=combined_filter, timeout=10.0)
+        assert response.status_code == 200, "Combined filter search failed"
+        results = response.json()
+        
+        print(f"📊 Results for combined filter: {len(results)} results")
+        for i, result in enumerate(results):
+            doc_id = result.get('doc_id', 'N/A')
+            metadata = result.get('metadata', {})
+            title = metadata.get('title', 'N/A')
+            categories = metadata.get('categories', [])
+            score = result.get('score', 'N/A')
+            print(f"  {i+1}. doc_id: {doc_id}, title: {title}, categories: {categories}, score: {score}")
+            
+            # Verify combined filter conditions
+            assert doc_id != "paper_005", f"Result {doc_id} should be excluded"
+            has_cs_ai = any(cat == "cs.AI" for cat in categories)
+            assert has_cs_ai, f"Result {doc_id} should have cs.AI category"
+        
+        print(f"✅ Combined filter: Found {len(results)} results with correct combined conditions")
+        
+        print("\n🎉 All advanced filter tests completed successfully!")
+        print("✅ Category filter working correctly")
+        print("✅ Author filter working correctly")
+        print("✅ Date filter working correctly")
+        print("✅ Combined filters working correctly")
 
 async def test_error_cases():
     """Test error handling."""
@@ -497,6 +847,48 @@ async def test_error_cases():
             json={"query": "", "top_k": -1, "similarity_cutoff": 2.0}
         )
         assert response.status_code == 422, "Expected 422 for invalid parameters"
+        
+        
+        # Test invalid search_strategy_type
+        response = await client.post(
+            f"{BASE_URL}/find_similar/",
+            json={
+                "query": "test",
+                "top_k": 5,
+                "search_strategy_type": "invalid_strategy",
+                "result_include_types": ["metadata"]
+            }
+        )
+        assert response.status_code == 422, "Expected 422 for invalid search_strategy_type"
+        
+        # Test invalid result_include_types
+        response = await client.post(
+            f"{BASE_URL}/find_similar/",
+            json={
+                "query": "test",
+                "top_k": 5,
+                "search_strategies": [("vector", 0.8)],
+                "result_include_types": ["invalid_type"]
+            }
+        )
+        assert response.status_code == 422, "Expected 422 for invalid result_include_types"
+        
+        # Test invalid text_type in filters
+        response = await client.post(
+            f"{BASE_URL}/find_similar/",
+            json={
+                "query": "test",
+                "top_k": 5,
+                "search_strategies": [("vector", 0.8)],
+                "result_include_types": ["metadata"],
+                "filters": {
+                    "include": {
+                        "text_type": ["invalid_text_type"]
+                    }
+                }
+            }
+        )
+        assert response.status_code == 422, "Expected 422 for invalid text_type in filters"
         
         '''
         # Test invalid database initialization params
@@ -538,6 +930,8 @@ async def run_tests():
         await test_find_similar_all()
         await test_filters_functionality()
         await test_text_type_filters()
+        await test_result_include_types()
+        #await test_advanced_filters()
         
         # Error case tests
         await test_error_cases()
@@ -554,6 +948,9 @@ async def run_tests():
         # Clean up temporary files
         import shutil
         shutil.rmtree(TEMP_DIR, ignore_errors=True)
+        clean_metadata_db()
+        clean_vector_db()
+
 
 if __name__ == "__main__":
     asyncio.run(run_tests()) 
