@@ -1,33 +1,30 @@
 import { useEffect, useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { AtIcon } from 'taro-ui'
 import './index.scss'
 
 interface TabItem {
   pagePath: string
   text: string
-  iconPath: string
-  selectedIconPath: string
+  iconName: string
 }
 
 const tabList: TabItem[] = [
   {
     pagePath: '/pages/recommendations/index',
     text: '推荐',
-    iconPath: require('../assets/icons/paper.png'),
-    selectedIconPath: require('../assets/icons/paper.png')
+    iconName: 'file-generic'
   },
   {
     pagePath: '/pages/favorites/index',
     text: '收藏',
-    iconPath: require('../assets/icons/heart.png'),
-    selectedIconPath: require('../assets/icons/heart.png')
+    iconName: 'heart'
   },
   {
     pagePath: '/pages/interests/index',
     text: '个人',
-    iconPath: require('../assets/icons/person.png'),
-    selectedIconPath: require('../assets/icons/person.png')
+    iconName: 'user'
   }
 ]
 
@@ -72,9 +69,10 @@ export default function CustomTabBar() {
             onClick={() => switchTab(index, item)}
           >
             <View className='tab-icon-wrapper'>
-              <Image 
-                className='tab-icon'
-                src={isSelected ? item.selectedIconPath : item.iconPath}
+              <AtIcon 
+                value={item.iconName}
+                size='24'
+                color={isSelected ? '#1296db' : '#888888'}
               />
             </View>
             <Text className='tab-text'>{item.text}</Text>

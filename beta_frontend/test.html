@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Testing - PaperIgnition</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+        }
+        .test-section h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .loading { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Beta Frontend Testing Dashboard</h1>
+        
+        <div class="test-section">
+            <h2>📡 API Connectivity Tests</h2>
+            <button class="test-button" onclick="testBackendConnection()">Test Backend Connection</button>
+            <button class="test-button" onclick="testPaperContentAPI()">Test Paper Content API</button>
+            <button class="test-button" onclick="testRecommendationsAPI()">Test Recommendations API</button>
+            <div id="api-results" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔐 Authentication Tests</h2>
+            <button class="test-button" onclick="testAuthService()">Test Auth Service</button>
+            <button class="test-button" onclick="testLogin()">Test Login</button>
+            <button class="test-button" onclick="testProfile()">Test Profile</button>
+            <div id="auth-results" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📄 Markdown Rendering Test</h2>
+            <button class="test-button" onclick="testMarkdownRender()">Test Markdown Conversion</button>
+            <div id="markdown-results" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔗 Page Navigation Tests</h2>
+            <button class="test-button" onclick="window.open('index.html', '_blank')">Test Main Page</button>
+            <button class="test-button" onclick="window.open('login.html', '_blank')">Test Login Page</button>
+            <button class="test-button" onclick="window.open('profile.html', '_blank')">Test Profile Page</button>
+            <button class="test-button" onclick="window.open('paper.html?id=2506.21703v1', '_blank')">Test Paper Detail</button>
+            <div id="nav-results" class="test-result">Click buttons above to test page navigation.</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 System Status</h2>
+            <div id="system-status" class="test-result loading">Loading system status...</div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        let results = {};
+
+        async function testBackendConnection() {
+            updateResult('api-results', 'Testing backend connection...', 'loading');
+            try {
+                const response = await fetch('http://10.0.1.226:8888/', {
+                    method: 'GET',
+                    timeout: 5000
+                });
+                const data = await response.json();
+                updateResult('api-results', `✅ Backend connected: ${data.message}`, 'success');
+                results.backend = true;
+            } catch (error) {
+                updateResult('api-results', `❌ Backend connection failed: ${error.message}`, 'error');
+                results.backend = false;
+            }
+            updateSystemStatus();
+        }
+
+        async function testPaperContentAPI() {
+            updateResult('api-results', 'Testing paper content API...', 'loading');
+            try {
+                const response = await fetch('http://10.0.1.226:8888/api/papers/paper_content/2506.21703v1');
+                if (response.ok) {
+                    const content = await response.text();
+                    updateResult('api-results', `✅ Paper content API working. Content length: ${content.length}`, 'success');
+                    results.paperContent = true;
+                } else {
+                    updateResult('api-results', `❌ Paper content API failed: ${response.status}`, 'error');
+                    results.paperContent = false;
+                }
+            } catch (error) {
+                updateResult('api-results', `❌ Paper content API error: ${error.message}`, 'error');
+                results.paperContent = false;
+            }
+            updateSystemStatus();
+        }
+
+        async function testRecommendationsAPI() {
+            updateResult('api-results', 'Testing recommendations API...', 'loading');
+            try {
+                const response = await fetch('http://10.0.1.226:8888/api/papers/recommendations/test@tongji.edu.cn');
+                if (response.ok) {
+                    const papers = await response.json();
+                    updateResult('api-results', `✅ Recommendations API working. Found ${papers.length} papers`, 'success');
+                    results.recommendations = true;
+                } else {
+                    updateResult('api-results', `❌ Recommendations API failed: ${response.status}`, 'error');
+                    results.recommendations = false;
+                }
+            } catch (error) {
+                updateResult('api-results', `❌ Recommendations API error: ${error.message}`, 'error');
+                results.recommendations = false;
+            }
+            updateSystemStatus();
+        }
+
+        function testAuthService() {
+            updateResult('auth-results', 'Testing AuthService...', 'loading');
+            try {
+                if (window.AuthService) {
+                    const isLoggedIn = window.AuthService.isLoggedIn();
+                    const currentUser = window.AuthService.getCurrentUser();
+                    updateResult('auth-results', `✅ AuthService loaded. Logged in: ${isLoggedIn}, User: ${currentUser?.email || 'None'}`, 'success');
+                    results.authService = true;
+                } else {
+                    updateResult('auth-results', '❌ AuthService not available', 'error');
+                    results.authService = false;
+                }
+            } catch (error) {
+                updateResult('auth-results', `❌ AuthService error: ${error.message}`, 'error');
+                results.authService = false;
+            }
+            updateSystemStatus();
+        }
+
+        async function testLogin() {
+            updateResult('auth-results', 'Testing login functionality...', 'loading');
+            try {
+                if (window.AuthService) {
+                    const result = await window.AuthService.login('test@tongji.edu.cn', 'demo123');
+                    if (result.success) {
+                        updateResult('auth-results', '✅ Login test successful', 'success');
+                        results.login = true;
+                    } else {
+                        updateResult('auth-results', `❌ Login test failed: ${result.error}`, 'error');
+                        results.login = false;
+                    }
+                } else {
+                    updateResult('auth-results', '❌ AuthService not available for login test', 'error');
+                    results.login = false;
+                }
+            } catch (error) {
+                updateResult('auth-results', `❌ Login test error: ${error.message}`, 'error');
+                results.login = false;
+            }
+            updateSystemStatus();
+        }
+
+        async function testProfile() {
+            updateResult('auth-results', 'Testing profile functionality...', 'loading');
+            try {
+                if (window.AuthService && window.AuthService.isLoggedIn()) {
+                    const profile = await window.AuthService.getUserProfile();
+                    updateResult('auth-results', `✅ Profile test successful. Email: ${profile.email}`, 'success');
+                    results.profile = true;
+                } else {
+                    updateResult('auth-results', '⚠️ Profile test skipped - not logged in', 'loading');
+                    results.profile = null;
+                }
+            } catch (error) {
+                updateResult('auth-results', `❌ Profile test error: ${error.message}`, 'error');
+                results.profile = false;
+            }
+            updateSystemStatus();
+        }
+
+        function testMarkdownRender() {
+            updateResult('markdown-results', 'Testing markdown rendering...', 'loading');
+            try {
+                const testMarkdown = `# Test Header
+                
+**Bold text** and *italic text*
+
+- List item 1
+- List item 2
+
+\`inline code\` and code blocks:
+
+\`\`\`
+function test() {
+    return "hello";
+}
+\`\`\`
+
+[Link](http://example.com)`;
+
+                // Use the convertMarkdownToHTML function from paper.html
+                if (typeof convertMarkdownToHTML === 'function') {
+                    const html = convertMarkdownToHTML(testMarkdown);
+                    updateResult('markdown-results', `✅ Markdown rendering working\\n\\nInput:\\n${testMarkdown}\\n\\nOutput HTML:\\n${html}`, 'success');
+                    results.markdown = true;
+                } else {
+                    updateResult('markdown-results', '❌ convertMarkdownToHTML function not available', 'error');
+                    results.markdown = false;
+                }
+            } catch (error) {
+                updateResult('markdown-results', `❌ Markdown test error: ${error.message}`, 'error');
+                results.markdown = false;
+            }
+            updateSystemStatus();
+        }
+
+        function updateResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+        }
+
+        function updateSystemStatus() {
+            const total = Object.keys(results).length;
+            const passed = Object.values(results).filter(r => r === true).length;
+            const failed = Object.values(results).filter(r => r === false).length;
+            const skipped = Object.values(results).filter(r => r === null).length;
+            
+            const status = `System Status: ${passed}/${total} tests passed, ${failed} failed, ${skipped} skipped\\n\\nDetails:\\n${JSON.stringify(results, null, 2)}`;
+            
+            let type = 'success';
+            if (failed > 0) type = 'error';
+            else if (total === 0) type = 'loading';
+            
+            updateResult('system-status', status, type);
+        }
+
+        function generateSystemReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                tests: results,
+                summary: {
+                    total: Object.keys(results).length,
+                    passed: Object.values(results).filter(r => r === true).length,
+                    failed: Object.values(results).filter(r => r === false).length,
+                    skipped: Object.values(results).filter(r => r === null).length
+                },
+                recommendations: []
+            };
+
+            // Add recommendations based on test results
+            if (!results.backend) {
+                report.recommendations.push('❌ Backend server is not accessible. Please ensure the API server is running.');
+            }
+            if (!results.paperContent) {
+                report.recommendations.push('❌ Paper content API is failing. Check API endpoints and database connectivity.');
+            }
+            if (!results.recommendations) {
+                report.recommendations.push('❌ Recommendations API is not working. User personalization will be limited.');
+            }
+            if (!results.authService) {
+                report.recommendations.push('❌ Authentication service is not loaded. User login/registration will not work.');
+            }
+            if (!results.markdown) {
+                report.recommendations.push('❌ Markdown rendering is not working. Paper content will not display correctly.');
+            }
+
+            if (report.summary.failed === 0) {
+                report.recommendations.push('✅ All systems operational! Beta frontend is ready for production.');
+            }
+
+            console.log('System Test Report:', report);
+            
+            // Update UI with detailed report
+            const detailedStatus = `
+=== BETA FRONTEND SYSTEM REPORT ===
+Generated: ${new Date().toLocaleString()}
+
+Test Results: ${report.summary.passed}/${report.summary.total} passed
+
+${Object.entries(results).map(([test, result]) => {
+    const status = result === true ? '✅' : result === false ? '❌' : '⏸️';
+    return `${status} ${test}: ${result === true ? 'PASS' : result === false ? 'FAIL' : 'SKIP'}`;
+}).join('\\n')}
+
+Recommendations:
+${report.recommendations.join('\\n')}
+
+=== END REPORT ===`;
+            
+            updateResult('system-status', detailedStatus, report.summary.failed === 0 ? 'success' : 'error');
+        }
+
+        // Initialize testing
+        window.addEventListener('DOMContentLoaded', async () => {
+            updateResult('system-status', 'Initializing tests...', 'loading');
+            
+            // Wait for CONFIG to initialize
+            if (window.CONFIG && window.CONFIG.init) {
+                try {
+                    await window.CONFIG.init();
+                    console.log('CONFIG initialized for testing');
+                } catch (error) {
+                    console.error('CONFIG initialization failed:', error);
+                }
+            }
+            
+            // Auto-run basic tests
+            setTimeout(async () => {
+                console.log('Starting automated tests...');
+                await testBackendConnection();
+                await testPaperContentAPI();
+                await testRecommendationsAPI();
+                testAuthService();
+                testMarkdownRender();
+                
+                // Final system report
+                setTimeout(() => {
+                    generateSystemReport();
+                }, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
