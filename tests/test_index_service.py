@@ -96,7 +96,8 @@ def test_search_papers_tfidf():
             "query": test_query,
             "top_k": 1,
             "similarity_cutoff": 0.1,
-            "strategy_type": "tf-idf"
+            "search_strategies": [("tf-idf", 0.5)],
+            "result_include_types": ["metadata", "text_chunks"]
         }
         
         print(f"   搜索API URL: {index_url}/find_similar/")
@@ -157,7 +158,8 @@ def test_search_papers_vector():
             "query": test_query,
             "top_k": 1,
             "similarity_cutoff": 0.1,
-            "strategy_type": "vector"
+            "search_strategies": [("vector", 0.5)],
+            "result_include_types": ["metadata", "text_chunks"]
         }
         
         print(f"   搜索API URL: {index_url}/find_similar/")
@@ -227,8 +229,9 @@ def test_search_with_filters():
             "query": test_query,
             "top_k": 1,
             "similarity_cutoff": 0.1,
-            "strategy_type": "vector",
-            "filters": filter_params
+            "search_strategies": [("vector", 0.5)],
+            "filters": filter_params,
+            "result_include_types": ["metadata", "text_chunks"]
         }
         
         print(f"   搜索API URL: {index_url}/find_similar/")

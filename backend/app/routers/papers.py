@@ -1,14 +1,47 @@
 from typing import List
+import re
+import logging
+from datetime import timedelta
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from minio import Minio
+from minio.error import S3Error
+import yaml
+import os
 
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
 
+# 设置日志
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/papers", tags=["papers"])
+
+def get_minio_client():
+    """获取MinIO客户端 - 使用硬编码配置"""
+    try:
+        # 硬编码的MinIO配置
+        minio_config = {
+            'endpoint': '10.0.1.226:9081',
+            'access_key': 'XOrv2wfoWfPypp2zGIae',  # 移除多余的文本
+            'secret_key': 'k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3',
+            'secure': False
+        }
+        
+        return Minio(
+            minio_config['endpoint'],
+            access_key=minio_config['access_key'],
+            secret_key=minio_config['secret_key'],
+            secure=minio_config['secure']
+        )
+    except Exception as e:
+        logger.error(f"Failed to create MinIO client: {e}")
+        raise HTTPException(status_code=500, detail="MinIO client initialization error")
+
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
 async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
@@ -62,6 +95,57 @@ async def get_paper_markdown_content(paper_id: str, db: AsyncSession = Depends(g
         raise HTTPException(status_code=404, detail="Paper content not found")
     
     return paper[0]
+
+# 文件服务路由 - 需要在主应用中注册，不在papers前缀下
+file_router = APIRouter(tags=["files"])
+
+@file_router.get("/files/{bucket}/{key:path}")
+async def serve_file(bucket: str, key: str):
+    """
+    处理文件请求，生成MinIO预签名URL并重定向
+    步骤3.3: 后端现签名并302/307
+    
+    流程：
+    1. 验证对象是否存在
+    2. 生成预签名URL（15分钟有效期）
+    3. 返回307重定向到MinIO
+    """
+    try:
+        logger.info(f"Serving file request: {bucket}/{key}")
+        
+        # 获取MinIO客户端
+        minio_client = get_minio_client()
+        
+        # 验证对象是否存在
+        try:
+            stat = minio_client.stat_object(bucket, key)
+            logger.debug(f"File found: {bucket}/{key}, size: {stat.size}")
+        except S3Error as e:
+            if e.code == 'NoSuchKey':
+                logger.warning(f"File not found: {bucket}/{key}")
+                raise HTTPException(status_code=404, detail=f"File not found: {bucket}/{key}")
+            else:
+                logger.error(f"MinIO error for {bucket}/{key}: {e}")
+                raise HTTPException(status_code=500, detail=f"MinIO error: {str(e)}")
+        
+        # 生成预签名URL，有效期15分钟
+        presigned_url = minio_client.presigned_get_object(
+            bucket, 
+            key, 
+            expires=timedelta(minutes=15)
+        )
+        
+        logger.info(f"Generated presigned URL for {bucket}/{key}")
+        
+        # 返回307重定向到预签名URL
+        return RedirectResponse(url=presigned_url, status_code=307)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error serving file {bucket}/{key}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating presigned URL: {str(e)}")
+
 
 # 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
 # 接口为{backend_url}/api/papers/recommend
