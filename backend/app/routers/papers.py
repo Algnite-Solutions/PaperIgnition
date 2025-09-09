@@ -84,17 +84,81 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
     
     return papers
 
+def extract_image_filename(image_path: str) -> str:
+    """从图片路径中提取文件名"""
+    # 处理各种路径格式，提取最后一个文件名
+    import os
+    return os.path.basename(image_path.strip())
+
+async def process_markdown_images(markdown_content: str) -> str:
+    """处理markdown中的图片路径，替换为预签名URL"""
+    import re
+    
+    # 匹配markdown图片格式: ![alt](path)
+    pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+    
+    async def replace_image(match):
+        alt_text = match.group(1)
+        image_path = match.group(2)
+        
+        # 提取文件名
+        filename = extract_image_filename(image_path)
+        
+        # 生成预签名URL
+        try:
+            filename = "test.png"
+            await serve_file(bucket="aignite-papers", key=filename)
+            presigned_url = f" http://10.0.1.226:8888/files/aignite-papers/{filename}"
+            
+            if presigned_url:
+                return f'![{alt_text}]({presigned_url})'
+            else:
+                # 如果生成失败，保持原路径
+                return match.group(0)
+        except Exception as e:
+            logger.error(f"Error processing image {filename}: {str(e)}")
+            return match.group(0)
+    
+    # 找到所有匹配的图片
+    matches = list(re.finditer(pattern, markdown_content))
+    
+    # 异步处理所有图片
+    replacements = []
+    for match in matches:
+        replacement = await replace_image(match)
+        replacements.append((match, replacement))
+    
+    # 从后往前替换，避免位置偏移
+    result = markdown_content
+    for match, replacement in reversed(replacements):
+        result = result[:match.start()] + replacement + result[match.end():]
+    
+    return result
+
 @router.get("/paper_content/{paper_id}")
 async def get_paper_markdown_content(paper_id: str, db: AsyncSession = Depends(get_db)):
-    """根据paper_id返回论文的markdown内容"""
+    """
+    根据paper_id返回论文的markdown内容，并处理其中的图片路径
+    为每个图片生成预签名URL并替换原始路径
+    """
+    logger.info(f"Fetching paper content for paper_id: {paper_id}")
+    
     # 直接从UserPaperRecommendation表获取blog内容
     result = await db.execute(select(UserPaperRecommendation.blog).where(UserPaperRecommendation.paper_id == paper_id))
     paper = result.first()
     
     if not paper or not paper[0]:
+        logger.warning(f"Paper content not found for paper_id: {paper_id}")
         raise HTTPException(status_code=404, detail="Paper content not found")
     
-    return paper[0]
+    # 获取原始markdown内容
+    markdown_content = paper[0]
+    
+    # 处理图片路径，生成预签名URL
+    processed_content = await process_markdown_images(markdown_content)
+    
+    logger.info(f"Successfully processed paper content for paper_id: {paper_id}")
+    return processed_content
 
 # 文件服务路由 - 需要在主应用中注册，不在papers前缀下
 file_router = APIRouter(tags=["files"])
