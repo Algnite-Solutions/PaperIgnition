@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.users import ResearchDomain
 
 from backend.app.db_utils import get_db
-from backend.app.routers import auth, users, papers
+from backend.app.routers import auth, users, papers, static
 
 app = FastAPI(title="AIgnite API", description="学术论文推荐微信小程序API")
 
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(papers.router, prefix="/api")
+app.include_router(static.router, prefix="/api")
 
 @app.get("/")
 async def root():

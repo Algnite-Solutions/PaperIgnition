@@ -3,6 +3,8 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks'
 import { setPaperFeedback, clearPaperFeedback } from '../../../store/slices/paperSlice'
 import { AtIcon } from 'taro-ui'
 import Taro from '@tarojs/taro'
+import likeIcon from '../../../assets/icons/like.png'
+import dislikeIcon from '../../../assets/icons/dislike.png'
 import { useState } from 'react'
 import './index.scss'
 
@@ -140,7 +142,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
             {feedback === true ? (
               <Text className='emoji-icon'>👍</Text>
             ) : (
-              <Image className='feedback-icon' src='/assets/icons/like.png' />
+              <Image className='feedback-icon' src={likeIcon} />
             )}
             <Text className='action-text'>有用</Text>
           </View>
@@ -152,7 +154,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
             {feedback === false ? (
               <Text className='emoji-icon'>👎</Text>
             ) : (
-              <Image className='feedback-icon' src='/assets/icons/dislike.png' />
+              <Image className='feedback-icon' src={dislikeIcon} />
             )}
             <Text className='action-text'>无用</Text>
           </View>
