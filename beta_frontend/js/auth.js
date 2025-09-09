@@ -1,6 +1,6 @@
 // Authentication Service for PaperIgnition Web App
 
-const API_BASE_URL = window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888';
+const API_BASE_URL = 'http://10.0.1.226:8888';
 
 class AuthService {
     constructor() {
@@ -52,66 +52,32 @@ class AuthService {
     // Login with email and password
     async login(email, password) {
         try {
-            // Try real API first
-            try {
-                const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.LOGIN || '/api/auth/login-email'}`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json' 
-                    },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    localStorage.setItem('token', data.access_token);
-                    this.setUser(data.user_info);
-                    
-                    return {
-                        success: true,
-                        needsSetup: data.needs_interest_setup || false
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: data.detail || 'Login failed'
-                    };
-                }
-            } catch (networkError) {
-                console.warn('API login failed, trying demo credentials:', networkError);
-                
-                // Fallback to demo credentials (using real backend users with recommendations)
-                const demoUsers = window.CONFIG?.DEMO_USERS || {
-                    'test@tongji.edu.cn': 'demo123',        // User with recommendations
-                    '111@tongji.edu.cn': 'demo123',          // Another user
-                    'demo@paperignition.com': 'demo123'      // Fallback user
-                };
-                
-                if (demoUsers[email] && demoUsers[email] === password) {
-                    const mockResponse = {
-                        access_token: 'demo-token-' + Date.now(),
-                        user_info: {
-                            email: email,
-                            username: email  // Use full email as username for API compatibility
-                        },
-                        needs_interest_setup: false
-                    };
-                    
-                    localStorage.setItem('token', mockResponse.access_token);
-                    this.setUser(mockResponse.user_info);
-                    
-                    return {
-                        success: true,
-                        needsSetup: mockResponse.needs_interest_setup
-                    };
-                }
+            const response = await fetch(`${API_BASE_URL}/api/auth/login-email`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store token and user info
+                localStorage.setItem('token', data.access_token);
+                this.setUser(data.user_info);
                 
                 return {
+                    success: true,
+                    needsSetup: data.needs_interest_setup
+                };
+            } else {
+                return {
                     success: false,
-                    error: 'Network error and invalid demo credentials'
+                    error: data.detail || 'Login failed'
                 };
             }
+            
         } catch (error) {
             console.error('Login error:', error);
             return {
@@ -124,7 +90,10 @@ class AuthService {
     // Register new user
     async register(email, password, username) {
         try {
-            // Validate input
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // For demo purposes, accept any valid email
             if (!email || !password || !username) {
                 return {
                     success: false,
@@ -146,51 +115,50 @@ class AuthService {
                 };
             }
             
-            // Try real API first
-            try {
-                const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.REGISTER || '/api/auth/register-email'}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, username })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    localStorage.setItem('token', data.access_token);
-                    this.setUser(data.user_info);
-                    
-                    return {
-                        success: true,
-                        needsSetup: data.needs_interest_setup
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: data.detail || 'Registration failed'
-                    };
-                }
-            } catch (networkError) {
-                console.warn('API registration failed, using demo fallback:', networkError);
-                
-                // Fallback - simulate successful registration
-                const mockResponse = {
-                    access_token: 'demo-token-' + Date.now(),
-                    user_info: {
-                        email: email,
-                        username: username
-                    },
-                    needs_interest_setup: true
-                };
-                
-                localStorage.setItem('token', mockResponse.access_token);
-                this.setUser(mockResponse.user_info);
+            // Simulate successful registration
+            const mockResponse = {
+                access_token: 'demo-token-' + Date.now(),
+                user_info: {
+                    email: email,
+                    username: username
+                },
+                needs_interest_setup: true
+            };
+            
+            localStorage.setItem('token', mockResponse.access_token);
+            this.setUser(mockResponse.user_info);
+            
+            return {
+                success: true,
+                needsSetup: mockResponse.needs_interest_setup
+            };
+            
+            // For real implementation:
+            /*
+            const response = await fetch(`${API_BASE_URL}/api/auth/register-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, username })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                localStorage.setItem('token', data.access_token);
+                this.setUser(data.user_info);
                 
                 return {
                     success: true,
-                    needsSetup: mockResponse.needs_interest_setup
+                    needsSetup: data.needs_interest_setup
+                };
+            } else {
+                return {
+                    success: false,
+                    error: data.detail || 'Registration failed'
                 };
             }
+            */
+            
         } catch (error) {
             console.error('Registration error:', error);
             return {
@@ -220,33 +188,43 @@ class AuthService {
         }
         
         try {
-            // Try real API first
-            try {
-                const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.USER_PROFILE || '/api/users/me'}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`
-                    }
-                });
-                
-                if (response.ok) {
-                    return await response.json();
-                } else {
-                    throw new Error('Failed to fetch user profile from API');
-                }
-            } catch (networkError) {
-                console.warn('API profile fetch failed, using fallback:', networkError);
-                
-                // Fallback - return demo profile
+            // For demo, return current user info
+            if (this.currentUser?.isDemo) {
                 return {
                     email: this.currentUser.email,
                     username: this.currentUser.username,
                     joinDate: '2024-01-01',
-                    interests_description: ['Machine Learning', 'Computer Vision'],
-                    research_interests_text: 'Interested in AI and ML research',
-                    is_active: true
+                    interests: ['Machine Learning', 'Computer Vision'],
+                    paperCount: 42,
+                    bookmarkCount: 12
                 };
             }
+            
+            // For real implementation:
+            /*
+            const response = await fetch(`${API_BASE_URL}/users/me`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.getToken()}`
+                }
+            });
+            
+            if (response.ok) {
+                return await response.json();
+            } else {
+                throw new Error('Failed to fetch user profile');
+            }
+            */
+            
+            return {
+                email: this.currentUser.email,
+                username: this.currentUser.username,
+                joinDate: '2024-01-01',
+                interests: ['Machine Learning', 'Computer Vision'],
+                paperCount: 42,
+                bookmarkCount: 12
+            };
+            
         } catch (error) {
             console.error('Error fetching user profile:', error);
             throw error;
@@ -260,43 +238,45 @@ class AuthService {
         }
         
         try {
-            // Try real API first
-            try {
-                const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.UPDATE_PROFILE || '/api/users/me/profile'}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.getToken()}`
-                    },
-                    body: JSON.stringify(profileData)
-                });
-                
-                if (response.ok) {
-                    const updatedUser = await response.json();
-                    this.setUser(updatedUser);
-                    return {
-                        success: true,
-                        user: updatedUser
-                    };
-                } else {
-                    const errorData = await response.json();
-                    return {
-                        success: false,
-                        error: errorData.detail || 'Update failed'
-                    };
-                }
-            } catch (networkError) {
-                console.warn('API profile update failed, using fallback:', networkError);
-                
-                // Fallback - simulate successful update
-                this.currentUser = { ...this.currentUser, ...profileData };
-                this.setUser(this.currentUser);
-                
+            // For demo, simulate update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Update local user info
+            this.currentUser = { ...this.currentUser, ...profileData };
+            this.setUser(this.currentUser);
+            
+            return {
+                success: true,
+                user: this.currentUser
+            };
+            
+            // For real implementation:
+            /*
+            const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getToken()}`
+                },
+                body: JSON.stringify(profileData)
+            });
+            
+            if (response.ok) {
+                const updatedUser = await response.json();
+                this.setUser(updatedUser);
                 return {
                     success: true,
-                    user: this.currentUser
+                    user: updatedUser
+                };
+            } else {
+                const errorData = await response.json();
+                return {
+                    success: false,
+                    error: errorData.detail || 'Update failed'
                 };
             }
+            */
+            
         } catch (error) {
             console.error('Error updating user profile:', error);
             return {

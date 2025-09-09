@@ -186,38 +186,6 @@
             font-weight: 500;
         }
 
-        .domain-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            user-select: none;
-        }
-
-        .domain-checkbox:hover {
-            background-color: var(--hover-bg);
-            border-color: var(--accent-red);
-        }
-
-        .domain-checkbox input[type="checkbox"] {
-            margin: 0;
-            transform: scale(1.1);
-        }
-
-        .domain-checkbox.selected {
-            background-color: var(--accent-red);
-            color: white;
-            border-color: var(--accent-red);
-        }
-
-        .domain-checkbox.selected input[type="checkbox"] {
-            accent-color: white;
-        }
-
         .form-group {
             margin-bottom: 20px;
         }
@@ -280,47 +248,6 @@
         .btn-secondary:hover {
             background-color: #f1f5f9;
             transform: translateY(-1px);
-        }
-
-        .btn-edit {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-
-        .btn-edit:hover {
-            background-color: var(--hover-bg);
-            color: var(--text-primary);
-            border-color: var(--accent-red);
-        }
-
-        .form-textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 14px;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            font-family: inherit;
-            resize: vertical;
-            transition: border-color 0.2s ease;
-        }
-
-        .form-textarea:focus {
-            outline: none;
-            border-color: var(--accent-red);
-        }
-
-        .form-help {
-            margin-top: 4px;
-            font-size: 12px;
-            color: var(--text-muted);
         }
 
         .loading {
@@ -389,7 +316,7 @@
                 <a href="index.html" class="logo">Paper<span class="highlight">Ignition</span></a>
                 <nav class="nav">
                     <a href="index.html">Explore</a>
-                    <a href="index.html#favorites">Favorites</a>
+                    <a href="favorites.html">Favorites</a>
                     <a href="profile.html" style="color: var(--accent-red);">Profile</a>
                     <a href="#" id="logoutLink">Logout</a>
                 </nav>
@@ -434,63 +361,51 @@
 
                     <!-- Research Interests -->
                     <div class="profile-section">
-                        <h2 class="section-title">Research Interests</h2>
-                        
-                        <!-- Display Mode -->
-                        <div id="interestsDisplay" class="interests-display">
-                            <div class="interests-list" id="interestsList">
-                                <!-- Interests will be populated here -->
-                            </div>
-                            <button type="button" class="btn-edit" id="editInterestsBtn" style="margin-top: 12px;">
-                                Edit Interests
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h2 class="section-title" style="margin-bottom: 0;">Research Interests</h2>
+                            <button type="button" class="btn btn-secondary" id="editInterestsBtn" onclick="toggleInterestsEdit()">
+                                Edit
                             </button>
                         </div>
                         
+                        <!-- Display Mode -->
+                        <div id="interestsDisplay">
+                            <div class="interests-list" id="interestsList">
+                                <!-- Interests will be populated here -->
+                            </div>
+                            <div id="interestsDebugInfo" style="margin-top: 8px; font-size: 12px; color: var(--text-muted); display: none;">
+                                <!-- Debug info will be shown here -->
+                            </div>
+                        </div>
+                        
                         <!-- Edit Mode -->
-                        <div id="interestsEdit" class="interests-edit" style="display: none;">
-                            <!-- Research Domain Selection -->
+                        <div id="interestsEdit" style="display: none;">
                             <div class="form-group">
-                                <label class="form-label">Select Research Domains</label>
-                                <div id="researchDomainsGrid" class="domains-grid" style="
-                                    display: grid;
-                                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                                    gap: 8px;
-                                    margin-bottom: 16px;
-                                    max-height: 200px;
-                                    overflow-y: auto;
-                                    border: 1px solid var(--border-color);
-                                    padding: 12px;
-                                    border-radius: 8px;
-                                ">
-                                    <!-- Domains will be loaded here -->
-                                </div>
-                                <div class="form-help">
-                                    Select the research areas that match your interests. This helps us recommend more relevant papers.
-                                </div>
-                            </div>
-
-                            <!-- Custom Interest Description -->
-                            <div class="form-group">
-                                <label class="form-label" for="researchInterestsInput">Additional Research Interests (Optional)</label>
+                                <label class="form-label" for="interestsInput">
+                                    Describe your research interests (natural language)
+                                </label>
                                 <textarea 
-                                    id="researchInterestsInput" 
-                                    class="form-textarea" 
-                                    placeholder="Describe any additional research interests not covered by the domains above..."
-                                    rows="3"
+                                    id="interestsInput" 
+                                    class="form-input" 
+                                    rows="4" 
+                                    placeholder="例如：我对自然语言处理、机器学习算法优化以及计算机视觉在医疗影像中的应用很感兴趣..."
+                                    style="resize: vertical; min-height: 100px;"
                                 ></textarea>
-                                <div class="form-help">
-                                    Add any specific topics, methodologies, or niche areas not covered by the standard domains.
-                                </div>
+                                <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">
+                                    用自然语言描述您的研究兴趣，系统会自动解析并提取关键词
+                                </small>
                             </div>
-                            
-                            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                                <button type="button" class="btn btn-primary" id="saveInterestsBtn">
-                                    Save Interests
-                                </button>
-                                <button type="button" class="btn btn-secondary" id="cancelInterestsBtn">
-                                    Cancel
-                                </button>
-                            </div>
+                                                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button type="button" class="btn btn-primary" id="saveInterestsBtn" onclick="saveInterests()">
+                                <span>Save Interests</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelInterestsEdit()">
+                                Cancel
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="testProfileAPI()" style="background: #17a2b8;">
+                                Test API
+                            </button>
+                        </div>
                         </div>
                     </div>
 
@@ -556,18 +471,21 @@
         const bookmarkCount = document.getElementById('bookmarkCount');
         const joinDays = document.getElementById('joinDays');
         const interestsList = document.getElementById('interestsList');
+        const saveBtn = document.getElementById('saveBtn');
+        
+        // Research interests elements
         const editInterestsBtn = document.getElementById('editInterestsBtn');
-        const saveInterestsBtn = document.getElementById('saveInterestsBtn');
-        const cancelInterestsBtn = document.getElementById('cancelInterestsBtn');
         const interestsDisplay = document.getElementById('interestsDisplay');
         const interestsEdit = document.getElementById('interestsEdit');
-        const researchInterestsInput = document.getElementById('researchInterestsInput');
-        const researchDomainsGrid = document.getElementById('researchDomainsGrid');
-        const saveBtn = document.getElementById('saveBtn');
+        const interestsInput = document.getElementById('interestsInput');
+        const saveInterestsBtn = document.getElementById('saveInterestsBtn');
+        const interestsDebugInfo = document.getElementById('interestsDebugInfo');
 
         let currentProfile = null;
-        let availableDomains = [];
-        let selectedDomainIds = [];
+        const API_BASE_URL = 'http://10.0.1.226:8888';
+        
+        // Show debug info if URL contains debug parameter
+        const showDebug = window.location.search.includes('debug=true');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -578,9 +496,6 @@
         function setupEventListeners() {
             profileForm.addEventListener('submit', handleSaveProfile);
             logoutLink.addEventListener('click', handleLogout);
-            editInterestsBtn.addEventListener('click', handleEditInterests);
-            saveInterestsBtn.addEventListener('click', handleSaveInterests);
-            cancelInterestsBtn.addEventListener('click', handleCancelEditInterests);
         }
 
         async function loadProfile() {
@@ -591,7 +506,24 @@
             }
 
             try {
-                const profile = await window.AuthService.getUserProfile();
+                // Use the backend API to get user profile
+                const token = window.AuthService.getToken();
+                const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const profile = await response.json();
+                console.log('Profile data from API:', profile);
+                console.log('Research interests field (research_interests_text):', profile.research_interests_text);
+                console.log('Alternative interests field (interests_description):', profile.interests_description);
                 currentProfile = profile;
                 displayProfile(profile);
                 
@@ -632,19 +564,52 @@
                 joinDays.textContent = '0';
             }
 
-            // Update interests (handle both interests and interests_description fields)
-            const interests = profile.interests || profile.interests_description || [];
-            const researchText = profile.research_interests_text || '';
+            // Update interests - handle multiple possible field names and formats
+            console.log('Updating interests display with profile:', profile);
             
-            if (interests.length > 0) {
-                interestsList.innerHTML = interests
-                    .map(interest => `<span class="interest-tag">${interest}</span>`)
-                    .join('');
-            } else if (researchText) {
-                interestsList.innerHTML = `<span class="interest-tag">${researchText}</span>`;
-            } else {
-                interestsList.innerHTML = '<span style="color: var(--text-muted);">No interests set yet</span>';
-            }
+            // Use the correct field name from backend API
+            const researchInterests = profile.research_interests_text || 
+                                     profile.interests_description || 
+                                     profile.research_interests || 
+                                     profile.researchInterests || 
+                                     profile.interests || 
+                                     null;
+                                     
+            console.log('Found research interests:', researchInterests);
+            
+            if (researchInterests) {
+                if (typeof researchInterests === 'string' && researchInterests.trim()) {
+                    // If it's a string, display it as natural language
+                    interestsList.innerHTML = `<div style="color: var(--text-primary); line-height: 1.6; background: var(--hover-bg); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-red);">${researchInterests}</div>`;
+                    interestsInput.value = researchInterests;
+                } else if (Array.isArray(researchInterests) && researchInterests.length > 0) {
+                    // If it's an array, display as tags
+                    interestsList.innerHTML = researchInterests
+                        .map(interest => `<span class="interest-tag">${interest}</span>`)
+                        .join('');
+                    interestsInput.value = researchInterests.join(', ');
+                } else {
+                    // Empty or invalid data
+                    interestsList.innerHTML = '<span style="color: var(--text-muted);">No research interests set yet</span>';
+                    interestsInput.value = '';
+                }
+                         } else {
+                 // No research interests data found
+                 interestsList.innerHTML = '<span style="color: var(--text-muted);">No research interests set yet. Click "Edit" to add your interests.</span>';
+                 interestsInput.value = '';
+             }
+             
+             // Show debug info if enabled
+             if (showDebug) {
+                 interestsDebugInfo.style.display = 'block';
+                 interestsDebugInfo.innerHTML = `
+                     <strong>Debug Info:</strong><br>
+                     API Fields: research_interests_text=${profile.research_interests_text ? 'found' : 'null'}, 
+                     interests_description=${profile.interests_description ? 'found' : 'null'}, 
+                     research_interests=${profile.research_interests ? 'found' : 'null'}<br>
+                     Selected: ${researchInterests ? (typeof researchInterests + ': ' + (typeof researchInterests === 'string' ? researchInterests.substring(0, 50) + '...' : JSON.stringify(researchInterests))) : 'none'}
+                 `;
+             }
         }
 
         async function handleSaveProfile(event) {
@@ -662,20 +627,31 @@
             clearMessages();
 
             try {
-                const result = await window.AuthService.updateUserProfile({
-                    username: username
+                const token = window.AuthService.getToken();
+                const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username
+                    })
                 });
 
-                if (result.success) {
-                    currentProfile = result.user;
-                    displayProfile(currentProfile);
-                    showMessage('Profile updated successfully!', 'success');
-                } else {
-                    showMessage(result.error || 'Failed to update profile.', 'error');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
                 }
+
+                const updatedProfile = await response.json();
+                currentProfile = updatedProfile;
+                displayProfile(currentProfile);
+                showMessage('Profile updated successfully!', 'success');
+
             } catch (error) {
                 console.error('Error updating profile:', error);
-                showMessage('Network error. Please try again.', 'error');
+                showMessage(error.message || 'Network error. Please try again.', 'error');
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Save Changes';
@@ -715,67 +691,157 @@
             messageContainer.innerHTML = '';
         }
 
-        // Research interests editing functions
-        function handleEditInterests() {
-            // Switch to edit mode
-            interestsDisplay.style.display = 'none';
-            interestsEdit.style.display = 'block';
+        // Research Interests editing functions
+        function toggleInterestsEdit() {
+            const isEditing = interestsEdit.style.display !== 'none';
             
-            // Pre-fill the textarea with current research interests
-            const currentResearchText = currentProfile?.research_interests_text || '';
-            researchInterestsInput.value = currentResearchText;
+            if (isEditing) {
+                // Cancel edit mode
+                cancelInterestsEdit();
+            } else {
+                // Enter edit mode
+                interestsDisplay.style.display = 'none';
+                interestsEdit.style.display = 'block';
+                editInterestsBtn.textContent = 'Cancel';
+                interestsInput.focus();
+            }
         }
 
-        async function handleSaveInterests() {
-            const researchText = researchInterestsInput.value.trim();
+        function cancelInterestsEdit() {
+            interestsDisplay.style.display = 'block';
+            interestsEdit.style.display = 'none';
+            editInterestsBtn.textContent = 'Edit';
             
-            if (!researchText) {
+            // Reset input to current value
+            if (currentProfile) {
+                const researchInterests = currentProfile.research_interests_text || 
+                                         currentProfile.interests_description || 
+                                         currentProfile.research_interests || 
+                                         currentProfile.researchInterests || 
+                                         currentProfile.interests || 
+                                         null;
+                                         
+                if (researchInterests) {
+                    if (typeof researchInterests === 'string') {
+                        interestsInput.value = researchInterests;
+                    } else if (Array.isArray(researchInterests)) {
+                        interestsInput.value = researchInterests.join(', ');
+                    } else {
+                        interestsInput.value = '';
+                    }
+                } else {
+                    interestsInput.value = '';
+                }
+            } else {
+                interestsInput.value = '';
+            }
+        }
+
+        async function saveInterests() {
+            const interests = interestsInput.value.trim();
+            
+            if (!interests) {
                 showMessage('Please enter your research interests.', 'error');
                 return;
             }
 
             // Disable save button
             saveInterestsBtn.disabled = true;
-            saveInterestsBtn.textContent = 'Saving...';
+            const originalText = saveInterestsBtn.querySelector('span').textContent;
+            saveInterestsBtn.querySelector('span').textContent = 'Saving...';
             clearMessages();
 
             try {
-                const result = await window.AuthService.updateUserProfile({
-                    research_interests_text: researchText
+                const token = window.AuthService.getToken();
+                console.log('Saving interests:', interests);
+                console.log('API URL:', `${API_BASE_URL}/api/users/me/profile`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        research_interests_text: interests
+                    })
                 });
+                
+                console.log('Save response status:', response.status);
 
-                if (result.success) {
-                    // Update current profile
-                    currentProfile = result.user;
-                    displayProfile(currentProfile);
-                    
-                    // Switch back to display mode
-                    interestsEdit.style.display = 'none';
-                    interestsDisplay.style.display = 'block';
-                    
-                    showMessage('Research interests updated successfully!', 'success');
-                } else {
-                    showMessage(result.error || 'Failed to update research interests.', 'error');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
                 }
+
+                const updatedProfile = await response.json();
+                console.log('Updated profile received:', updatedProfile);
+                console.log('New research_interests_text field:', updatedProfile.research_interests_text);
+                
+                currentProfile = updatedProfile;
+                displayProfile(currentProfile);
+                
+                // Exit edit mode
+                cancelInterestsEdit();
+                showMessage('Research interests updated successfully!', 'success');
+
             } catch (error) {
                 console.error('Error updating research interests:', error);
-                showMessage('Network error. Please try again.', 'error');
+                showMessage(error.message || 'Failed to update research interests. Please try again.', 'error');
             } finally {
                 saveInterestsBtn.disabled = false;
-                saveInterestsBtn.textContent = 'Save Interests';
+                saveInterestsBtn.querySelector('span').textContent = originalText;
             }
         }
 
-        function handleCancelEditInterests() {
-            // Switch back to display mode without saving
-            interestsEdit.style.display = 'none';
-            interestsDisplay.style.display = 'block';
-            
-            // Clear any error messages
-            clearMessages();
+        // Test function to debug API data
+        async function testProfileAPI() {
+            console.log('Testing profile API...');
+            try {
+                const token = window.AuthService.getToken();
+                console.log('Using token:', token ? token.substring(0, 50) + '...' : 'No token');
+                
+                const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('API Response status:', response.status);
+                console.log('API Response headers:', Object.fromEntries(response.headers.entries()));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error response:', errorText);
+                    alert(`API Error: ${response.status} - ${errorText}`);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('Raw API Response:', data);
+                console.log('All possible interest fields:', {
+                    research_interests_text: data.research_interests_text,
+                    interests_description: data.interests_description,
+                    research_interests: data.research_interests,
+                    researchInterests: data.researchInterests,
+                    interests: data.interests
+                });
+                
+                alert(`API测试成功！请查看控制台获取详细数据。\n状态: ${response.status}\n数据字段数: ${Object.keys(data).length}`);
+                
+            } catch (error) {
+                console.error('API Test error:', error);
+                alert(`API测试失败: ${error.message}`);
+            }
         }
+
+        // Make functions globally available for onclick handlers
+        window.toggleInterestsEdit = toggleInterestsEdit;
+        window.cancelInterestsEdit = cancelInterestsEdit;
+        window.saveInterests = saveInterests;
+        window.testProfileAPI = testProfileAPI;
     </script>
-    <script src="config.js"></script>
-    <script src="js/auth.js"></script>
 </body>
 </html>

@@ -7,6 +7,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Markdown rendering libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    
+    <!-- Math formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -23,17 +35,7 @@
             --accent-red: #dc2626;
             --hover-bg: #f8f9fa;
             --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            --max-width: 1000px;
-            --sidebar-width: 280px;
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #0f0f0f;
-            --text-primary: #ffffff;
-            --text-secondary: #cccccc;
-            --text-muted: #888888;
-            --border-color: #2a2a2a;
-            --hover-bg: #1a1a1a;
+            --max-width: 800px;
         }
 
         body {
@@ -43,23 +45,37 @@
             line-height: 1.7;
         }
 
-        /* Header */
-        .header {
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-color);
-            z-index: 100;
-        }
-
-        .header-content {
+        .container {
             max-width: var(--max-width);
             margin: 0 auto;
             padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 0;
+            margin-bottom: 32px;
+        }
+
+        .header-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 64px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
         }
 
         .logo {
@@ -74,54 +90,7 @@
             color: var(--accent-red);
         }
 
-        .header-actions {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            text-decoration: none;
-            color: var(--text-secondary);
-            font-size: 14px;
-            transition: all 0.2s ease;
-            background: var(--bg-color);
-        }
-
-        .btn:hover {
-            background-color: var(--hover-bg);
-            color: var(--text-primary);
-        }
-
-        .btn-primary {
-            background-color: var(--accent-red);
-            color: white;
-            border-color: var(--accent-red);
-        }
-
-        .btn-primary:hover {
-            background-color: #b91c1c;
-            color: white;
-        }
-
-        /* Main Layout */
-        .main-container {
-            max-width: var(--max-width);
-            margin: 0 auto;
-            padding: 32px 20px;
-            display: grid;
-            grid-template-columns: 1fr var(--sidebar-width);
-            gap: 40px;
-        }
-
-        /* Article Content */
-        .article {
-            min-width: 0; /* Prevent grid overflow */
-        }
-
+        /* Paper Header */
         .paper-header {
             margin-bottom: 32px;
             padding-bottom: 24px;
@@ -140,7 +109,6 @@
             font-size: 16px;
             color: var(--text-secondary);
             margin-bottom: 16px;
-            font-weight: 500;
         }
 
         .paper-meta {
@@ -149,165 +117,223 @@
             gap: 16px;
             font-size: 14px;
             color: var(--text-muted);
+            margin-bottom: 16px;
         }
 
-        .paper-meta-item {
+        .paper-tags {
             display: flex;
-            align-items: center;
-            gap: 6px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        /* Paper Content */
-        .paper-content {
-            font-size: 16px;
-            line-height: 1.8;
-        }
-
-        .paper-content h1,
-        .paper-content h2,
-        .paper-content h3,
-        .paper-content h4 {
-            color: var(--text-primary);
-            margin-top: 32px;
-            margin-bottom: 16px;
-            font-weight: 600;
-        }
-
-        .paper-content h1 {
-            font-size: 24px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .paper-content h2 {
-            font-size: 20px;
-        }
-
-        .paper-content h3 {
-            font-size: 18px;
-        }
-
-        .paper-content p {
-            margin-bottom: 16px;
-            color: var(--text-primary);
-        }
-
-        .paper-content ul,
-        .paper-content ol {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-
-        .paper-content li {
-            margin-bottom: 8px;
-        }
-
-        .paper-content blockquote {
-            border-left: 4px solid var(--accent-red);
-            padding-left: 16px;
-            margin: 24px 0;
+        .tag {
+            background-color: var(--hover-bg);
             color: var(--text-secondary);
-            font-style: italic;
-        }
-
-        .paper-content code {
-            background-color: var(--hover-bg);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 14px;
-        }
-
-        .paper-content pre {
-            background-color: var(--hover-bg);
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 16px 0;
-            font-size: 14px;
-        }
-
-        .paper-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 16px 0;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            position: sticky;
-            top: 96px;
-            height: fit-content;
-        }
-
-        .sidebar-section {
-            background-color: var(--hover-bg);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar-item {
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .sidebar-item strong {
-            color: var(--text-primary);
+            font-weight: 500;
         }
 
         .paper-actions {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+            margin-top: 20px;
         }
 
         .action-btn {
-            width: 100%;
-            padding: 12px;
+            padding: 10px 20px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             background: var(--bg-color);
             color: var(--text-secondary);
             text-decoration: none;
-            text-align: center;
-            font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .action-btn:hover {
-            background-color: var(--hover-bg);
-            color: var(--text-primary);
+            border-color: var(--accent-red);
+            color: var(--accent-red);
         }
 
         .action-btn.primary {
             background-color: var(--accent-red);
-            color: white;
             border-color: var(--accent-red);
+            color: white;
         }
 
         .action-btn.primary:hover {
             background-color: #b91c1c;
         }
 
-        /* Loading and Error States */
+        /* Paper Content */
+        .paper-content {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .abstract {
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            background-color: var(--hover-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+        }
+
+        .content {
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .content h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 32px 0 16px 0;
+            color: var(--text-primary);
+        }
+
+        .content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: var(--text-primary);
+        }
+
+        .content p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        .content strong {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .content code {
+            background-color: var(--hover-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        .content ul, .content ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        .content li {
+            margin-bottom: 8px;
+        }
+
+        /* Enhanced markdown content styles */
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: var(--card-shadow);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .content th,
+        .content td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .content th {
+            background-color: var(--hover-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .content tr:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .content blockquote {
+            border-left: 4px solid var(--accent-red);
+            margin: 20px 0;
+            padding: 16px 20px;
+            background-color: var(--hover-bg);
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        .content pre {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .content pre code {
+            background: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Math formulas */
+        .content .katex {
+            font-size: 1.1em;
+        }
+
+        .content .katex-display {
+            margin: 20px 0;
+            padding: 16px;
+            background-color: var(--hover-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-red);
+        }
+
+        /* Code highlighting */
+        .content .hljs {
+            background: #f8f9fa !important;
+            color: var(--text-primary);
+        }
+
+        /* Image styles */
+        .content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 16px 0;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Horizontal rule */
+        .content hr {
+            border: none;
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 32px 0;
+        }
+
+        /* Loading state */
         .loading {
             text-align: center;
             padding: 60px 20px;
-            color: var(--text-muted);
         }
 
         .spinner {
@@ -325,949 +351,328 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Responsive Design */
+        /* Responsive */
         @media (max-width: 768px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                gap: 24px;
-                padding: 24px 16px;
-            }
-
-            .sidebar {
-                order: -1;
-                position: static;
-            }
-
             .paper-title {
                 font-size: 24px;
             }
-
-            .header-content {
-                padding: 0 16px;
+            
+            .paper-actions {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                text-align: center;
             }
         }
 
-        /* Dark mode toggle */
-        .theme-toggle {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
+        [data-theme="dark"] {
+            --bg-color: #0f0f0f;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-muted: #888888;
+            --border-color: #2a2a2a;
+            --hover-bg: #1a1a1a;
         }
 
-        .theme-toggle:hover {
-            background-color: var(--hover-bg);
-            color: var(--text-primary);
+        /* Dark theme enhancements */
+        [data-theme="dark"] .content th {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .content pre {
+            background-color: #1a1a1a;
+            border-color: #2a2a2a;
+        }
+
+        [data-theme="dark"] .content .hljs {
+            background: #1a1a1a !important;
+            color: #cccccc;
+        }
+
+        [data-theme="dark"] .content blockquote {
+            background-color: #1a1a1a;
+            color: #cccccc;
+        }
+
+        [data-theme="dark"] .content .katex-display {
+            background-color: #1a1a1a;
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <div class="header-content">
-            <a href="index.html" class="logo">Paper<span class="highlight">Ignition</span></a>
-            
-            <div class="header-actions">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme (Ctrl+D)">🌓</button>
-                <button id="bookmarkBtn" class="action-btn">☆ Save</button>
-                <a href="index.html" class="btn">← Back to Papers</a>
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="back-btn">← Back to Papers</a>
+                <a href="index.html" class="logo">Paper<span class="highlight">Ignition</span></a>
             </div>
         </div>
     </header>
 
-    <div class="main-container">
-        <!-- Loading State -->
-        <div id="loadingState" class="loading">
+    <main class="container">
+        <div id="loadingIndicator" class="loading">
             <div class="spinner"></div>
-            <p>Loading paper...</p>
+            <p>Loading paper details...</p>
         </div>
 
-        <!-- Error State -->
-        <div id="errorState" class="loading" style="display: none;">
-            <p>Failed to load paper. Please try again.</p>
-            <a href="index.html" class="btn" style="margin-top: 16px; display: inline-block;">Back to Papers</a>
-        </div>
-
-        <!-- Paper Content -->
-        <article id="paperArticle" class="article" style="display: none;">
-            <div class="paper-header">
-                <h1 id="paperTitle" class="paper-title">Paper Title</h1>
-                <div id="paperAuthors" class="paper-authors">Authors</div>
-                <div id="paperMeta" class="paper-meta">
-                    <div class="paper-meta-item">📅 <span id="paperDate">Date</span></div>
-                    <div class="paper-meta-item">🔗 <span id="paperSource">Source</span></div>
-                </div>
-            </div>
-
-            <div id="paperContent" class="paper-content">
-                <!-- Paper content will be loaded here -->
-            </div>
+        <article id="paperDetail" style="display: none;">
+            <!-- Paper content will be loaded here -->
         </article>
-
-        <!-- Sidebar -->
-        <aside id="paperSidebar" class="sidebar" style="display: none;">
-            <div class="sidebar-section">
-                <div class="sidebar-title">Actions</div>
-                <div class="paper-actions">
-                    <button id="sidebarBookmark" class="action-btn primary">☆ Save Paper</button>
-                    <a id="paperUrl" href="#" target="_blank" class="action-btn">📄 Original Paper</a>
-                    <button class="action-btn" onclick="window.print()">🖨️ Print</button>
-                    <button class="action-btn" onclick="shareCurrentPage()">📤 Share</button>
-                </div>
-            </div>
-
-            <div class="sidebar-section">
-                <div class="sidebar-title">Paper Info</div>
-                <div id="paperInfo">
-                    <div class="sidebar-item"><strong>Paper ID:</strong> <span id="sidebarPaperId">-</span></div>
-                    <div class="sidebar-item"><strong>Authors:</strong> <span id="sidebarAuthors">-</span></div>
-                    <div class="sidebar-item"><strong>Abstract:</strong> <div id="sidebarAbstract">-</div></div>
-                </div>
-            </div>
-        </aside>
-    </div>
+    </main>
 
     <script>
-        // Global variables
-        let currentPaper = null;
-        let bookmarkedPapers = new Set();
+        // API Configuration
+        const API_BASE_URL = 'http://10.0.1.226:8888';
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadBookmarks();
-            loadPaper();
-            setupEventListeners();
+        // Get paper ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const paperId = urlParams.get('id');
+
+        if (!paperId) {
+            document.getElementById('loadingIndicator').innerHTML = '<p>No paper ID provided</p>';
+        }
+
+        // State variables
+        let currentPaper = null;
+        let paperContent = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPaperDetail();
         });
 
-        function setupEventListeners() {
-            // Theme toggle with keyboard shortcut
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'd' && e.ctrlKey) {
-                    e.preventDefault();
-                    toggleTheme();
-                }
-            });
-
-            // Bookmark buttons
-            document.getElementById('bookmarkBtn').addEventListener('click', handleBookmark);
-            document.getElementById('sidebarBookmark').addEventListener('click', handleBookmark);
-        }
-
-        async function loadBookmarks() {
-            // Use FavoritesService if available, otherwise fallback to localStorage
-            if (window.FavoritesService && window.AuthService?.isLoggedIn()) {
-                await window.FavoritesService.loadFavorites();
-                // The bookmarkedPapers Set is updated by the service
-            } else {
-                const saved = localStorage.getItem('bookmarkedPapers');
-                if (saved) {
-                    bookmarkedPapers = new Set(JSON.parse(saved));
-                }
-            }
-        }
-
-        async function loadPaper() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const paperId = urlParams.get('id');
-            
+        async function loadPaperDetail() {
             if (!paperId) {
                 showError('No paper ID provided');
                 return;
             }
 
             try {
-                showLoading();
+                // Get paper basic info from main page data or API
+                await loadPaperInfo();
                 
-                // First, get paper details from the current papers or API
-                const paperDetail = await getPaperDetail(paperId);
-                if (!paperDetail) {
-                    throw new Error('Paper not found');
-                }
+                // Load paper content from backend
+                await loadPaperContent();
                 
-                currentPaper = paperDetail;
+                // Render the complete paper detail
+                renderPaperDetail();
                 
-                // Then get paper content
-                const content = await getPaperContent(paperId);
-                
-                // Display the paper
-                displayPaper(paperDetail, content);
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('paperDetail').style.display = 'block';
                 
             } catch (error) {
-                console.error('Error loading paper:', error);
-                showError('Failed to load paper');
-            }
+                console.error('Error loading paper detail:', error);
+                showError('Failed to load paper content. Please try again.');
+        }
         }
 
-        async function getPaperDetail(paperId) {
-            console.log('Getting paper detail for ID:', paperId);
-            
-            // Method 1: Try to get from the current user's recommendations
-            const currentUser = window.AuthService?.getCurrentUser();
-            const isLoggedIn = window.AuthService?.isLoggedIn();
-            
-            console.log('User logged in:', isLoggedIn);
-            console.log('Current user:', currentUser);
-            
-            if (isLoggedIn && currentUser && window.PaperService) {
-                try {
-                    const userIdentifier = currentUser.email || currentUser.username;
-                    console.log('Fetching papers for user:', userIdentifier);
-                    
-                    const result = await window.PaperService.getPapers(userIdentifier);
-                    const userPapers = result.papers || [];
-                    console.log('User papers:', userPapers);
-                    
-                    // Find the paper in user's recommendations
-                    const userPaper = userPapers.find(p => p.id === paperId);
-                    if (userPaper) {
-                        console.log('Found paper in user recommendations:', userPaper);
-                        return {
-                            ...userPaper,
-                            authors: Array.isArray(userPaper.authors) ? 
-                                userPaper.authors.join(', ') : 
-                                userPaper.authors || 'Unknown Authors'
-                        };
-                    }
-                    console.log('Paper not found in user recommendations, trying other methods...');
-                } catch (error) {
-                    console.error('Error getting user papers:', error);
-                }
-            }
-            
-            // Method 2: Try to get paper content first to verify it exists
-            try {
-                console.log('Attempting to fetch paper content to verify existence...');
-                const API_BASE_URL = window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888';
-                const contentEndpoint = window.CONFIG?.ENDPOINTS?.PAPER_CONTENT(paperId) || `/api/papers/paper_content/${paperId}`;
-                const contentUrl = `${API_BASE_URL}${contentEndpoint}`;
-                
-                const contentResponse = await fetch(contentUrl, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                if (contentResponse.ok) {
-                    console.log('Paper content exists, creating minimal paper object');
-                    // If we can get content, create a minimal paper object
-                    return {
-                        id: paperId,
-                        title: `Paper ${paperId}`, // Will be updated from content if possible
-                        authors: 'Loading...',
-                        abstract: 'Loading paper details...',
-                        publishDate: 'Unknown',
-                        comments: 'Research Paper',
-                        url: null
-                    };
-                }
-            } catch (error) {
-                console.error('Error verifying paper content:', error);
-            }
-            
-            // Fallback to sample papers (using real paper IDs)
-            const samplePapers = [
-                {
-                    id: '2506.16692v2',
-                    title: 'LegiGPT: Party Politics and Transport Policy with Large Language Model',
-                    authors: 'Hyunsoo Yun, Eun Hak Lee',
-                    abstract: 'Given the significant influence of lawmakers\' political ideologies on legislative decision-making, analyzing their impact on transportation-related policymaking is of critical importance. This study introduces a novel framework that integrates a large language model (LLM) with explainable artificial intelligence (XAI) to analyze transportation-related legislative proposals.',
-                    publishDate: 'June 2025',
-                    comments: 'Research Paper',
-                    url: null
-                },
-                {
-                    id: '2508.00652v1',
-                    title: 'The Manipulative Power of Voice Characteristics: Investigating Deceptive Patterns in Mandarin Chinese Female Synthetic Speech',
-                    authors: 'Shuning Zhang, Han Chen, Yabo Wang, Yiqun Xu, Jiaqi Bai, Yuanyuan Wu, Shixuan Li, Xin Yi, Chunhui Wang, Hewu Li',
-                    abstract: 'Pervasive voice interaction enables deceptive patterns through subtle voice characteristics, yet empirical investigation into this manipulation lags behind, especially within major non-English language contexts.',
-                    publishDate: 'August 2025',
-                    comments: 'Research Paper',
-                    url: null
-                },
-                {
-                    id: '2507.09018v1',
-                    title: 'A Critique of Deng\'s "P=NP"',
-                    authors: 'Isabel Humphreys, Matthew Iceland, Harry Liuson, Dylan McKellips, Leo Sciortino',
-                    abstract: 'In this paper, we critically examine Deng\'s "P=NP" [Den24]. The paper claims that there is a polynomial-time algorithm that decides 3-coloring for graphs with vertices of degree at most 4, which is known to be an NP-complete problem.',
-                    publishDate: 'July 2025',
-                    comments: 'Research Paper',
-                    url: null
-                },
-                {
-                    id: 'paper_001',
-                    title: 'Example Paper on FastAPI',
-                    authors: 'Alice, Bob',
-                    abstract: 'This is a demo abstract.',
-                    publishDate: 'January 2025',
-                    comments: 'Demo Paper',
-                    url: null
-                }
-            ];
-
-            // Check sample papers
-            let paper = samplePapers.find(p => p.id === paperId);
-            if (paper) return paper;
-
-            // If not found, try PaperService as last resort
-            if (window.PaperService) {
-                try {
-                    return await window.PaperService.getPaperDetail(paperId);
-                } catch (error) {
-                    console.error('Error getting paper detail:', error);
-                }
-            }
-
-            return null;
-        }
-
-        async function getPaperContent(paperId) {
-            console.log('Getting paper content for ID:', paperId);
-            
-            // First try direct API call
-            try {
-                const API_BASE_URL = window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888';
-                const endpoint = window.CONFIG?.ENDPOINTS?.PAPER_CONTENT(paperId) || `/api/papers/paper_content/${paperId}`;
-                const url = `${API_BASE_URL}${endpoint}`;
-                
-                console.log('Fetching paper content from:', url);
-                
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    let content = await response.text();
-                    console.log('Raw API response length:', content.length);
-                    console.log('Raw content preview:', content.substring(0, 100));
-                    
-                    // Handle JSON string response (content wrapped in quotes)
-                    if (content.startsWith('"') && content.endsWith('"')) {
-                        try {
-                            content = JSON.parse(content);
-                            console.log('Parsed JSON string content');
-                        } catch (e) {
-                            console.log('Failed to parse as JSON, using raw content');
-                        }
-                    }
-                    
-                    console.log('Successfully fetched paper content, final length:', content.length);
-                    console.log('Final content preview:', content.substring(0, 200));
-                    return content;
-                } else {
-                    console.error('API response not OK:', response.status, response.statusText);
-                }
-            } catch (error) {
-                console.error('Direct API call failed:', error);
-            }
-            
-            // Fallback to PaperService
-            if (window.PaperService) {
-                try {
-                    console.log('Fallback: Calling PaperService.getPaperContent...');
-                    const result = await window.PaperService.getPaperContent(paperId);
-                    console.log('Paper content result:', result);
-                    
-                    if (result && result.content) {
-                        console.log('Found content via PaperService, length:', result.content.length);
-                        return result.content;
-                    } else {
-                        console.log('No content in PaperService result');
-                    }
-                } catch (error) {
-                    console.error('Error getting paper content from PaperService:', error);
-                }
-            } else {
-                console.log('PaperService not available');
-            }
-            
-            console.log('Using fallback content');
-            // Fallback content
-            return `
-# ${currentPaper?.title || 'Paper Content'}
-
-## Abstract
-
-${currentPaper?.abstract || 'Abstract not available'}
-
-## Introduction
-
-This paper presents important research findings in the field. The work builds upon previous research and contributes new insights to the academic community.
-
-## Methodology
-
-The authors employed rigorous research methodologies to ensure the validity and reliability of their findings.
-
-## Results
-
-The research yielded significant results that advance our understanding of the topic.
-
-## Conclusion
-
-This work represents an important contribution to the field and opens up new avenues for future research.
-
----
-
-**Note**: This is placeholder content. The actual paper blog content should be loaded from the backend API at \`/api/papers/paper_content/${paperId}\`. Please ensure you are logged in and that the paper exists in the system.
-            `.trim();
-        }
-
-        function displayPaper(paper, content) {
-            // Try to extract title and metadata from blog content if paper data is minimal
-            let displayTitle = paper.title;
-            let displayAuthors = paper.authors;
-            let displayAbstract = paper.abstract;
-            
-            if (content && (paper.title.startsWith('Paper ') || paper.authors === 'Loading...')) {
-                console.log('Extracting metadata from blog content...');
-                
-                // Try to extract title from content (look for first # heading)
-                const titleMatch = content.match(/^#\s+([^#\n]+)/m);
-                if (titleMatch && titleMatch[1]) {
-                    const extractedTitle = titleMatch[1].replace(/^TL;DR:\s*/i, '').trim();
-                    if (extractedTitle.length > 10) {
-                        displayTitle = extractedTitle;
-                        console.log('Extracted title:', displayTitle);
-                    }
-                }
-                
-                // Try to extract authors info from typical patterns
-                const authorsMatch = content.match(/作者[:：]\s*([^\n]+)/i) || 
-                                  content.match(/authors?[:：]\s*([^\n]+)/i) ||
-                                  content.match(/团队[:：]\s*([^\n]+)/i);
-                if (authorsMatch && authorsMatch[1]) {
-                    displayAuthors = authorsMatch[1].trim();
-                    console.log('Extracted authors:', displayAuthors);
-                }
-                
-                // Try to extract abstract/summary from TL;DR or similar sections
-                const abstractMatch = content.match(/TL;DR[:：]\s*([^#\n]+)/i) ||
-                                    content.match(/摘要[:：]\s*([^#\n]+)/i) ||
-                                    content.match(/## 摘要\s*\n\s*([^#]+)/i);
-                if (abstractMatch && abstractMatch[1]) {
-                    displayAbstract = abstractMatch[1].trim().substring(0, 300) + '...';
-                    console.log('Extracted abstract:', displayAbstract.substring(0, 100) + '...');
-                }
-            }
-            
-            // Update title and metadata
-            document.getElementById('paperTitle').textContent = displayTitle;
-            document.getElementById('paperAuthors').textContent = displayAuthors || 'Unknown Authors';
-            
-            const dateElement = document.getElementById('paperDate');
-            const sourceElement = document.getElementById('paperSource');
-            
-            dateElement.textContent = paper.publishDate || paper.submittedDate || 'Unknown';
-            sourceElement.textContent = paper.comments || 'Research Paper';
-            
-            // Update sidebar info
-            document.getElementById('sidebarPaperId').textContent = paper.id;
-            document.getElementById('sidebarAuthors').textContent = displayAuthors || 'Unknown Authors';
-            document.getElementById('sidebarAbstract').textContent = displayAbstract || 'No abstract available';
-            
-            // Update paper URL if available
-            const urlLink = document.getElementById('paperUrl');
-            if (paper.url && paper.url !== '#' && paper.url !== null) {
-                urlLink.href = paper.url;
-                urlLink.style.display = 'block';
-            } else {
-                urlLink.style.display = 'none';
-            }
-            
-            // Convert markdown-like content to HTML and display
-            const paperContentDiv = document.getElementById('paperContent');
-            paperContentDiv.innerHTML = convertMarkdownToHTML(content);
-            
-            // Add blog feedback section if user is logged in
-            addBlogFeedbackSection(paperContentDiv, paper.id);
-            
-            // Update bookmark status
-            updateBookmarkButtons();
-            
-            // Update page title
-            document.title = `${displayTitle} - PaperIgnition`;
-            
-            // Show the paper
-            showPaper();
-        }
-
-        function convertMarkdownToHTML(markdown) {
-            if (!markdown) return '<p>No content available</p>';
-            
-            console.log('Converting markdown to HTML, length:', markdown.length);
-            
-            // First, clean up any escaped quotes and newlines
-            let cleanMarkdown = markdown;
-            if (typeof markdown === 'string' && markdown.startsWith('"') && markdown.endsWith('"')) {
-                // Remove surrounding quotes if present
-                cleanMarkdown = markdown.slice(1, -1);
-            }
-            
-            // Handle escaped characters
-            cleanMarkdown = cleanMarkdown
-                .replace(/\\n\\n/g, '\n\n')
-                .replace(/\\n/g, '\n')
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, '\\');
-            
-            console.log('Cleaned markdown preview:', cleanMarkdown.substring(0, 200) + '...');
-            
-            let html = cleanMarkdown
-                // Tables (handle before other processing)
-                .replace(/\|(.+)\|/g, function(match, content) {
-                    const cells = content.split('|').map(cell => cell.trim());
-                    const cellsHtml = cells.map(cell => `<td>${cell}</td>`).join('');
-                    return `<tr>${cellsHtml}</tr>`;
-                })
-                
-                // Headers (handle multiple # levels)
-                .replace(/^#### (.*$)/gm, '<h4>$1</h4>')
-                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-                
-                // Bold and italic
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
-                
-                // Code blocks
-                .replace(/```([^`]*?)```/gs, '<pre><code>$1</code></pre>')
-                
-                // Inline code
-                .replace(/`([^`]+)`/g, '<code>$1</code>')
-                
-                // Links
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-                
-                // Images (handle broken image syntax)
-                .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 16px 0;" />')
-                .replace(/!([^[!\n]+)/g, '<img src="#" alt="$1" style="max-width: 100%; height: auto; margin: 16px 0;" />')
-                
-                // Lists
-                .replace(/^\s*[-*+]\s+(.+)$/gm, '<li>$1</li>')
-                .replace(/^\s*\d+\.\s+(.+)$/gm, '<li>$1</li>')
-                
-                // Horizontal rules
-                .replace(/^---+$/gm, '<hr>')
-                
-                // Blockquotes
-                .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
-                
-                // Line breaks and paragraphs
-                .split('\n\n')
-                .map(para => {
-                    para = para.trim();
-                    if (!para) return '';
-                    
-                    // Don't wrap already wrapped HTML tags
-                    if (para.match(/^<(h[1-6]|pre|hr|ul|ol|blockquote|tr|table)/)) {
-                        return para;
-                    }
-                    
-                    // Handle lists
-                    if (para.includes('<li>')) {
-                        if (para.match(/^\s*\d+\./)) {
-                            return `<ol>${para}</ol>`;
-                        } else {
-                            return `<ul>${para}</ul>`;
-                        }
-                    }
-                    
-                    // Handle tables
-                    if (para.includes('<tr>')) {
-                        return `<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">${para}</table>`;
-                    }
-                    
-                    // Regular paragraphs
-                    return `<p>${para.replace(/\n/g, '<br>')}</p>`;
-                })
-                .join('\n')
-                
-                // Clean up any remaining formatting issues
-                .replace(/<\/li>\s*<li>/g, '</li><li>')
-                .replace(/<\/td>\s*<td>/g, '</td><td>')
-                .replace(/<table[^>]*>(.*?)<\/table>/gs, function(match, content) {
-                    return `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; border: 1px solid var(--border-color);">${content}</table>`;
-                })
-                .replace(/<td>/g, '<td style="padding: 8px; border: 1px solid var(--border-color);">');
-                
-            console.log('Converted HTML preview:', html.substring(0, 300) + '...');
-            return html;
-        }
-
-        function showLoading() {
-            document.getElementById('loadingState').style.display = 'block';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('paperArticle').style.display = 'none';
-            document.getElementById('paperSidebar').style.display = 'none';
-        }
-
-        function showError(message) {
-            document.getElementById('errorState').style.display = 'block';
-            document.getElementById('errorState').querySelector('p').textContent = message;
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('paperArticle').style.display = 'none';
-            document.getElementById('paperSidebar').style.display = 'none';
-        }
-
-        function showPaper() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('paperArticle').style.display = 'block';
-            document.getElementById('paperSidebar').style.display = 'block';
-        }
-
-        async function handleBookmark() {
-            if (!currentPaper) return;
-            
-            const paperId = currentPaper.id;
-            const isCurrentlyBookmarked = bookmarkedPapers.has(paperId);
-            
-            // Update UI immediately
-            const bookmarkBtn = document.getElementById('bookmarkBtn');
-            const sidebarBookmark = document.getElementById('sidebarBookmark');
-            
-            bookmarkBtn.disabled = true;
-            sidebarBookmark.disabled = true;
-            bookmarkBtn.textContent = isCurrentlyBookmarked ? 'Removing...' : 'Saving...';
-            sidebarBookmark.textContent = isCurrentlyBookmarked ? 'Removing...' : 'Saving...';
-            
-            try {
-                let result;
-                
-                if (window.FavoritesService) {
-                    // Use the FavoritesService from main.js
-                    if (isCurrentlyBookmarked) {
-                        result = await window.FavoritesService.removeFavorite(paperId);
-                    } else {
-                        result = await window.FavoritesService.addFavorite(currentPaper);
-                    }
-                } else {
-                    // Fallback to localStorage
-                    if (isCurrentlyBookmarked) {
-                        bookmarkedPapers.delete(paperId);
-                    } else {
-                        bookmarkedPapers.add(paperId);
-                    }
-                    localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-                    result = { success: true };
-                }
-                
-                if (result.success) {
-                    updateBookmarkButtons();
-                    
-                    // Show success message using existing showMessage or alert
-                    const newIsBookmarked = bookmarkedPapers.has(paperId);
-                    if (window.showToast) {
-                        window.showToast(newIsBookmarked ? 'Paper saved!' : 'Paper removed from saved');
-                    }
-                } else {
-                    if (window.showToast) {
-                        window.showToast(result.error || 'Failed to update bookmark', 'error');
-                    } else {
-                        alert(result.error || 'Failed to update bookmark');
-                    }
-                }
-            } catch (error) {
-                console.error('Error toggling bookmark:', error);
-                if (window.showToast) {
-                    window.showToast('Failed to update bookmark', 'error');
-                } else {
-                    alert('Failed to update bookmark');
-                }
-            } finally {
-                bookmarkBtn.disabled = false;
-                sidebarBookmark.disabled = false;
-                updateBookmarkButtons();
-            }
-        }
-
-        function updateBookmarkButtons() {
-            if (!currentPaper) return;
-            
-            const isBookmarked = bookmarkedPapers.has(currentPaper.id);
-            const bookmarkBtn = document.getElementById('bookmarkBtn');
-            const sidebarBookmark = document.getElementById('sidebarBookmark');
-            
-            const text = isBookmarked ? '★ Saved' : '☆ Save';
-            const sidebarText = isBookmarked ? '★ Saved' : '☆ Save Paper';
-            
-            bookmarkBtn.textContent = text;
-            sidebarBookmark.textContent = sidebarText;
-            
-            if (isBookmarked) {
-                bookmarkBtn.classList.add('primary');
-                sidebarBookmark.classList.add('primary');
-            } else {
-                bookmarkBtn.classList.remove('primary');
-                sidebarBookmark.classList.remove('primary');
-            }
-        }
-
-        // Blog feedback functionality
-        function addBlogFeedbackSection(contentDiv, paperId) {
-            // Only show feedback section if user is logged in and we have AuthService
-            if (!window.AuthService?.isLoggedIn()) {
+        async function loadPaperInfo() {
+            // Try to get paper info from sessionStorage (passed from main page)
+            const storedPaper = sessionStorage.getItem(`paper_${paperId}`);
+            if (storedPaper) {
+                currentPaper = JSON.parse(storedPaper);
                 return;
             }
 
-            const feedbackHTML = `
-                <div class="blog-feedback-section" id="blogFeedbackSection">
-                    <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid var(--border-color);">
-                    <div class="feedback-container">
-                        <div class="feedback-title">
-                            <h3 style="margin: 0 0 15px 0; color: var(--text-primary); font-size: 18px;">How did you like this blog?</h3>
-                        </div>
-                        <div class="feedback-buttons">
-                            <button class="feedback-btn like-btn" id="blogLikeBtn" onclick="handleBlogFeedback('${paperId}', true)">
-                                <span class="btn-icon">👍</span>
-                                <span class="btn-text">Like</span>
-                            </button>
-                            <button class="feedback-btn dislike-btn" id="blogDislikeBtn" onclick="handleBlogFeedback('${paperId}', false)">
-                                <span class="btn-icon">👎</span>
-                                <span class="btn-text">Dislike</span>
-                            </button>
-                        </div>
-                        <div class="feedback-status" id="feedbackStatus" style="margin-top: 15px; font-size: 14px; color: var(--text-secondary);"></div>
+            // If no stored paper info, create a minimal paper object
+            currentPaper = {
+                id: paperId,
+                title: 'Loading...',
+                authors: [],
+                abstract: '',
+                tags: [],
+                publishDate: '',
+                comments: '',
+                submittedDate: ''
+            };
+        }
+
+        async function loadPaperContent() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/papers/paper_content/${encodeURIComponent(paperId)}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Paper content not found');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // The backend returns the content as plain text (markdown string)
+                paperContent = await response.text();
+                
+                // If the response is JSON-wrapped, parse it
+                try {
+                    const jsonData = JSON.parse(paperContent);
+                    if (typeof jsonData === 'string') {
+                        paperContent = jsonData;
+                    }
+                } catch (e) {
+                    // Content is already plain text, keep as is
+                }
+                
+            } catch (error) {
+                console.error('Error loading paper content:', error);
+                paperContent = `## Error Loading Content\n\n${error.message}\n\nPlease try again later.`;
+            }
+        }
+
+        function renderPaperDetail() {
+            const paperDetail = document.getElementById('paperDetail');
+            
+            paperDetail.innerHTML = `
+                <div class="paper-header">
+                    <h1 class="paper-title">${currentPaper.title}</h1>
+                    <p class="paper-authors">${Array.isArray(currentPaper.authors) ? currentPaper.authors.join(', ') : currentPaper.authors || 'Unknown authors'}</p>
+                    <div class="paper-meta">
+                        ${currentPaper.publishDate ? `<span>${currentPaper.publishDate}</span>` : ''}
+                        ${currentPaper.publishDate && currentPaper.comments ? '<span>•</span>' : ''}
+                        ${currentPaper.comments ? `<span>${currentPaper.comments}</span>` : ''}
+                        ${(currentPaper.publishDate || currentPaper.comments) && currentPaper.submittedDate ? '<span>•</span>' : ''}
+                        ${currentPaper.submittedDate ? `<span>Submitted: ${currentPaper.submittedDate}</span>` : ''}
+                    </div>
+                    ${currentPaper.tags && currentPaper.tags.length > 0 ? `
+                    <div class="paper-tags">
+                        ${currentPaper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    ` : ''}
+                    <div class="paper-actions">
+                        <button class="action-btn primary" onclick="toggleBookmark('${currentPaper.id}')">
+                            ${isBookmarked(currentPaper.id) ? '★ Saved' : '☆ Save Paper'}
+                        </button>
+                        ${currentPaper.url ? `<a href="${currentPaper.url}" target="_blank" class="action-btn">PDF</a>` : '<button class="action-btn" disabled>PDF</button>'}
+                        <button class="action-btn" onclick="sharePaper()">Share</button>
                     </div>
                 </div>
-            `;
-
-            contentDiv.insertAdjacentHTML('beforeend', feedbackHTML);
-            
-            // Load existing feedback status
-            loadBlogFeedbackStatus(paperId);
-        }
-
-        async function loadBlogFeedbackStatus(paperId) {
-            if (!window.AuthService?.isLoggedIn()) return;
-
-            try {
-                const token = window.AuthService.getToken();
-                const response = await fetch(`${window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888'}/api/papers/blog-feedback/${paperId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    updateBlogFeedbackUI(result.blog_liked);
-                }
-            } catch (error) {
-                console.error('Error loading blog feedback status:', error);
-            }
-        }
-
-        async function handleBlogFeedback(paperId, liked) {
-            if (!window.AuthService?.isLoggedIn()) {
-                alert('Please login to provide feedback');
-                return;
-            }
-
-            const likeBtn = document.getElementById('blogLikeBtn');
-            const dislikeBtn = document.getElementById('blogDislikeBtn');
-            const statusDiv = document.getElementById('feedbackStatus');
-
-            // Update UI immediately
-            likeBtn.disabled = true;
-            dislikeBtn.disabled = true;
-            statusDiv.textContent = 'Submitting feedback...';
-
-            try {
-                const token = window.AuthService.getToken();
-                const response = await fetch(`${window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888'}/api/papers/blog-feedback`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paper_id: paperId,
-                        liked: liked
-                    })
-                });
-
-                if (response.ok) {
-                    updateBlogFeedbackUI(liked);
-                    statusDiv.textContent = liked ? 'Thank you for your feedback!' : 'Thank you for your feedback!';
-                    
-                    if (window.showToast) {
-                        window.showToast(liked ? 'Thanks for liking this blog!' : 'Thanks for your feedback!');
-                    }
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to submit feedback');
-                }
-            } catch (error) {
-                console.error('Error submitting blog feedback:', error);
-                statusDiv.textContent = 'Failed to submit feedback. Please try again.';
                 
-                if (window.showToast) {
-                    window.showToast('Failed to submit feedback', 'error');
-                } else {
-                    alert('Failed to submit feedback');
+                <div class="paper-content">
+                    ${currentPaper.abstract ? `
+                    <div class="section-title">Abstract</div>
+                    <div class="abstract">${currentPaper.abstract}</div>
+                    ` : ''}
+                    
+                    <div class="section-title">Full Content</div>
+                    <div class="content" id="paperContentDiv">${formatMarkdown(paperContent)}</div>
+                </div>
+            `;
+            
+            // Update page title
+            document.title = `${currentPaper.title} - PaperIgnition`;
+            
+            // Render math formulas after content is loaded and DOM is updated
+            setTimeout(() => {
+                renderMathFormulas();
+            }, 100);
+        }
+
+        function formatMarkdown(content) {
+            if (!content) return '<p>No content available</p>';
+            
+            try {
+                // Configure marked options
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true, // GitHub Flavored Markdown (supports tables)
+                    headerIds: true,
+                    mangle: false,
+                    sanitize: false,
+                    smartypants: true,
+                    highlight: function(code, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {
+                                console.error('Highlight.js error:', err);
+                            }
+                        }
+                        return hljs.highlightAuto(code).value;
+                    }
+                });
+
+                // Render markdown to HTML
+                const html = marked.parse(content);
+                
+                return html;
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to simple formatting if marked fails
+            return content
+                .replace(/### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/## (.*$)/gim, '<h2>$1</h2>')
+                    .replace(/# (.*$)/gim, '<h1>$1</h1>')
+                    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                    .replace(/`([^`]+)`/gim, '<code>$1</code>')
+                    .replace(/\n\n+/gim, '</p><p>')
+                    .replace(/\n/gim, '<br>')
+                    .replace(/^/, '<p>')
+                    .replace(/$/, '</p>');
+            }
+        }
+
+        function renderMathFormulas() {
+            // Render math formulas using KaTeX
+            if (window.renderMathInElement) {
+                const content = document.getElementById('paperContentDiv');
+                if (content) {
+                    renderMathInElement(content, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false,
+                        errorColor: '#cc0000',
+                        strict: false
+                    });
                 }
-            } finally {
-                likeBtn.disabled = false;
-                dislikeBtn.disabled = false;
             }
         }
 
-        function updateBlogFeedbackUI(blogLiked) {
-            const likeBtn = document.getElementById('blogLikeBtn');
-            const dislikeBtn = document.getElementById('blogDislikeBtn');
-            
-            if (!likeBtn || !dislikeBtn) return;
+        function isBookmarked(paperId) {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+            return bookmarks.includes(paperId);
+        }
 
-            // Reset button states
-            likeBtn.classList.remove('active');
-            dislikeBtn.classList.remove('active');
+        function toggleBookmark(paperId) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+            const button = document.querySelector('.action-btn.primary');
             
-            // Update based on feedback
-            if (blogLiked === true) {
-                likeBtn.classList.add('active');
-                likeBtn.innerHTML = '<span class="btn-icon">❤️</span><span class="btn-text">Liked</span>';
-            } else if (blogLiked === false) {
-                dislikeBtn.classList.add('active');
-                dislikeBtn.innerHTML = '<span class="btn-icon">💔</span><span class="btn-text">Disliked</span>';
+            if (bookmarks.includes(paperId)) {
+                bookmarks = bookmarks.filter(id => id !== paperId);
+                button.innerHTML = '☆ Save Paper';
             } else {
-                // Reset to default state
-                likeBtn.innerHTML = '<span class="btn-icon">👍</span><span class="btn-text">Like</span>';
-                dislikeBtn.innerHTML = '<span class="btn-icon">👎</span><span class="btn-text">Dislike</span>';
+                bookmarks.push(paperId);
+                button.innerHTML = '★ Saved';
             }
-        }
-
-        function toggleTheme() {
-            const body = document.body;
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             
-            body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+            localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
         }
 
-        function shareCurrentPage() {
-            if (navigator.share && currentPaper) {
+        function sharePaper() {
+            if (navigator.share) {
                 navigator.share({
                     title: currentPaper.title,
                     text: currentPaper.abstract,
                     url: window.location.href
-                }).catch(err => console.log('Error sharing:', err));
+                });
             } else {
                 // Fallback: copy URL to clipboard
-                navigator.clipboard.writeText(window.location.href)
-                    .then(() => alert('URL copied to clipboard!'))
-                    .catch(() => alert('Unable to copy URL'));
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('Paper URL copied to clipboard!');
+                });
             }
         }
 
-        // Load theme on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                document.body.setAttribute('data-theme', savedTheme);
-            }
-        });
-    </script>
-    
-    <!-- Blog feedback styles -->
-    <style>
-        .blog-feedback-section {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: var(--bg-secondary, #f8f9fa);
-            border-radius: 8px;
-            border: 1px solid var(--border-color, #e9ecef);
+        function showError(message) {
+            document.getElementById('loadingIndicator').innerHTML = `
+                <p style="color: var(--accent-red);">${message}</p>
+                <a href="index.html" class="action-btn">← Back to Papers</a>
+            `;
         }
-
-        .feedback-container {
-            text-align: center;
-        }
-
-        .feedback-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .feedback-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            border: 2px solid var(--border-color, #e9ecef);
-            border-radius: 8px;
-            background-color: var(--bg-color, #ffffff);
-            color: var(--text-primary, #1a1a1a);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 100px;
-        }
-
-        .feedback-btn:hover {
-            border-color: var(--accent-red, #dc2626);
-            background-color: var(--bg-secondary, #f8f9fa);
-            transform: translateY(-1px);
-        }
-
-        .feedback-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .feedback-btn.active {
-            border-color: var(--accent-red, #dc2626);
-            background-color: var(--accent-red, #dc2626);
-            color: white;
-        }
-
-        .feedback-btn .btn-icon {
-            font-size: 16px;
-        }
-
-        .feedback-status {
-            font-style: italic;
-            min-height: 20px;
-        }
-    </style>
-
-    <!-- Load scripts in correct order -->
-    <script src="config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/main.js"></script>
-    
-    <!-- Initialize after all scripts are loaded -->
-    <script>
-        // Wait for all scripts to load before initializing
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('DOM loaded, initializing paper page...');
-            
-            // Wait for CONFIG to be available
-            if (window.CONFIG && window.CONFIG.init) {
-                try {
-                    await window.CONFIG.init();
-                    console.log('CONFIG initialized successfully');
-                } catch (error) {
-                    console.error('CONFIG initialization failed:', error);
-                }
-            }
-            
-            // Additional debugging
-            console.log('Window.CONFIG:', window.CONFIG);
-            console.log('Window.AuthService:', window.AuthService);
-            console.log('Window.PaperService:', window.PaperService);
-        });
     </script>
 </body>
 </html>

@@ -198,3 +198,5 @@ orchestrator/jsons
 orchestrator/html_url_storage
 vector_db
 backend/app/db_utils.py
+beta_frontend/docker-build-and-push.bat
+beta_frontend/docker-build-and-push.sh

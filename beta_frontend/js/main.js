@@ -1,59 +1,58 @@
-// API Configuration from config file
-const API_BASE_URL = window.CONFIG?.API_BASE_URL || 'http://10.0.1.226:8888';
-const API_ENDPOINTS = window.CONFIG?.ENDPOINTS || {};
+// API Configuration
+const API_BASE_URL = 'http://10.0.1.226:8888';
 
-// Sample papers for fallback when API is not available
-// Note: In production, papers are loaded from API which uses real paper IDs
+// Paper data (using the same data from the Taro app)
 const samplePapers = [
     {
-        id: '2506.16692v2', // Use real paper ID that has blog content
-        title: 'LegiGPT: Party Politics and Transport Policy with Large Language Model',
-        authors: ['Hyunsoo Yun', 'Eun Hak Lee'],
-        abstract: 'Given the significant influence of lawmakers\' political ideologies on legislative decision-making, analyzing their impact on transportation-related policymaking is of critical importance. This study introduces a novel framework that integrates a large language model (LLM) with explainable artificial intelligence (XAI) to analyze transportation-related legislative proposals.',
-        tags: ['Large Language Model', 'Political Analysis', 'Transportation Policy'],
-        submittedDate: '16 June, 2025',
-        publishDate: 'June 2025',
-        comments: 'Research Paper',
-        thumbnail: 'Politics & AI'
+        id: '1',
+        title: 'TigerVector: Bringing High-Performance Vector Search to Graph Databases for Advanced RAG',
+        authors: ['Jing Zhang', 'Victor Lee', 'Zhiqi Chen', 'Tianyi Zhang'],
+        abstract: 'This paper introduces TigerVector, a novel system that integrates vector search directly into TigerGraph, a distributed graph database. This unified approach aims to overcome the limitations of using separate systems, offering benefits like data consistency, reduced silos, and streamlined hybrid queries for advanced RAG applications.',
+        tags: ['Graph Databases', 'Vector Search', 'RAG', 'Performance'],
+        submittedDate: '15 May, 2025',
+        publishDate: 'May 2025',
+        comments: 'Accepted at SIGMOD 2025',
+        thumbnail: 'Graph DB'
     },
     {
-        id: '2508.00652v1',
-        title: 'The Manipulative Power of Voice Characteristics: Investigating Deceptive Patterns in Mandarin Chinese Female Synthetic Speech',
-        authors: ['Shuning Zhang', 'Han Chen', 'Yabo Wang', 'Yiqun Xu', 'Jiaqi Bai', 'Yuanyuan Wu', 'Shixuan Li', 'Xin Yi', 'Chunhui Wang', 'Hewu Li'],
-        abstract: 'Pervasive voice interaction enables deceptive patterns through subtle voice characteristics, yet empirical investigation into this manipulation lags behind, especially within major non-English language contexts.',
-        tags: ['Voice Synthesis', 'Deception', 'Mandarin Chinese'],
-        submittedDate: '1 August, 2025',
-        publishDate: 'August 2025',
-        comments: 'Research Paper',
-        thumbnail: 'Voice AI'
+        id: '2',
+        title: 'CLOG-CD: Curriculum Learning based on Oscillating Granularity of Class Decomposed Medical Image Classification',
+        authors: ['Asmaa Abbas', 'Mohamed Gaber', 'Mohammed M. Abdelsamea'],
+        abstract: 'In this paper, we have also investigated the classification performance of our proposed method based on different acceleration factors and pace function curricula. We used two pre-trained networks, ResNet-50 and DenseNet-121, as the backbone for CLOG-CD. The results with ResNet-50 show that CLOG-CD has the ability to improve classification performance significantly.',
+        tags: ['Medical Imaging', 'Curriculum Learning', 'Deep Learning'],
+        submittedDate: '3 May, 2025',
+        publishDate: 'May 2025',
+        comments: 'Published in: IEEE Transactions on Emerging Topics in Computing',
+        thumbnail: 'Medical AI'
     },
     {
-        id: '2507.09018v1',
-        title: 'A Critique of Deng\'s "P=NP"',
-        authors: ['Isabel Humphreys', 'Matthew Iceland', 'Harry Liuson', 'Dylan McKellips', 'Leo Sciortino'],
-        abstract: 'In this paper, we critically examine Deng\'s "P=NP" [Den24]. The paper claims that there is a polynomial-time algorithm that decides 3-coloring for graphs with vertices of degree at most 4, which is known to be an NP-complete problem.',
-        tags: ['Theoretical Computer Science', 'Complexity Theory', 'P vs NP'],
-        submittedDate: '9 July, 2025',
-        publishDate: 'July 2025',
-        comments: 'Research Paper',
-        thumbnail: 'Theory CS'
+        id: '3',
+        title: 'Attention-Based Feature Fusion for Visual Odometry with Unsupervised Scale Recovery',
+        authors: ['Liu Wei', 'Zhang Chen', 'Wang Mei'],
+        abstract: 'We present a novel approach for visual odometry that integrates attention mechanisms to fuse features from multiple sources. Our method addresses the scale ambiguity problem in monocular visual odometry through an unsupervised learning framework. Experimental results on KITTI dataset demonstrate superior performance compared to existing methods.',
+        tags: ['Visual Odometry', 'Attention Mechanism', 'Unsupervised Learning'],
+        submittedDate: '28 April, 2025',
+        publishDate: 'April 2025',
+        comments: 'To appear in International Conference on Robotics and Automation 2025',
+        thumbnail: 'Computer Vision'
     },
     {
-        id: 'paper_001',
-        title: 'Example Paper on FastAPI',
-        authors: ['Alice', 'Bob'],
-        abstract: 'This is a demo abstract.',
-        tags: ['Demo', 'FastAPI'],
-        submittedDate: '1 January, 2025',
-        publishDate: 'January 2025',
-        comments: 'Demo Paper',
-        thumbnail: 'Demo'
+        id: '4',
+        title: 'FedMix: Adaptive Knowledge Distillation for Personalized Federated Learning',
+        authors: ['Sarah Johnson', 'David Chen', 'Michael Brown'],
+        abstract: 'This paper introduces FedMix, a novel framework for personalized federated learning that employs adaptive knowledge distillation to balance model personalization and global knowledge sharing. Our approach dynamically adjusts the knowledge transfer between global and local models based on client data distribution characteristics.',
+        tags: ['Federated Learning', 'Knowledge Distillation', 'Personalization'],
+        submittedDate: '15 April, 2025',
+        publishDate: 'April 2025',
+        comments: 'Accepted at International Conference on Machine Learning 2025',
+        thumbnail: 'Fed Learning'
     }
 ];
 
 // State management
 let currentPapers = [];
 let bookmarkedPapers = new Set();
+let userFavorites = new Set(); // 新增：存储用户真实的收藏状态
 let isLoading = false;
 let searchQuery = '';
 
@@ -63,32 +62,30 @@ const loadingIndicator = document.getElementById('loadingIndicator');
 const searchInput = document.getElementById('searchInput');
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize API configuration first
-    if (window.CONFIG && window.CONFIG.init) {
-        await window.CONFIG.init();
-    }
-    
-    await initializeApp();
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
     setupEventListeners();
     setupAuthNavigation();
 });
 
 async function initializeApp() {
-    // Load bookmarks from API or localStorage
-    if (window.AuthService?.isLoggedIn()) {
-        // User is logged in, load favorites from API
-        await favoritesService.loadFavorites();
-    } else {
-        // Load bookmarks from localStorage for non-logged users
-        const savedBookmarks = localStorage.getItem('bookmarkedPapers');
-        if (savedBookmarks) {
-            bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
-        }
+    // Load bookmarks from localStorage
+    const savedBookmarks = localStorage.getItem('bookmarkedPapers');
+    if (savedBookmarks) {
+        bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
     }
     
-    // Load initial papers
-    loadPapers();
+    // Check if user is logged in and load their recommendations
+    if (window.AuthService && window.AuthService.isLoggedIn()) {
+        // 先加载收藏状态，再加载推荐论文，确保收藏状态正确显示
+        console.log('Loading user favorites first...');
+        await loadUserFavorites();
+        console.log('Loading user recommendations...');
+        await loadUserRecommendations();
+    } else {
+        // Show login prompt or demo papers for non-logged-in users
+        showLoginPrompt();
+    }
 }
 
 function setupEventListeners() {
@@ -106,70 +103,118 @@ function setupEventListeners() {
     });
 }
 
-async function loadPapers(append = false) {
+async function loadUserRecommendations() {
     if (isLoading) return;
+    
+    const currentUser = window.AuthService.getCurrentUser();
+    if (!currentUser || !currentUser.username) {
+        console.error('No user information available');
+        showLoginPrompt();
+        return;
+    }
     
     isLoading = true;
     showLoading();
     
     try {
-        // Get current user info to fetch their recommendations
-        const currentUser = window.AuthService?.getCurrentUser();
-        const isLoggedIn = window.AuthService?.isLoggedIn();
+        // Call the backend recommendations API
+        const username = currentUser.username;
+        const response = await fetch(`${API_BASE_URL}/api/papers/recommendations/${encodeURIComponent(username)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.AuthService.getToken()}`
+            }
+        });
         
-        console.log('Loading papers for user:', currentUser);
-        console.log('Is logged in:', isLoggedIn);
-        
-        let userIdentifier = null;
-        if (isLoggedIn && currentUser) {
-            // Backend API expects the username (which is actually the email)
-            // Use email first, fallback to username
-            userIdentifier = currentUser.email || currentUser.username;
-            console.log('User logged in. Email:', currentUser.email, 'Username:', currentUser.username);
-            console.log('Using user identifier for API:', userIdentifier);
-        } else {
-            console.log('User not logged in, will show sample papers');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        // Fetch papers from API
-        const result = await PaperService.getPapers(userIdentifier);
-        let allPapers = result.papers || [];
+        const papers = await response.json();
         
-        console.log('Fetched papers:', allPapers.length);
+        // Transform backend data to match frontend format
+        currentPapers = papers.map(paper => ({
+            id: paper.id,
+            title: paper.title,
+            authors: paper.authors ? paper.authors.split(', ') : [],
+            abstract: paper.abstract || '',
+            url: paper.url || '',
+            tags: ['AI', 'Research'], // Default tags since backend doesn't provide them
+            submittedDate: 'Recently',
+            publishDate: 'Recent',
+            comments: 'Recommended for you',
+            thumbnail: 'Paper'
+        }));
         
-        // Apply search filter if needed
+        renderPapers();
+        
+        // 批量检查并同步当前论文的收藏状态
+        await syncCurrentPapersFavoriteStatus();
+        
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        // Fallback to demo papers on error
+        showErrorMessage('Failed to load recommendations. Showing sample papers.');
+        await loadSamplePapers();
+    } finally {
+        isLoading = false;
+        hideLoading();
+    }
+}
+
+function showLoginPrompt() {
+    papersContainer.innerHTML = `
+        <div class="loading">
+            <h2>Welcome to PaperIgnition</h2>
+            <p>Please <a href="login.html" style="color: var(--accent-red);">login</a> to see your personalized paper recommendations.</p>
+            <br>
+            <p>Or view some <button onclick="loadSamplePapers()" style="color: var(--accent-red); background: none; border: none; text-decoration: underline; cursor: pointer;">sample papers</button></p>
+        </div>
+    `;
+}
+
+async function loadSamplePapers() {
+    currentPapers = samplePapers;
+    renderPapers();
+    
+    // 如果用户已登录，批量检查并同步当前论文的收藏状态
+    await syncCurrentPapersFavoriteStatus();
+}
+
+async function loadPapers(append = false) {
+    // This function is now used primarily for search functionality
+    if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+        await loadSamplePapers();
+        return;
+    }
+    
+    // For search functionality, filter current papers
+    if (isLoading) return;
+    
+    isLoading = true;
+    showLoading();
+    
+    setTimeout(() => {
         const filteredPapers = searchQuery 
-            ? allPapers.filter(paper => 
-                paper.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                paper.abstract?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (paper.authors && paper.authors.toLowerCase().includes(searchQuery.toLowerCase()))
+            ? currentPapers.filter(paper => 
+                paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                paper.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                paper.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase()))
             )
-            : allPapers;
+            : currentPapers;
         
         if (append) {
-            currentPapers = [...currentPapers, ...filteredPapers];
+            // For infinite scroll - in this case just show same papers
+            currentPapers = [...currentPapers, ...filteredPapers.slice(0, 2)];
         } else {
             currentPapers = filteredPapers;
         }
         
         renderPapers();
-        
-        // Show appropriate message based on user state
-        if (currentPapers.length === 0) {
-            if (isLoggedIn) {
-                papersContainer.innerHTML = '<div class="loading"><p>暂无推荐论文。请联系管理员为您的账户添加推荐内容。</p></div>';
-            } else {
-                papersContainer.innerHTML = '<div class="loading"><p>请登录查看个性化推荐论文。</p></div>';
-            }
-        }
-    } catch (error) {
-        console.error('Failed to load papers:', error);
-        // Show error message to user
-        papersContainer.innerHTML = '<div class="loading"><p>Failed to load papers. Please try refreshing the page.</p></div>';
-    } finally {
         isLoading = false;
         hideLoading();
-    }
+    }, 300);
 }
 
 function renderPapers() {
@@ -190,227 +235,347 @@ function createPaperCard(paper) {
     card.className = 'paper-card';
     card.dataset.paperId = paper.id;
     
-    const isBookmarked = bookmarkedPapers.has(paper.id);
-    
-    // Handle different data formats from API vs sample data
-    // Backend API returns authors as string, sample data uses array
-    const authors = Array.isArray(paper.authors) ? 
-        paper.authors.join(', ') : 
-        (paper.authors || 'Unknown Authors');
-    const tags = paper.tags || [];
-    const publishDate = paper.publishDate || paper.submittedDate || '';
-    const comments = paper.comments || '';
-    
-    // Create thumbnail from paper title or use default
-    const thumbnail = paper.thumbnail || createThumbnail(paper.title || 'Paper');
-    const thumbnailVariant = `variant-${(Math.abs(paper.id.split('').reduce((a, b) => (a * 31 + b.charCodeAt(0)) % 5, 0)) + 1)}`;
-    
-    function createThumbnail(title) {
-        const words = title.split(' ').slice(0, 2);
-        return words.join(' ') || 'Paper';
-    }
+    // 移除了收藏状态检查，因为不再显示Save按钮
     
     card.innerHTML = `
-        <div class="paper-thumbnail ${thumbnailVariant}">
-            ${thumbnail}
+        <div class="paper-thumbnail">
+            ${paper.thumbnail}
         </div>
         <div class="paper-content">
-            <h2 class="paper-title">${paper.title || 'Untitled'}</h2>
-            <p class="paper-authors">${authors}</p>
-            <p class="paper-abstract">${paper.abstract || 'No abstract available'}</p>
+            <h2 class="paper-title">${paper.title}</h2>
+            <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
+            <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
-                ${publishDate ? `<span>${publishDate}</span>` : ''}
-                ${publishDate && comments ? '<span>•</span>' : ''}
-                ${comments ? `<span>${comments}</span>` : ''}
+                <span>${paper.publishDate}</span>
+                <span>•</span>
+                <span>${paper.comments}</span>
             </div>
             <div class="paper-tags">
-                ${Array.isArray(tags) ? tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                ${paper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
             </div>
-        </div>
-        <div class="paper-actions">
-            <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" 
-                    onclick="toggleBookmark('${paper.id}', event)">
-                ${isBookmarked ? '★ Saved' : '☆ Save'}
-            </button>
         </div>
     `;
     
     // Add click handler for paper details
     card.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('bookmark-btn')) {
-            showPaperDetail(paper.id);
-        }
+        showPaperDetail(paper);
     });
     
     return card;
 }
 
-// Favorites Service for API integration
-class FavoritesService {
-    constructor() {
-        this.authService = window.AuthService;
-    }
-
-    // Get user's favorites from API
-    async getFavorites() {
-        if (!this.authService?.isLoggedIn()) {
-            // Return localStorage favorites for non-logged users
-            const saved = localStorage.getItem('bookmarkedPapers');
-            return saved ? JSON.parse(saved) : [];
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_LIST || '/api/favorites/list'}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${this.authService.getToken()}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const favorites = await response.json();
-                return favorites.map(fav => fav.paper_id);
-            } else {
-                console.warn('Failed to fetch favorites from API');
-                return [];
-            }
-        } catch (error) {
-            console.error('Error fetching favorites:', error);
-            return [];
-        }
-    }
-
-    // Add paper to favorites
-    async addFavorite(paper) {
-        if (!this.authService?.isLoggedIn()) {
-            // Use localStorage for non-logged users
-            bookmarkedPapers.add(paper.id);
-            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-            return { success: true };
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_ADD || '/api/favorites/add'}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.authService.getToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    paper_id: paper.id,
-                    title: paper.title,
-                    authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
-                    abstract: paper.abstract,
-                    url: paper.url || ''
-                })
-            });
-
-            if (response.ok) {
-                bookmarkedPapers.add(paper.id);
-                return { success: true };
-            } else {
-                const errorData = await response.json();
-                return { success: false, error: errorData.detail || 'Failed to add favorite' };
-            }
-        } catch (error) {
-            console.error('Error adding favorite:', error);
-            return { success: false, error: 'Network error' };
-        }
-    }
-
-    // Remove paper from favorites
-    async removeFavorite(paperId) {
-        if (!this.authService?.isLoggedIn()) {
-            // Use localStorage for non-logged users
-            bookmarkedPapers.delete(paperId);
-            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-            return { success: true };
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_REMOVE?.(paperId) || `/api/favorites/remove/${paperId}`}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${this.authService.getToken()}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                bookmarkedPapers.delete(paperId);
-                return { success: true };
-            } else {
-                const errorData = await response.json();
-                return { success: false, error: errorData.detail || 'Failed to remove favorite' };
-            }
-        } catch (error) {
-            console.error('Error removing favorite:', error);
-            return { success: false, error: 'Network error' };
-        }
-    }
-
-    // Load favorites and update local state
-    async loadFavorites() {
-        const favorites = await this.getFavorites();
-        bookmarkedPapers = new Set(favorites);
-        
-        // Also save to localStorage as backup
-        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-    }
-}
-
-// Create global favorites service instance
-const favoritesService = new FavoritesService();
-
-// Toggle bookmark status with API integration
 async function toggleBookmark(paperId, event) {
     event.stopPropagation();
     
-    const isCurrentlyBookmarked = bookmarkedPapers.has(paperId);
     const button = event.target;
+    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
     
-    // Update UI immediately for better UX
+    if (!isLoggedIn) {
+        // 未登录用户使用localStorage
+    if (bookmarkedPapers.has(paperId)) {
+        bookmarkedPapers.delete(paperId);
+    } else {
+        bookmarkedPapers.add(paperId);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+    
+    // Update UI
+    const isBookmarked = bookmarkedPapers.has(paperId);
+    button.className = `bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`;
+    button.textContent = isBookmarked ? '★ Saved' : '☆ Save';
+        
+        return;
+    }
+    
+    // 以下是登录用户的API调用逻辑
+    const isCurrentlyFavorited = userFavorites.has(paperId);
+    
+    // Find the paper data
+    const paper = currentPapers.find(p => p.id === paperId);
+    if (!paper) {
+        console.error('Paper not found:', paperId);
+        return;
+    }
+    
+    // Show loading state
+    const originalText = button.textContent;
     button.disabled = true;
-    button.textContent = isCurrentlyBookmarked ? 'Removing...' : 'Saving...';
+    button.textContent = isCurrentlyFavorited ? 'Removing...' : 'Adding...';
+    button.style.opacity = '0.6';
     
     try {
-        let result;
+        const token = window.AuthService.getToken();
+        console.log('User logged in:', window.AuthService.isLoggedIn());
+        console.log('Token available:', !!token);
         
-        if (isCurrentlyBookmarked) {
-            result = await favoritesService.removeFavorite(paperId);
-        } else {
-            // Find the paper data to send to API
-            const paper = currentPapers.find(p => p.id === paperId) || samplePapers.find(p => p.id === paperId);
-            if (!paper) {
-                throw new Error('Paper not found');
-            }
-            result = await favoritesService.addFavorite(paper);
+        if (!token) {
+            throw new Error('No authentication token available');
         }
         
-        if (result.success) {
-            // Update UI to reflect the change
-            const newIsBookmarked = bookmarkedPapers.has(paperId);
-            button.className = `bookmark-btn ${newIsBookmarked ? 'bookmarked' : ''}`;
-            button.textContent = newIsBookmarked ? '★ Saved' : '☆ Save';
+        if (isCurrentlyFavorited) {
+            // Remove from favorites
+            const response = await fetch(`${API_BASE_URL}/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             
-            // Show success message
-            showToast(newIsBookmarked ? 'Paper saved!' : 'Paper removed from saved');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+            
+            // Update local state
+            userFavorites.delete(paperId);
+            bookmarkedPapers.delete(paperId);
+            
+            // Update UI
+            button.className = 'bookmark-btn';
+            button.textContent = '☆ Save';
+            
+            showSuccessMessage('Removed from favorites');
+            
         } else {
-            // Revert UI on error
-            showToast(result.error || 'Failed to update bookmark', 'error');
+            // Add to favorites
+            const authorsStr = Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors;
+            
+            // 清理和验证数据
+            const cleanAbstract = (paper.abstract || '')
+                .replace(/\r\n/g, '\n')  // 统一换行符
+                .replace(/[""]/g, '"')   // 替换特殊引号
+                .replace(/['']/g, "'")   // 替换特殊单引号  
+                .replace(/…/g, '...')    // 替换省略号
+                .trim();
+            
+            const favoriteData = {
+                paper_id: String(paper.id).substring(0, 50), // 确保是字符串并限制长度
+                title: String(paper.title).substring(0, 255),
+                authors: String(authorsStr).substring(0, 255),
+                abstract: cleanAbstract
+            };
+            // 仅在存在且是有效URL时才发送url字段
+            if (paper.url && /^https?:\/\//i.test(String(paper.url))) {
+                favoriteData.url = String(paper.url).substring(0, 255);
+            }
+            
+            console.log('Sending favorite data:', favoriteData);
+            console.log('JSON body:', JSON.stringify(favoriteData));
+            console.log('Token:', token ? 'Token exists' : 'No token');
+            
+            const response = await fetch(`${API_BASE_URL}/api/favorites/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(favoriteData)
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    console.log('Error response data:', errorData);
+                    console.log('Error detail array:', errorData.detail);
+                    
+                    if (response.status === 400 && errorData.detail?.includes('已在收藏')) {
+                        // Paper already favorited
+                        userFavorites.add(paperId);
+                        bookmarkedPapers.add(paperId);
+                        button.className = 'bookmark-btn bookmarked';
+                        button.textContent = '★ Saved';
+                        showSuccessMessage('Already in favorites');
+                        return;
+                    }
+                    
+                    // Handle different error response formats
+                    if (errorData.detail) {
+                        if (Array.isArray(errorData.detail)) {
+                            // FastAPI validation errors return an array
+                            errorMessage = errorData.detail.map(err => {
+                                if (err.loc && err.msg) {
+                                    return `${err.loc.join('.')}: ${err.msg}`;
+                                }
+                                return err.msg || JSON.stringify(err);
+                            }).join('; ');
+                        } else {
+                            errorMessage = errorData.detail;
+                        }
+                    } else if (errorData.message) {
+                        errorMessage = errorData.message;
+                    } else if (typeof errorData === 'string') {
+                        errorMessage = errorData;
+                    } else {
+                        errorMessage = JSON.stringify(errorData);
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse error response:', parseError);
+                    const responseText = await response.text();
+                    console.log('Raw error response:', responseText);
+                    errorMessage = responseText || `HTTP error! status: ${response.status}`;
+                }
+                
+                throw new Error(errorMessage);
+            }
+            
+            // Update local state
+            userFavorites.add(paperId);
+            bookmarkedPapers.add(paperId);
+            
+            // Update UI
+            button.className = 'bookmark-btn bookmarked';
+            button.textContent = '★ Saved';
+            
+            showSuccessMessage('Added to favorites');
+        }
+        
+        // Update localStorage for backward compatibility
+        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+        
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error constructor:', error.constructor.name);
+        
+        // Restore original state
+        button.textContent = originalText;
+        
+        // Show error message with better error handling
+        let errorMessage = 'Unknown error';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && error.toString) {
+            errorMessage = error.toString();
+        } else if (error) {
+            errorMessage = JSON.stringify(error);
+        }
+        
+        showErrorMessage(`Failed to ${isCurrentlyFavorited ? 'remove from' : 'add to'} favorites: ${errorMessage}`);
+        
+    } finally {
+        // Restore button state
+        button.disabled = false;
+        button.style.opacity = '1';
+    }
+}
+
+async function loadUserFavorites() {
+    // Load user's favorites from backend to sync state
+    if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+        return;
+    }
+    
+    try {
+        const token = window.AuthService.getToken();
+        const response = await fetch(`${API_BASE_URL}/api/favorites/list`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const favorites = await response.json(); // 完整的收藏数据
+            
+            // Update local favorite state
+            userFavorites.clear();
+            bookmarkedPapers.clear();
+            
+            favorites.forEach(fav => {
+                userFavorites.add(fav.paper_id);
+                bookmarkedPapers.add(fav.paper_id);
+            });
+            
+            // Update localStorage
+            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+            
+            console.log('Favorites loaded:', favorites.length, 'papers');
+            console.log('User favorites updated:', [...userFavorites]);
+            
+            // Re-render papers to update bookmark states
+            if (currentPapers.length > 0) {
+                console.log('Re-rendering papers with updated favorite states');
+                renderPapers();
+            }
+        } else {
+            console.error('Failed to load favorites:', response.status, response.statusText);
         }
     } catch (error) {
-        console.error('Error toggling bookmark:', error);
-        showToast('Failed to update bookmark', 'error');
-    } finally {
-        button.disabled = false;
-        
-        // Ensure UI is in correct state
-        const finalIsBookmarked = bookmarkedPapers.has(paperId);
-        button.className = `bookmark-btn ${finalIsBookmarked ? 'bookmarked' : ''}`;
-        button.textContent = finalIsBookmarked ? '★ Saved' : '☆ Save';
+        console.error('Error loading user favorites:', error);
     }
+}
+
+async function syncCurrentPapersFavoriteStatus() {
+    // 由于批量检查接口在服务器上不存在，这里只是一个占位函数
+    // 收藏状态同步主要通过loadUserFavorites()函数完成
+    console.log('Sync function called, but using loadUserFavorites for actual sync');
+}
+
+function showSuccessMessage(message) {
+    // Create temporary success message
+    const successDiv = document.createElement('div');
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    `;
+    successDiv.textContent = message;
+    
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (document.body.contains(successDiv)) {
+                document.body.removeChild(successDiv);
+            }
+        }, 300);
+    }, 2000);
+}
+
+function showErrorMessage(message) {
+    // Create temporary error message
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    `;
+    errorDiv.textContent = message;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (document.body.contains(errorDiv)) {
+                document.body.removeChild(errorDiv);
+            }
+        }, 300);
+    }, 3000);
 }
 
 function handleSearch(event) {
@@ -431,10 +596,14 @@ function handleScroll() {
     }
 }
 
-function showPaperDetail(paperId) {
-    // Navigate to paper detail page with the paper ID
-    // The paper.html page will handle loading both sample and API data
-    window.location.href = `paper.html?id=${paperId}`;
+function showPaperDetail(paper) {
+    if (!paper) return;
+    
+    // Store paper information in sessionStorage for the detail page
+    sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
+    
+    // Navigate to paper detail page
+    window.location.href = `paper.html?id=${paper.id}`;
 }
 
 function showLoading() {
@@ -469,61 +638,21 @@ function debounce(func, wait) {
 
 // API service functions (similar to the original services)
 class PaperService {
-    static async getPapers(username = null) {
+    static async getPapers(page = 1, search = '') {
         try {
-            if (!username) {
-                // If no username (not logged in), return sample data
-                console.log('No user logged in, showing sample papers');
-                return {
-                    papers: samplePapers,
-                    hasMore: false,
-                    total: samplePapers.length
-                };
-            }
-
-            console.log(`Fetching recommendations for user: ${username}`);
-            const endpoint = window.CONFIG?.ENDPOINTS?.PAPER_RECOMMENDATIONS(username) || `/api/papers/recommendations/${username}`;
-            const url = `${API_BASE_URL}${endpoint}`;
+            // In a real implementation, this would make an HTTP request
+            // const response = await fetch(`${API_BASE_URL}/papers?page=${page}&search=${search}`);
+            // return await response.json();
             
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                timeout: window.CONFIG?.REQUEST_TIMEOUT || 10000
-            });
-            
-            if (!response.ok) {
-                console.warn(`API returned ${response.status}, falling back to sample data`);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const papers = await response.json();
-            console.log(`Retrieved ${papers.length} papers from API`);
-            
-            // If API returns empty array, fallback to sample data
-            if (!papers || papers.length === 0) {
-                console.warn('API returned empty results, showing sample papers');
-                return {
-                    papers: samplePapers,
-                    hasMore: false,
-                    total: samplePapers.length
-                };
-            }
-            
-            return {
-                papers: papers,
-                hasMore: false,
-                total: papers.length
-            };
-        } catch (error) {
-            console.error('Error fetching papers:', error);
-            // Fallback to sample data on error
+            // For demo, return sample data
             return {
                 papers: samplePapers,
                 hasMore: false,
                 total: samplePapers.length
             };
+        } catch (error) {
+            console.error('Error fetching papers:', error);
+            throw error;
         }
     }
     
@@ -541,40 +670,30 @@ class PaperService {
     
     static async getPaperContent(paperId) {
         try {
-            const endpoint = window.CONFIG?.ENDPOINTS?.PAPER_CONTENT(paperId) || `/api/papers/paper_content/${paperId}`;
-            const url = `${API_BASE_URL}${endpoint}`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                timeout: window.CONFIG?.REQUEST_TIMEOUT || 10000
-            });
+            // const response = await fetch(`${API_BASE_URL}/papers/${paperId}/content`);
+            // return await response.json();
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const content = await response.text();
+            // Return sample content (TigerVector content from the original service)
             return {
-                content: content
+                content: `
+## TigerVector: Bringing High-Performance Vector Search to Graph Databases for Advanced RAG
+
+Retrieval-Augmented Generation (RAG) has become a cornerstone for grounding Large Language Models (LLMs) with external data. While traditional RAG often relies on vector databases storing semantic embeddings, this approach can struggle with complex queries that require understanding relationships between data points – a strength of graph databases.
+
+Enter VectorGraphRAG, a promising hybrid approach that combines the power of vector search for semantic similarity with graph traversal for structural context. The paper "TigerVector: Supporting Vector Search in Graph Databases for Advanced RAGs" introduces TigerVector, a novel system that integrates vector search directly into TigerGraph, a distributed graph database.
+
+### Key Innovations
+
+**A Unified Data Model:** TigerVector introduces a new \`embedding\` attribute type for vertices. This isn't just a list of floats; it explicitly manages crucial metadata like dimensionality, the model used, index type, and similarity metric.
+
+**Decoupled Storage:** Recognizing that vector embeddings are often much larger than other attributes, TigerVector stores vectors separately in "embedding segments." These segments mirror the vertex partitioning of the graph, ensuring related vector and graph data reside together for efficient processing.
+
+**Leveraging MPP Architecture:** Built within TigerGraph's Massively Parallel Processing (MPP) architecture, TigerVector distributes vector data and processing across multiple machines. Vector indexes (currently supporting HNSW) are built per segment, and queries are parallelized, with results merged by a coordinator.
+                `
             };
         } catch (error) {
             console.error('Error fetching paper content:', error);
-            // Fallback to sample content
-            return {
-                content: `
-## Paper Content Not Available
-
-The paper content could not be loaded from the server. This might be due to:
-
-- Network connectivity issues
-- Server maintenance
-- The paper content not being available in the database
-
-Please try again later or contact support if the problem persists.
-                `
-            };
+            throw error;
         }
     }
 }
@@ -594,7 +713,17 @@ function setupAuthNavigation() {
     updateNavigation();
     
     // Listen for auth state changes
-    window.addEventListener('authStateChanged', updateNavigation);
+    window.addEventListener('authStateChanged', (event) => {
+        updateNavigation();
+        
+        // Reload papers when auth state changes
+        if (event.detail.isLoggedIn) {
+            loadUserRecommendations();
+            loadUserFavorites(); // 用户登录时加载收藏
+        } else {
+            showLoginPrompt();
+        }
+    });
 }
 
 function handleProfileNavigation() {
@@ -607,7 +736,6 @@ function handleProfileNavigation() {
 
 function updateNavigation() {
     const profileLink = document.getElementById('profileLink');
-    
     if (!profileLink) return;
     
     if (window.AuthService && window.AuthService.isLoggedIn()) {
@@ -619,79 +747,3 @@ function updateNavigation() {
         profileLink.href = 'login.html';
     }
 }
-
-// Simple toast notification function
-function showToast(message, type = 'success') {
-    // Remove any existing toast
-    const existingToast = document.querySelector('.toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    
-    // Style the toast
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? 'var(--error-color, #dc2626)' : 'var(--success-color, #059669)'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 1000;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        animation: toastSlideIn 0.3s ease-out;
-    `;
-    
-    // Add CSS animation
-    if (!document.querySelector('#toast-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'toast-styles';
-        styles.textContent = `
-            @keyframes toastSlideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            @keyframes toastSlideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(styles);
-    }
-    
-    // Add to DOM
-    document.body.appendChild(toast);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'toastSlideOut 0.3s ease-in';
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, 300);
-    }, 3000);
-}
-
-// Export for potential use in other modules
-window.PaperService = PaperService;
-window.FavoritesService = favoritesService;

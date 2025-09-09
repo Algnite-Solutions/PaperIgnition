@@ -27,20 +27,20 @@ export default defineAppConfig({
       {
         pagePath: 'pages/recommendations/index',
         text: '推荐',
-        iconPath: '_assets/icons/paper.png',
-        selectedIconPath: '_assets/icons/paper.png'
+        iconPath: 'assets/icons/paper.png',
+        selectedIconPath: 'assets/icons/paper.png'
       },
       {
         pagePath: 'pages/favorites/index',
         text: '收藏',
-        iconPath: '_assets/icons/heart.png',
-        selectedIconPath: '_assets/icons/heart.png'
+        iconPath: 'assets/icons/heart.png',
+        selectedIconPath: 'assets/icons/heart.png'
       },
       {
         pagePath: 'pages/profile/index',
         text: '个人',
-        iconPath: '_assets/icons/person.png',
-        selectedIconPath: '_assets/icons/person.png'
+        iconPath: 'assets/icons/person.png',
+        selectedIconPath: 'assets/icons/person.png'
       }
     ]
   },
