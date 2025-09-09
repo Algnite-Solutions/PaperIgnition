@@ -89,7 +89,6 @@ class UserPaperRecommendation(Base):
     authors = Column(String(255), nullable=True)
     abstract = Column(Text, nullable=True)
     url = Column(String(255), nullable=True)
-    content = Column(Text, nullable=True)
     blog = Column(Text, nullable=True)
     recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     viewed = Column(Boolean, default=False)
@@ -97,5 +96,8 @@ class UserPaperRecommendation(Base):
     recommendation_reason = Column(Text, nullable=True)
     submitted = Column(String(255), nullable=True)  # 提交信息
     comment = Column(Text, nullable=True)  # 评论
+    # 博客喜欢字段
+    blog_liked = Column(Boolean, nullable=True)  # True=喜欢, False=不喜欢, None=未评价
+    blog_feedback_date = Column(DateTime(timezone=True), nullable=True)  # 博客反馈时间
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")
