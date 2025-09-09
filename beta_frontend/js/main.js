@@ -69,16 +69,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         await window.CONFIG.init();
     }
     
-    initializeApp();
+    await initializeApp();
     setupEventListeners();
     setupAuthNavigation();
 });
 
-function initializeApp() {
-    // Load bookmarks from localStorage
-    const savedBookmarks = localStorage.getItem('bookmarkedPapers');
-    if (savedBookmarks) {
-        bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
+async function initializeApp() {
+    // Load bookmarks from API or localStorage
+    if (window.AuthService?.isLoggedIn()) {
+        // User is logged in, load favorites from API
+        await favoritesService.loadFavorites();
+    } else {
+        // Load bookmarks from localStorage for non-logged users
+        const savedBookmarks = localStorage.getItem('bookmarkedPapers');
+        if (savedBookmarks) {
+            bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
+        }
     }
     
     // Load initial papers
@@ -239,23 +245,172 @@ function createPaperCard(paper) {
     return card;
 }
 
-function toggleBookmark(paperId, event) {
+// Favorites Service for API integration
+class FavoritesService {
+    constructor() {
+        this.authService = window.AuthService;
+    }
+
+    // Get user's favorites from API
+    async getFavorites() {
+        if (!this.authService?.isLoggedIn()) {
+            // Return localStorage favorites for non-logged users
+            const saved = localStorage.getItem('bookmarkedPapers');
+            return saved ? JSON.parse(saved) : [];
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_LIST || '/api/favorites/list'}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.authService.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const favorites = await response.json();
+                return favorites.map(fav => fav.paper_id);
+            } else {
+                console.warn('Failed to fetch favorites from API');
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching favorites:', error);
+            return [];
+        }
+    }
+
+    // Add paper to favorites
+    async addFavorite(paper) {
+        if (!this.authService?.isLoggedIn()) {
+            // Use localStorage for non-logged users
+            bookmarkedPapers.add(paper.id);
+            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+            return { success: true };
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_ADD || '/api/favorites/add'}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authService.getToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    paper_id: paper.id,
+                    title: paper.title,
+                    authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
+                    abstract: paper.abstract,
+                    url: paper.url || ''
+                })
+            });
+
+            if (response.ok) {
+                bookmarkedPapers.add(paper.id);
+                return { success: true };
+            } else {
+                const errorData = await response.json();
+                return { success: false, error: errorData.detail || 'Failed to add favorite' };
+            }
+        } catch (error) {
+            console.error('Error adding favorite:', error);
+            return { success: false, error: 'Network error' };
+        }
+    }
+
+    // Remove paper from favorites
+    async removeFavorite(paperId) {
+        if (!this.authService?.isLoggedIn()) {
+            // Use localStorage for non-logged users
+            bookmarkedPapers.delete(paperId);
+            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+            return { success: true };
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}${window.CONFIG?.ENDPOINTS?.FAVORITES_REMOVE?.(paperId) || `/api/favorites/remove/${paperId}`}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.authService.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                bookmarkedPapers.delete(paperId);
+                return { success: true };
+            } else {
+                const errorData = await response.json();
+                return { success: false, error: errorData.detail || 'Failed to remove favorite' };
+            }
+        } catch (error) {
+            console.error('Error removing favorite:', error);
+            return { success: false, error: 'Network error' };
+        }
+    }
+
+    // Load favorites and update local state
+    async loadFavorites() {
+        const favorites = await this.getFavorites();
+        bookmarkedPapers = new Set(favorites);
+        
+        // Also save to localStorage as backup
+        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+    }
+}
+
+// Create global favorites service instance
+const favoritesService = new FavoritesService();
+
+// Toggle bookmark status with API integration
+async function toggleBookmark(paperId, event) {
     event.stopPropagation();
     
-    if (bookmarkedPapers.has(paperId)) {
-        bookmarkedPapers.delete(paperId);
-    } else {
-        bookmarkedPapers.add(paperId);
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-    
-    // Update UI
+    const isCurrentlyBookmarked = bookmarkedPapers.has(paperId);
     const button = event.target;
-    const isBookmarked = bookmarkedPapers.has(paperId);
-    button.className = `bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`;
-    button.textContent = isBookmarked ? '★ Saved' : '☆ Save';
+    
+    // Update UI immediately for better UX
+    button.disabled = true;
+    button.textContent = isCurrentlyBookmarked ? 'Removing...' : 'Saving...';
+    
+    try {
+        let result;
+        
+        if (isCurrentlyBookmarked) {
+            result = await favoritesService.removeFavorite(paperId);
+        } else {
+            // Find the paper data to send to API
+            const paper = currentPapers.find(p => p.id === paperId) || samplePapers.find(p => p.id === paperId);
+            if (!paper) {
+                throw new Error('Paper not found');
+            }
+            result = await favoritesService.addFavorite(paper);
+        }
+        
+        if (result.success) {
+            // Update UI to reflect the change
+            const newIsBookmarked = bookmarkedPapers.has(paperId);
+            button.className = `bookmark-btn ${newIsBookmarked ? 'bookmarked' : ''}`;
+            button.textContent = newIsBookmarked ? '★ Saved' : '☆ Save';
+            
+            // Show success message
+            showToast(newIsBookmarked ? 'Paper saved!' : 'Paper removed from saved');
+        } else {
+            // Revert UI on error
+            showToast(result.error || 'Failed to update bookmark', 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling bookmark:', error);
+        showToast('Failed to update bookmark', 'error');
+    } finally {
+        button.disabled = false;
+        
+        // Ensure UI is in correct state
+        const finalIsBookmarked = bookmarkedPapers.has(paperId);
+        button.className = `bookmark-btn ${finalIsBookmarked ? 'bookmarked' : ''}`;
+        button.textContent = finalIsBookmarked ? '★ Saved' : '☆ Save';
+    }
 }
 
 function handleSearch(event) {
@@ -465,5 +620,78 @@ function updateNavigation() {
     }
 }
 
+// Simple toast notification function
+function showToast(message, type = 'success') {
+    // Remove any existing toast
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // Style the toast
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? 'var(--error-color, #dc2626)' : 'var(--success-color, #059669)'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: toastSlideIn 0.3s ease-out;
+    `;
+    
+    // Add CSS animation
+    if (!document.querySelector('#toast-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'toast-styles';
+        styles.textContent = `
+            @keyframes toastSlideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes toastSlideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    // Add to DOM
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'toastSlideOut 0.3s ease-in';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
 // Export for potential use in other modules
 window.PaperService = PaperService;
+window.FavoritesService = favoritesService;

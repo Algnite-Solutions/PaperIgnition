@@ -23,6 +23,15 @@ const CONFIG = {
         // Paper endpoints
         PAPER_RECOMMENDATIONS: (username) => `/api/papers/recommendations/${username}`,
         PAPER_CONTENT: (paperId) => `/api/papers/paper_content/${paperId}`,
+        
+        // Favorites endpoints
+        FAVORITES_LIST: '/api/favorites/list',
+        FAVORITES_ADD: '/api/favorites/add',
+        FAVORITES_REMOVE: (paperId) => `/api/favorites/remove/${paperId}`,
+        
+        // Blog feedback endpoints
+        BLOG_FEEDBACK: '/api/papers/blog-feedback',
+        BLOG_FEEDBACK_GET: (paperId) => `/api/papers/blog-feedback/${paperId}`,
     },
     
     // Request timeout in milliseconds
