@@ -1,10 +1,13 @@
 import { View, Text, Image } from '@tarojs/components'
 import { useAppDispatch, useAppSelector } from '../../../store/hooks'
 import { setPaperFeedback, clearPaperFeedback } from '../../../store/slices/paperSlice'
+import { addFavorite, removeFavorite } from '../../../store/slices/favoritesSlice'
 import { AtIcon } from 'taro-ui'
 import Taro from '@tarojs/taro'
+import { addPaperToFavorites, removePaperFromFavorites } from '../../../services/favoriteService'
 import likeIcon from '../../../assets/icons/like.png'
 import dislikeIcon from '../../../assets/icons/dislike.png'
+import heartIcon from '../../../assets/icons/heart.png'
 import { useState } from 'react'
 import './index.scss'
 
@@ -28,7 +31,12 @@ interface PaperCardProps {
 const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
   const dispatch = useAppDispatch()
   const feedback = useAppSelector((state: any) => state.paper.feedbacks[paper.id])
+  const favoritePapers = useAppSelector((state: any) => state.favorites.papers)
   const [expanded, setExpanded] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  
+  // 检查是否已收藏
+  const isFavorited = favoritePapers.some((favPaper: any) => favPaper.id === paper.id)
 
   const handleFeedback = (isPositive: boolean, e) => {
     e.stopPropagation()
@@ -36,6 +44,54 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
       dispatch(clearPaperFeedback(paper.id))
     } else {
       dispatch(setPaperFeedback({ paperId: paper.id, isPositive }))
+    }
+  }
+
+  const handleFavorite = async (e) => {
+    e.stopPropagation()
+    setIsUploading(true)
+    
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        Taro.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
+      if (isFavorited) {
+        // 取消收藏
+        await removePaperFromFavorites(paper.id)
+        dispatch(removeFavorite(paper.id))
+        Taro.showToast({
+          title: '已取消收藏',
+          icon: 'none'
+        })
+      } else {
+        // 添加收藏
+        await addPaperToFavorites({
+          paper_id: paper.id,
+          title: paper.title,
+          authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
+          abstract: paper.abstract,
+          url: paper.url
+        })
+        dispatch(addFavorite(paper))
+        Taro.showToast({
+          title: '已添加收藏',
+          icon: 'success'
+        })
+      }
+    } catch (error) {
+      console.error('收藏操作失败:', error)
+      Taro.showToast({
+        title: error.message || '操作失败',
+        icon: 'none'
+      })
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -157,6 +213,18 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onClick }) => {
               <Image className='feedback-icon' src={dislikeIcon} />
             )}
             <Text className='action-text'>无用</Text>
+          </View>
+          
+          <View 
+            className={`action-button favorite-button ${isFavorited ? 'active' : ''} ${isUploading ? 'uploading' : ''}`}
+            onClick={handleFavorite}
+          >
+            {isFavorited ? (
+              <Text className='emoji-icon' style={{ color: '#ff4757' }}>❤️</Text>
+            ) : (
+              <Image className='feedback-icon' src={heartIcon} />
+            )}
+            <Text className='action-text'>收藏</Text>
           </View>
         </View>
       </View>
