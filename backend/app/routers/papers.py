@@ -13,7 +13,7 @@ import yaml
 import os
 from pydantic import BaseModel
 from datetime import datetime, timezone
-
+from fastapi.responses import RedirectResponse, Response
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
@@ -109,9 +109,9 @@ async def process_markdown_images(markdown_content: str) -> str:
         
         # 生成预签名URL
         try:
-            filename = "test.png"
-            await serve_file(bucket="aignite-papers", key=filename)
-            presigned_url = f" http://10.0.1.226:8888/files/aignite-papers/{filename}"
+            #filename = "test.png"
+            #await serve_file(bucket="aignite-papers-new", key=filename)
+            presigned_url = f" http://10.0.1.226:8888/files/aignite-papers-new/{filename}"
             
             if presigned_url:
                 return f'![{alt_text}]({presigned_url})'
@@ -169,13 +169,7 @@ file_router = APIRouter(tags=["files"])
 @file_router.get("/files/{bucket}/{key:path}")
 async def serve_file(bucket: str, key: str):
     """
-    处理文件请求，生成MinIO预签名URL并重定向
-    步骤3.3: 后端现签名并302/307
-    
-    流程：
-    1. 验证对象是否存在
-    2. 生成预签名URL（15分钟有效期）
-    3. 返回307重定向到MinIO
+    处理文件请求，直接代理文件内容并设置正确的响应头
     """
     try:
         logger.info(f"Serving file request: {bucket}/{key}")
@@ -195,23 +189,51 @@ async def serve_file(bucket: str, key: str):
                 logger.error(f"MinIO error for {bucket}/{key}: {e}")
                 raise HTTPException(status_code=500, detail=f"MinIO error: {str(e)}")
         
-        # 生成预签名URL，有效期15分钟
-        presigned_url = minio_client.presigned_get_object(
-            bucket, 
-            key, 
-            expires=timedelta(minutes=15)
-        )
+        # 获取文件内容
+        try:
+            response = minio_client.get_object(bucket, key)
+            file_data = response.read()
+            response.close()
+            response.release_conn()
+        except Exception as e:
+            logger.error(f"Error reading file {bucket}/{key}: {e}")
+            raise HTTPException(status_code=500, detail="Error reading file")
         
-        logger.info(f"Generated presigned URL for {bucket}/{key}")
-        
-        # 返回307重定向到预签名URL
-        return RedirectResponse(url=presigned_url, status_code=307)
+        # 根据文件类型设置响应头
+        if key.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+            # 图片文件，设置为预览模式
+            media_type = "image/png"
+            if key.lower().endswith('.jpg') or key.lower().endswith('.jpeg'):
+                media_type = "image/jpeg"
+            elif key.lower().endswith('.gif'):
+                media_type = "image/gif"
+            elif key.lower().endswith('.webp'):
+                media_type = "image/webp"
+            
+            return Response(
+                content=file_data,
+                media_type=media_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",  # 缓存1小时
+                    "Content-Length": str(len(file_data))
+                }
+            )
+        else:
+            # 其他文件，设置为下载模式
+            return Response(
+                content=file_data,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment; filename=\"{key}\"",
+                    "Content-Length": str(len(file_data))
+                }
+            )
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error serving file {bucket}/{key}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generating presigned URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error serving file: {str(e)}")
 
 
 # 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
