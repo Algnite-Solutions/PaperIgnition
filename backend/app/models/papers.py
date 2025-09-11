@@ -35,6 +35,8 @@ class PaperRecommendation(BaseModel):
     url: Optional[str] = None
     content: Optional[str] = None
     blog: Optional[str] = None
+    blog_abs: Optional[str] = None
+    blog_title: Optional[str] = None
     recommendation_reason: Optional[str] = None
     relevance_score: Optional[float] = None
     submitted: Optional[str] = None  # 提交信息
