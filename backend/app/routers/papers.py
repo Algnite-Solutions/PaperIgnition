@@ -3,10 +3,13 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+from datetime import datetime, timezone
 
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
+from ..auth.utils import get_current_user
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -101,3 +104,72 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         await db.rollback()
         print(f"添加推荐记录时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail="添加推荐记录失败")
+
+# 博客反馈相关接口
+class BlogFeedbackRequest(BaseModel):
+    paper_id: str
+    liked: bool  # True=喜欢, False=不喜欢
+
+@router.post("/blog-feedback", status_code=status.HTTP_200_OK)
+async def submit_blog_feedback(
+    feedback: BlogFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """提交博客反馈（喜欢/不喜欢）"""
+    try:
+        # 查找对应的推荐记录
+        result = await db.execute(
+            select(UserPaperRecommendation).where(
+                UserPaperRecommendation.username == current_user.username,
+                UserPaperRecommendation.paper_id == feedback.paper_id
+            )
+        )
+        recommendation = result.scalar_one_or_none()
+        
+        if not recommendation:
+            raise HTTPException(
+                status_code=404,
+                detail="推荐记录不存在"
+            )
+        
+        # 更新博客反馈
+        recommendation.blog_liked = feedback.liked
+        recommendation.blog_feedback_date = datetime.now(timezone.utc)
+        
+        await db.commit()
+        
+        return {
+            "message": "博客反馈提交成功",
+            "liked": feedback.liked
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        print(f"提交博客反馈时发生错误: {str(e)}")
+        raise HTTPException(status_code=500, detail="提交博客反馈失败")
+
+@router.get("/blog-feedback/{paper_id}")
+async def get_blog_feedback(
+    paper_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取用户对特定论文博客的反馈状态"""
+    try:
+        result = await db.execute(
+            select(UserPaperRecommendation.blog_liked).where(
+                UserPaperRecommendation.username == current_user.username,
+                UserPaperRecommendation.paper_id == paper_id
+            )
+        )
+        blog_liked = result.scalar_one_or_none()
+        
+        return {
+            "paper_id": paper_id,
+            "blog_liked": blog_liked  # None=未评价, True=喜欢, False=不喜欢
+        }
+        
+    except Exception as e:
+        print(f"获取博客反馈时发生错误: {str(e)}")
+        raise HTTPException(status_code=500, detail="获取博客反馈失败")

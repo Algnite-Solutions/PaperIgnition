@@ -94,6 +94,12 @@
             color: var(--text-primary);
         }
 
+        .nav a.active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent-red);
+            padding-bottom: 2px;
+        }
+
         .search-container {
             flex: 1;
             max-width: 400px;
@@ -263,6 +269,30 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .bookmark-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .bookmark-btn:hover:not(:disabled) {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .bookmark-btn.bookmarked:hover:not(:disabled) {
+            background-color: #b91c1c;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .header-content {
@@ -311,8 +341,8 @@
                 </div>
                 
                 <nav class="nav">
-                    <a href="#explore">Explore</a>
-                    <a href="#favorites">Favorites</a>
+                    <a href="index.html" class="active">Explore</a>
+                    <a href="favorites.html">Favorites</a>
                     <a href="#profile" id="profileLink">Login</a>
                 </nav>
             </div>

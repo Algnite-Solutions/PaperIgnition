@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://10.0.1.226:8888';
 
 // Paper data (using the same data from the Taro app)
 const samplePapers = [
@@ -52,6 +52,7 @@ const samplePapers = [
 // State management
 let currentPapers = [];
 let bookmarkedPapers = new Set();
+let userFavorites = new Set(); // 新增：存储用户真实的收藏状态
 let isLoading = false;
 let searchQuery = '';
 
@@ -67,15 +68,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAuthNavigation();
 });
 
-function initializeApp() {
+async function initializeApp() {
     // Load bookmarks from localStorage
     const savedBookmarks = localStorage.getItem('bookmarkedPapers');
     if (savedBookmarks) {
         bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
     }
     
-    // Load initial papers
-    loadPapers();
+    // Check if user is logged in and load their recommendations
+    if (window.AuthService && window.AuthService.isLoggedIn()) {
+        // 先加载收藏状态，再加载推荐论文，确保收藏状态正确显示
+        console.log('Loading user favorites first...');
+        await loadUserFavorites();
+        console.log('Loading user recommendations...');
+        await loadUserRecommendations();
+    } else {
+        // Show login prompt or demo papers for non-logged-in users
+        showLoginPrompt();
+    }
 }
 
 function setupEventListeners() {
@@ -93,25 +103,110 @@ function setupEventListeners() {
     });
 }
 
-function loadPapers(append = false) {
+async function loadUserRecommendations() {
+    if (isLoading) return;
+    
+    const currentUser = window.AuthService.getCurrentUser();
+    if (!currentUser || !currentUser.username) {
+        console.error('No user information available');
+        showLoginPrompt();
+        return;
+    }
+    
+    isLoading = true;
+    showLoading();
+    
+    try {
+        // Call the backend recommendations API
+        const username = currentUser.username;
+        const response = await fetch(`${API_BASE_URL}/api/papers/recommendations/${encodeURIComponent(username)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.AuthService.getToken()}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const papers = await response.json();
+        
+        // Transform backend data to match frontend format
+        currentPapers = papers.map(paper => ({
+            id: paper.id,
+            title: paper.title,
+            authors: paper.authors ? paper.authors.split(', ') : [],
+            abstract: paper.abstract || '',
+            url: paper.url || '',
+            tags: ['AI', 'Research'], // Default tags since backend doesn't provide them
+            submittedDate: 'Recently',
+            publishDate: 'Recent',
+            comments: 'Recommended for you',
+            thumbnail: 'Paper'
+        }));
+        
+        renderPapers();
+        
+        // 批量检查并同步当前论文的收藏状态
+        await syncCurrentPapersFavoriteStatus();
+        
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        // Fallback to demo papers on error
+        showErrorMessage('Failed to load recommendations. Showing sample papers.');
+        await loadSamplePapers();
+    } finally {
+        isLoading = false;
+        hideLoading();
+    }
+}
+
+function showLoginPrompt() {
+    papersContainer.innerHTML = `
+        <div class="loading">
+            <h2>Welcome to PaperIgnition</h2>
+            <p>Please <a href="login.html" style="color: var(--accent-red);">login</a> to see your personalized paper recommendations.</p>
+            <br>
+            <p>Or view some <button onclick="loadSamplePapers()" style="color: var(--accent-red); background: none; border: none; text-decoration: underline; cursor: pointer;">sample papers</button></p>
+        </div>
+    `;
+}
+
+async function loadSamplePapers() {
+    currentPapers = samplePapers;
+    renderPapers();
+    
+    // 如果用户已登录，批量检查并同步当前论文的收藏状态
+    await syncCurrentPapersFavoriteStatus();
+}
+
+async function loadPapers(append = false) {
+    // This function is now used primarily for search functionality
+    if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+        await loadSamplePapers();
+        return;
+    }
+    
+    // For search functionality, filter current papers
     if (isLoading) return;
     
     isLoading = true;
     showLoading();
     
-    // Simulate API call delay
     setTimeout(() => {
         const filteredPapers = searchQuery 
-            ? samplePapers.filter(paper => 
+            ? currentPapers.filter(paper => 
                 paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 paper.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                paper.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                paper.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+                paper.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase()))
             )
-            : samplePapers;
+            : currentPapers;
         
         if (append) {
-            currentPapers = [...currentPapers, ...filteredPapers];
+            // For infinite scroll - in this case just show same papers
+            currentPapers = [...currentPapers, ...filteredPapers.slice(0, 2)];
         } else {
             currentPapers = filteredPapers;
         }
@@ -119,7 +214,7 @@ function loadPapers(append = false) {
         renderPapers();
         isLoading = false;
         hideLoading();
-    }, 500);
+    }, 300);
 }
 
 function renderPapers() {
@@ -140,7 +235,7 @@ function createPaperCard(paper) {
     card.className = 'paper-card';
     card.dataset.paperId = paper.id;
     
-    const isBookmarked = bookmarkedPapers.has(paper.id);
+    // 移除了收藏状态检查，因为不再显示Save按钮
     
     card.innerHTML = `
         <div class="paper-thumbnail">
@@ -148,7 +243,7 @@ function createPaperCard(paper) {
         </div>
         <div class="paper-content">
             <h2 class="paper-title">${paper.title}</h2>
-            <p class="paper-authors">${paper.authors.join(', ')}</p>
+            <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
             <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
                 <span>${paper.publishDate}</span>
@@ -159,27 +254,24 @@ function createPaperCard(paper) {
                 ${paper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
             </div>
         </div>
-        <div class="paper-actions">
-            <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" 
-                    onclick="toggleBookmark('${paper.id}', event)">
-                ${isBookmarked ? '★ Saved' : '☆ Save'}
-            </button>
-        </div>
     `;
     
     // Add click handler for paper details
     card.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('bookmark-btn')) {
-            showPaperDetail(paper.id);
-        }
+        showPaperDetail(paper);
     });
     
     return card;
 }
 
-function toggleBookmark(paperId, event) {
+async function toggleBookmark(paperId, event) {
     event.stopPropagation();
     
+    const button = event.target;
+    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
+    
+    if (!isLoggedIn) {
+        // 未登录用户使用localStorage
     if (bookmarkedPapers.has(paperId)) {
         bookmarkedPapers.delete(paperId);
     } else {
@@ -190,10 +282,300 @@ function toggleBookmark(paperId, event) {
     localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
     
     // Update UI
-    const button = event.target;
     const isBookmarked = bookmarkedPapers.has(paperId);
     button.className = `bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`;
     button.textContent = isBookmarked ? '★ Saved' : '☆ Save';
+        
+        return;
+    }
+    
+    // 以下是登录用户的API调用逻辑
+    const isCurrentlyFavorited = userFavorites.has(paperId);
+    
+    // Find the paper data
+    const paper = currentPapers.find(p => p.id === paperId);
+    if (!paper) {
+        console.error('Paper not found:', paperId);
+        return;
+    }
+    
+    // Show loading state
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = isCurrentlyFavorited ? 'Removing...' : 'Adding...';
+    button.style.opacity = '0.6';
+    
+    try {
+        const token = window.AuthService.getToken();
+        console.log('User logged in:', window.AuthService.isLoggedIn());
+        console.log('Token available:', !!token);
+        
+        if (!token) {
+            throw new Error('No authentication token available');
+        }
+        
+        if (isCurrentlyFavorited) {
+            // Remove from favorites
+            const response = await fetch(`${API_BASE_URL}/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+            
+            // Update local state
+            userFavorites.delete(paperId);
+            bookmarkedPapers.delete(paperId);
+            
+            // Update UI
+            button.className = 'bookmark-btn';
+            button.textContent = '☆ Save';
+            
+            showSuccessMessage('Removed from favorites');
+            
+        } else {
+            // Add to favorites
+            const authorsStr = Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors;
+            
+            // 清理和验证数据
+            const cleanAbstract = (paper.abstract || '')
+                .replace(/\r\n/g, '\n')  // 统一换行符
+                .replace(/[""]/g, '"')   // 替换特殊引号
+                .replace(/['']/g, "'")   // 替换特殊单引号  
+                .replace(/…/g, '...')    // 替换省略号
+                .trim();
+            
+            const favoriteData = {
+                paper_id: String(paper.id).substring(0, 50), // 确保是字符串并限制长度
+                title: String(paper.title).substring(0, 255),
+                authors: String(authorsStr).substring(0, 255),
+                abstract: cleanAbstract
+            };
+            // 仅在存在且是有效URL时才发送url字段
+            if (paper.url && /^https?:\/\//i.test(String(paper.url))) {
+                favoriteData.url = String(paper.url).substring(0, 255);
+            }
+            
+            console.log('Sending favorite data:', favoriteData);
+            console.log('JSON body:', JSON.stringify(favoriteData));
+            console.log('Token:', token ? 'Token exists' : 'No token');
+            
+            const response = await fetch(`${API_BASE_URL}/api/favorites/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(favoriteData)
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    console.log('Error response data:', errorData);
+                    console.log('Error detail array:', errorData.detail);
+                    
+                    if (response.status === 400 && errorData.detail?.includes('已在收藏')) {
+                        // Paper already favorited
+                        userFavorites.add(paperId);
+                        bookmarkedPapers.add(paperId);
+                        button.className = 'bookmark-btn bookmarked';
+                        button.textContent = '★ Saved';
+                        showSuccessMessage('Already in favorites');
+                        return;
+                    }
+                    
+                    // Handle different error response formats
+                    if (errorData.detail) {
+                        if (Array.isArray(errorData.detail)) {
+                            // FastAPI validation errors return an array
+                            errorMessage = errorData.detail.map(err => {
+                                if (err.loc && err.msg) {
+                                    return `${err.loc.join('.')}: ${err.msg}`;
+                                }
+                                return err.msg || JSON.stringify(err);
+                            }).join('; ');
+                        } else {
+                            errorMessage = errorData.detail;
+                        }
+                    } else if (errorData.message) {
+                        errorMessage = errorData.message;
+                    } else if (typeof errorData === 'string') {
+                        errorMessage = errorData;
+                    } else {
+                        errorMessage = JSON.stringify(errorData);
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse error response:', parseError);
+                    const responseText = await response.text();
+                    console.log('Raw error response:', responseText);
+                    errorMessage = responseText || `HTTP error! status: ${response.status}`;
+                }
+                
+                throw new Error(errorMessage);
+            }
+            
+            // Update local state
+            userFavorites.add(paperId);
+            bookmarkedPapers.add(paperId);
+            
+            // Update UI
+            button.className = 'bookmark-btn bookmarked';
+            button.textContent = '★ Saved';
+            
+            showSuccessMessage('Added to favorites');
+        }
+        
+        // Update localStorage for backward compatibility
+        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+        
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error constructor:', error.constructor.name);
+        
+        // Restore original state
+        button.textContent = originalText;
+        
+        // Show error message with better error handling
+        let errorMessage = 'Unknown error';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && error.toString) {
+            errorMessage = error.toString();
+        } else if (error) {
+            errorMessage = JSON.stringify(error);
+        }
+        
+        showErrorMessage(`Failed to ${isCurrentlyFavorited ? 'remove from' : 'add to'} favorites: ${errorMessage}`);
+        
+    } finally {
+        // Restore button state
+        button.disabled = false;
+        button.style.opacity = '1';
+    }
+}
+
+async function loadUserFavorites() {
+    // Load user's favorites from backend to sync state
+    if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+        return;
+    }
+    
+    try {
+        const token = window.AuthService.getToken();
+        const response = await fetch(`${API_BASE_URL}/api/favorites/list`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const favorites = await response.json(); // 完整的收藏数据
+            
+            // Update local favorite state
+            userFavorites.clear();
+            bookmarkedPapers.clear();
+            
+            favorites.forEach(fav => {
+                userFavorites.add(fav.paper_id);
+                bookmarkedPapers.add(fav.paper_id);
+            });
+            
+            // Update localStorage
+            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+            
+            console.log('Favorites loaded:', favorites.length, 'papers');
+            console.log('User favorites updated:', [...userFavorites]);
+            
+            // Re-render papers to update bookmark states
+            if (currentPapers.length > 0) {
+                console.log('Re-rendering papers with updated favorite states');
+                renderPapers();
+            }
+        } else {
+            console.error('Failed to load favorites:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('Error loading user favorites:', error);
+    }
+}
+
+async function syncCurrentPapersFavoriteStatus() {
+    // 由于批量检查接口在服务器上不存在，这里只是一个占位函数
+    // 收藏状态同步主要通过loadUserFavorites()函数完成
+    console.log('Sync function called, but using loadUserFavorites for actual sync');
+}
+
+function showSuccessMessage(message) {
+    // Create temporary success message
+    const successDiv = document.createElement('div');
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    `;
+    successDiv.textContent = message;
+    
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (document.body.contains(successDiv)) {
+                document.body.removeChild(successDiv);
+            }
+        }, 300);
+    }, 2000);
+}
+
+function showErrorMessage(message) {
+    // Create temporary error message
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    `;
+    errorDiv.textContent = message;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (document.body.contains(errorDiv)) {
+                document.body.removeChild(errorDiv);
+            }
+        }, 300);
+    }, 3000);
 }
 
 function handleSearch(event) {
@@ -214,12 +596,14 @@ function handleScroll() {
     }
 }
 
-function showPaperDetail(paperId) {
-    const paper = samplePapers.find(p => p.id === paperId);
+function showPaperDetail(paper) {
     if (!paper) return;
     
+    // Store paper information in sessionStorage for the detail page
+    sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
+    
     // Navigate to paper detail page
-    window.location.href = `paper.html?id=${paperId}`;
+    window.location.href = `paper.html?id=${paper.id}`;
 }
 
 function showLoading() {
@@ -329,7 +713,17 @@ function setupAuthNavigation() {
     updateNavigation();
     
     // Listen for auth state changes
-    window.addEventListener('authStateChanged', updateNavigation);
+    window.addEventListener('authStateChanged', (event) => {
+        updateNavigation();
+        
+        // Reload papers when auth state changes
+        if (event.detail.isLoggedIn) {
+            loadUserRecommendations();
+            loadUserFavorites(); // 用户登录时加载收藏
+        } else {
+            showLoginPrompt();
+        }
+    });
 }
 
 function handleProfileNavigation() {
@@ -353,6 +747,3 @@ function updateNavigation() {
         profileLink.href = 'login.html';
     }
 }
-
-// Export for potential use in other modules
-window.PaperService = PaperService;

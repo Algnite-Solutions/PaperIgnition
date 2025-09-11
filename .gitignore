@@ -199,5 +199,5 @@ orchestrator/html_url_storage
 orchestrator/tem_blog
 vector_db
 backend/app/db_utils.py
-frontend/pnpm-lock.yaml
-orchestrator/dayslog.txt
+beta_frontend/docker-build-and-push.bat
+beta_frontend/docker-build-and-push.sh

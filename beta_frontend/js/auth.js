@@ -52,67 +52,6 @@ class AuthService {
     // Login with email and password
     async login(email, password) {
         try {
-            // For demo purposes, simulate API call
-            // In production, this would make a real HTTP request
-            
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Demo credentials - in production this would be a real API call
-            if (email === 'demo@paperignition.com' && password === 'demo123') {
-                const mockResponse = {
-                    access_token: 'demo-token-' + Date.now(),
-                    user_info: {
-                        email: email,
-                        username: 'Demo User'
-                    },
-                    needs_interest_setup: false
-                };
-                
-                // Store token and user info
-                localStorage.setItem('token', mockResponse.access_token);
-                this.setUser(mockResponse.user_info);
-                
-                return {
-                    success: true,
-                    needsSetup: mockResponse.needs_interest_setup
-                };
-            }
-            
-            // Simulate different demo users
-            const demoUsers = {
-                'admin@paperignition.com': {
-                    username: 'Admin User',
-                    needsSetup: false
-                },
-                'new@paperignition.com': {
-                    username: 'New User',
-                    needsSetup: true
-                }
-            };
-            
-            if (demoUsers[email] && password === 'demo123') {
-                const userData = demoUsers[email];
-                const mockResponse = {
-                    access_token: 'demo-token-' + Date.now(),
-                    user_info: {
-                        email: email,
-                        username: userData.username
-                    },
-                    needs_interest_setup: userData.needsSetup
-                };
-                
-                localStorage.setItem('token', mockResponse.access_token);
-                this.setUser(mockResponse.user_info);
-                
-                return {
-                    success: true,
-                    needsSetup: mockResponse.needs_interest_setup
-                };
-            }
-            
-            // For real implementation, uncomment this:
-
             const response = await fetch(`${API_BASE_URL}/api/auth/login-email`, {
                 method: 'POST',
                 headers: { 
@@ -124,6 +63,7 @@ class AuthService {
             const data = await response.json();
             
             if (response.ok) {
+                // Store token and user info
                 localStorage.setItem('token', data.access_token);
                 this.setUser(data.user_info);
                 
@@ -137,12 +77,6 @@ class AuthService {
                     error: data.detail || 'Login failed'
                 };
             }
-
-            
-            return {
-                success: false,
-                error: 'Invalid credentials. Try demo@paperignition.com / demo123'
-            };
             
         } catch (error) {
             console.error('Login error:', error);

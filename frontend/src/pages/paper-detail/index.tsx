@@ -120,8 +120,7 @@ const PaperDetail = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [liked, setLiked] = useState<boolean>(false)
   const [disliked, setDisliked] = useState<boolean>(false)
-  const [likeCount, setLikeCount] = useState<number>(0)
-  const [dislikeCount, setDislikeCount] = useState<number>(0)
+  const [blogFeedbackLoading, setBlogFeedbackLoading] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<string>('overview')
   const [tableOfContents, setTableOfContents] = useState<Array<{id: string, title: string, level: number}>>([])
   const [showTabContent, setShowTabContent] = useState<boolean>(false)
@@ -155,6 +154,9 @@ const PaperDetail = () => {
           
           // 生成目录
           generateTableOfContents(sanitizedHtml)
+          
+          // 获取博客反馈状态
+          await fetchBlogFeedback(paperId)
         } catch (parseError) {
           console.error('解析Markdown内容失败', parseError)
           Taro.showToast({
@@ -187,34 +189,165 @@ const PaperDetail = () => {
     Taro.navigateBack()
   }
 
-  const handleLike = () => {
-    if (disliked) {
-      setDisliked(false)
-      setDislikeCount(prev => prev - 1)
+  // 获取当前论文的博客反馈状态
+  const fetchBlogFeedback = async (paperId: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.log('Debug: 获取博客反馈状态时，用户未登录')
+        return
+      }
+
+      const requestUrl = `${API_BASE_URL}/api/papers/blog-feedback/${paperId}`
+      console.log('Debug: 获取博客反馈状态', {
+        url: requestUrl,
+        paperId
+      })
+
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Debug: 获取反馈状态响应', {
+        status: response.status,
+        ok: response.ok
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Debug: 获取到的反馈状态', result)
+        console.log('Debug: blog_liked值类型和内容', {
+          value: result.blog_liked,
+          type: typeof result.blog_liked,
+          isTrue: result.blog_liked === true,
+          isFalse: result.blog_liked === false,
+          isNull: result.blog_liked === null,
+          isUndefined: result.blog_liked === undefined
+        })
+        
+        if (result.blog_liked === true) {
+          console.log('Debug: 设置为喜欢状态')
+          setLiked(true)
+          setDisliked(false)
+        } else if (result.blog_liked === false) {
+          console.log('Debug: 设置为不喜欢状态')
+          setLiked(false)
+          setDisliked(true)
+        } else {
+          console.log('Debug: 设置为未评价状态')
+          setLiked(false)
+          setDisliked(false)
+        }
+      } else {
+        const errorText = await response.text()
+        console.log('Debug: 获取反馈状态错误', errorText)
+      }
+    } catch (error) {
+      console.error('获取博客反馈状态失败:', error)
     }
-    setLiked(!liked)
-    setLikeCount(prev => liked ? prev - 1 : prev + 1)
-    
-    Taro.showToast({
-      title: liked ? '取消点赞' : '点赞成功',
-      icon: 'success',
-      duration: 1500
-    })
   }
 
-  const handleDislike = () => {
-    if (liked) {
-      setLiked(false)
-      setLikeCount(prev => prev - 1)
+  // 提交博客反馈
+  const submitBlogFeedback = async (paperId: string, liked: boolean) => {
+    try {
+      setBlogFeedbackLoading(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.log('Debug: 用户未登录，token为空')
+        Taro.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
+      const requestUrl = `${API_BASE_URL}/api/papers/blog-feedback`
+      const requestBody = {
+        paper_id: paperId,
+        liked: liked
+      }
+      
+      console.log('Debug: 提交博客反馈', {
+        url: requestUrl,
+        paperId,
+        liked,
+        token: token ? '存在' : '不存在'
+      })
+
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      console.log('Debug: 响应状态', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Debug: 成功响应', result)
+        Taro.showToast({
+          title: liked ? '谢谢您的喜欢！' : '感谢您的反馈！',
+          icon: 'success',
+          duration: 1500
+        })
+      } else {
+        const errorText = await response.text()
+        console.log('Debug: 错误响应', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        })
+        throw new Error(`提交反馈失败: ${response.status} ${errorText}`)
+      }
+    } catch (error) {
+      console.error('提交博客反馈失败:', error)
+      Taro.showToast({
+        title: '提交失败，请重试',
+        icon: 'none'
+      })
+    } finally {
+      setBlogFeedbackLoading(false)
     }
-    setDisliked(!disliked)
-    setDislikeCount(prev => disliked ? prev - 1 : prev + 1)
-    
-    Taro.showToast({
-      title: disliked ? '取消点踩' : '点踩成功',
-      icon: 'success',
-      duration: 1500
-    })
+  }
+
+  const handleLike = async () => {
+    const paperId = Taro.getCurrentInstance().router?.params?.id
+    if (!paperId) return
+
+    if (liked) {
+      // 如果已经喜欢了，不做任何操作（或者可以选择取消）
+      return
+    }
+
+    setLiked(true)
+    setDisliked(false)
+    await submitBlogFeedback(paperId, true)
+  }
+
+  const handleDislike = async () => {
+    const paperId = Taro.getCurrentInstance().router?.params?.id
+    if (!paperId) return
+
+    if (disliked) {
+      // 如果已经不喜欢了，不做任何操作（或者可以选择取消）
+      return
+    }
+
+    setLiked(false)
+    setDisliked(true)
+    await submitBlogFeedback(paperId, false)
   }
 
   const handleTabClick = (tab: string) => {
@@ -423,6 +556,8 @@ DINOv3在ImageNet-1K上的表现：
     const params = Taro.getCurrentInstance().router?.params
     if (params?.id) {
       fetchPaperContent(params.id as string)
+      // 获取博客反馈状态
+      fetchBlogFeedback(params.id as string)
     }
     return () => {
       dispatch(clearCurrentPaper())
@@ -546,21 +681,19 @@ DINOv3在ImageNet-1K上的表现：
             
             <View className='feedback-buttons'>
               <View 
-                className={`feedback-button like-button ${liked ? 'active' : ''}`}
+                className={`feedback-button like-button ${liked ? 'active' : ''} ${blogFeedbackLoading ? 'loading' : ''}`}
                 onClick={handleLike}
               >
-                <Text className='button-icon'>👍</Text>
-                <Text className='button-text'>喜欢</Text>
-                <Text className='button-count'>{likeCount}</Text>
+                <Text className='button-icon'>{liked ? '❤️' : '👍'}</Text>
+                <Text className='button-text'>{liked ? '已喜欢' : '喜欢'}</Text>
               </View>
               
               <View 
-                className={`feedback-button dislike-button ${disliked ? 'active' : ''}`}
+                className={`feedback-button dislike-button ${disliked ? 'active' : ''} ${blogFeedbackLoading ? 'loading' : ''}`}
                 onClick={handleDislike}
               >
-                <Text className='button-icon'>👎</Text>
-                <Text className='button-text'>不喜欢</Text>
-                <Text className='button-count'>{dislikeCount}</Text>
+                <Text className='button-icon'>{disliked ? '💔' : '👎'}</Text>
+                <Text className='button-text'>{disliked ? '已反馈' : '不喜欢'}</Text>
               </View>
             </View>
           </View>

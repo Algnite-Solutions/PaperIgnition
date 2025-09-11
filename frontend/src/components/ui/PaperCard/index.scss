@@ -181,6 +181,18 @@
               color: #FFD700;
             }
           }
+          
+          &.favorite-button {
+            background-color: #ffebee;
+            .action-text {
+              color: #ff4757;
+            }
+          }
+        }
+        
+        &.uploading {
+          opacity: 0.6;
+          pointer-events: none;
         }
       }
     }

@@ -45,8 +45,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 reusable_oauth2 = HTTPBearer() # Using HTTPBearer
 
 async def get_current_user(
-    security_scopes: SecurityScopes, # If using scopes, import SecurityScopes from fastapi.security
-    credentials: HTTPAuthorizationCredentials = Security(reusable_oauth2),
+    credentials: HTTPAuthorizationCredentials = Depends(reusable_oauth2),
     db: AsyncSession = Depends(get_db)
 ):
     """获取当前认证用户"""

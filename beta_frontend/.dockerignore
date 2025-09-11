@@ -1,0 +1,8 @@
+# 排除不必要的文件
+server.py
+*.md
+.git
+.gitignore
+Dockerfile
+docker-build-and-push.sh
+*.log 
