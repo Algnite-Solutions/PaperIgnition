@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Detail - PaperIgnition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Markdown rendering libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    
+    <!-- Math formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --border-color: #e5e5e5;
+            --accent-red: #dc2626;
+            --hover-bg: #f8f9fa;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --max-width: 800px;
+        }
+
+        body {
+            font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 0;
+            margin-bottom: 32px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .logo {
+            font-family: 'Rubik', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo .highlight {
+            color: var(--accent-red);
+        }
+
+        /* Paper Header */
+        .paper-header {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .paper-title {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .paper-authors {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .paper-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .paper-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background-color: var(--hover-bg);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        .paper-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-color);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .action-btn.primary {
+            background-color: var(--accent-red);
+            border-color: var(--accent-red);
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background-color: #b91c1c;
+        }
+
+        /* Paper Content */
+        .paper-content {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .abstract {
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            background-color: var(--hover-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+        }
+
+        .content {
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .content h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 32px 0 16px 0;
+            color: var(--text-primary);
+        }
+
+        .content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: var(--text-primary);
+        }
+
+        .content p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        .content strong {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .content code {
+            background-color: var(--hover-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        .content ul, .content ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        .content li {
+            margin-bottom: 8px;
+        }
+
+        /* Enhanced markdown content styles */
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: var(--card-shadow);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .content th,
+        .content td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .content th {
+            background-color: var(--hover-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .content tr:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .content blockquote {
+            border-left: 4px solid var(--accent-red);
+            margin: 20px 0;
+            padding: 16px 20px;
+            background-color: var(--hover-bg);
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        .content pre {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .content pre code {
+            background: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Math formulas */
+        .content .katex {
+            font-size: 1.1em;
+        }
+
+        .content .katex-display {
+            margin: 20px 0;
+            padding: 16px;
+            background-color: var(--hover-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-red);
+        }
+
+        /* Code highlighting */
+        .content .hljs {
+            background: #f8f9fa !important;
+            color: var(--text-primary);
+        }
+
+        /* Image styles */
+        .content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 16px 0;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Horizontal rule */
+        .content hr {
+            border: none;
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 32px 0;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .paper-title {
+                font-size: 24px;
+            }
+            
+            .paper-actions {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                text-align: center;
+            }
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f0f0f;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-muted: #888888;
+            --border-color: #2a2a2a;
+            --hover-bg: #1a1a1a;
+        }
+
+        /* Dark theme enhancements */
+        [data-theme="dark"] .content th {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .content pre {
+            background-color: #1a1a1a;
+            border-color: #2a2a2a;
+        }
+
+        [data-theme="dark"] .content .hljs {
+            background: #1a1a1a !important;
+            color: #cccccc;
+        }
+
+        [data-theme="dark"] .content blockquote {
+            background-color: #1a1a1a;
+            color: #cccccc;
+        }
+
+        [data-theme="dark"] .content .katex-display {
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="back-btn">← Back to Papers</a>
+                <a href="index.html" class="logo">Paper<span class="highlight">Ignition</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loadingIndicator" class="loading">
+            <div class="spinner"></div>
+            <p>Loading paper details...</p>
+        </div>
+
+        <article id="paperDetail" style="display: none;">
+            <!-- Paper content will be loaded here -->
+        </article>
+    </main>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://10.0.1.226:8888';
+
+        // Get paper ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const paperId = urlParams.get('id');
+
+        if (!paperId) {
+            document.getElementById('loadingIndicator').innerHTML = '<p>No paper ID provided</p>';
+        }
+
+        // State variables
+        let currentPaper = null;
+        let paperContent = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPaperDetail();
+        });
+
+        async function loadPaperDetail() {
+            if (!paperId) {
+                showError('No paper ID provided');
+                return;
+            }
+
+            try {
+                // Get paper basic info from main page data or API
+                await loadPaperInfo();
+                
+                // Load paper content from backend
+                await loadPaperContent();
+                
+                // Render the complete paper detail
+                renderPaperDetail();
+                
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('paperDetail').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading paper detail:', error);
+                showError('Failed to load paper content. Please try again.');
+        }
+        }
+
+        async function loadPaperInfo() {
+            // Try to get paper info from sessionStorage (passed from main page)
+            const storedPaper = sessionStorage.getItem(`paper_${paperId}`);
+            if (storedPaper) {
+                currentPaper = JSON.parse(storedPaper);
+                return;
+            }
+
+            // If no stored paper info, create a minimal paper object
+            currentPaper = {
+                id: paperId,
+                title: 'Loading...',
+                authors: [],
+                abstract: '',
+                tags: [],
+                publishDate: '',
+                comments: '',
+                submittedDate: ''
+            };
+        }
+
+        async function loadPaperContent() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/papers/paper_content/${encodeURIComponent(paperId)}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Paper content not found');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // The backend returns the content as plain text (markdown string)
+                paperContent = await response.text();
+                
+                // If the response is JSON-wrapped, parse it
+                try {
+                    const jsonData = JSON.parse(paperContent);
+                    if (typeof jsonData === 'string') {
+                        paperContent = jsonData;
+                    }
+                } catch (e) {
+                    // Content is already plain text, keep as is
+                }
+                
+            } catch (error) {
+                console.error('Error loading paper content:', error);
+                paperContent = `## Error Loading Content\n\n${error.message}\n\nPlease try again later.`;
+            }
+        }
+
+        function renderPaperDetail() {
+            const paperDetail = document.getElementById('paperDetail');
+            
+            paperDetail.innerHTML = `
+                <div class="paper-header">
+                    <h1 class="paper-title">${currentPaper.title}</h1>
+                    <p class="paper-authors">${Array.isArray(currentPaper.authors) ? currentPaper.authors.join(', ') : currentPaper.authors || 'Unknown authors'}</p>
+                    <div class="paper-meta">
+                        ${currentPaper.publishDate ? `<span>${currentPaper.publishDate}</span>` : ''}
+                        ${currentPaper.publishDate && currentPaper.comments ? '<span>•</span>' : ''}
+                        ${currentPaper.comments ? `<span>${currentPaper.comments}</span>` : ''}
+                        ${(currentPaper.publishDate || currentPaper.comments) && currentPaper.submittedDate ? '<span>•</span>' : ''}
+                        ${currentPaper.submittedDate ? `<span>Submitted: ${currentPaper.submittedDate}</span>` : ''}
+                    </div>
+                    ${currentPaper.tags && currentPaper.tags.length > 0 ? `
+                    <div class="paper-tags">
+                        ${currentPaper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    ` : ''}
+                    <div class="paper-actions">
+                        <button class="action-btn primary" onclick="toggleBookmark('${currentPaper.id}')">
+                            ${isBookmarked(currentPaper.id) ? '★ Saved' : '☆ Save Paper'}
+                        </button>
+                        ${currentPaper.url ? `<a href="${currentPaper.url}" target="_blank" class="action-btn">PDF</a>` : '<button class="action-btn" disabled>PDF</button>'}
+                        <button class="action-btn" onclick="sharePaper()">Share</button>
+                    </div>
+                </div>
+                
+                <div class="paper-content">
+                    ${currentPaper.abstract ? `
+                    <div class="section-title">Abstract</div>
+                    <div class="abstract">${currentPaper.abstract}</div>
+                    ` : ''}
+                    
+                    <div class="section-title">Full Content</div>
+                    <div class="content" id="paperContentDiv">${formatMarkdown(paperContent)}</div>
+                </div>
+            `;
+            
+            // Update page title
+            document.title = `${currentPaper.title} - PaperIgnition`;
+            
+            // Render math formulas after content is loaded and DOM is updated
+            setTimeout(() => {
+                renderMathFormulas();
+            }, 100);
+        }
+
+        function formatMarkdown(content) {
+            if (!content) return '<p>No content available</p>';
+            
+            try {
+                // Configure marked options
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true, // GitHub Flavored Markdown (supports tables)
+                    headerIds: true,
+                    mangle: false,
+                    sanitize: false,
+                    smartypants: true,
+                    highlight: function(code, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {
+                                console.error('Highlight.js error:', err);
+                            }
+                        }
+                        return hljs.highlightAuto(code).value;
+                    }
+                });
+
+                // Render markdown to HTML
+                const html = marked.parse(content);
+                
+                return html;
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to simple formatting if marked fails
+            return content
+                .replace(/### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/## (.*$)/gim, '<h2>$1</h2>')
+                    .replace(/# (.*$)/gim, '<h1>$1</h1>')
+                    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                    .replace(/`([^`]+)`/gim, '<code>$1</code>')
+                    .replace(/\n\n+/gim, '</p><p>')
+                    .replace(/\n/gim, '<br>')
+                    .replace(/^/, '<p>')
+                    .replace(/$/, '</p>');
+            }
+        }
+
+        function renderMathFormulas() {
+            // Render math formulas using KaTeX
+            if (window.renderMathInElement) {
+                const content = document.getElementById('paperContentDiv');
+                if (content) {
+                    renderMathInElement(content, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false,
+                        errorColor: '#cc0000',
+                        strict: false
+                    });
+                }
+            }
+        }
+
+        function isBookmarked(paperId) {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+            return bookmarks.includes(paperId);
+        }
+
+        function toggleBookmark(paperId) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+            const button = document.querySelector('.action-btn.primary');
+            
+            if (bookmarks.includes(paperId)) {
+                bookmarks = bookmarks.filter(id => id !== paperId);
+                button.innerHTML = '☆ Save Paper';
+            } else {
+                bookmarks.push(paperId);
+                button.innerHTML = '★ Saved';
+            }
+            
+            localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
+        }
+
+        function sharePaper() {
+            if (navigator.share) {
+                navigator.share({
+                    title: currentPaper.title,
+                    text: currentPaper.abstract,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback: copy URL to clipboard
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('Paper URL copied to clipboard!');
+                });
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingIndicator').innerHTML = `
+                <p style="color: var(--accent-red);">${message}</p>
+                <a href="index.html" class="action-btn">← Back to Papers</a>
+            `;
+        }
+    </script>
+</body>
+</html>
