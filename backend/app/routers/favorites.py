@@ -174,3 +174,71 @@ async def check_if_favorited(
             status_code=500,
             detail="检查收藏状态失败"
         ) 
+
+@router.get("/paper-ids", response_model=List[str])
+async def get_user_favorite_paper_ids(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取用户收藏的论文ID列表（轻量级接口）"""
+    try:
+        print(f"Getting favorite paper IDs for user: {current_user.id}")
+        
+        result = await db.execute(
+            select(FavoritePaper.paper_id).where(
+                FavoritePaper.user_id == current_user.id
+            )
+        )
+        paper_ids = result.scalars().all()
+        print(f"Found {len(paper_ids)} favorite paper IDs: {paper_ids}")
+        return paper_ids
+        
+    except Exception as e:
+        print(f"Error in get_user_favorite_paper_ids: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取收藏ID列表失败: {str(e)}"
+        )
+
+class BatchCheckRequest(BaseModel):
+    paper_ids: List[str]
+
+class BatchCheckResponse(BaseModel):
+    paper_id: str
+    is_favorited: bool
+
+@router.post("/batch-check", response_model=List[BatchCheckResponse])
+async def batch_check_favorites(
+    request: BatchCheckRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """批量检查多个论文的收藏状态"""
+    try:
+        # 查询用户收藏的论文ID
+        result = await db.execute(
+            select(FavoritePaper.paper_id).where(
+                FavoritePaper.user_id == current_user.id,
+                FavoritePaper.paper_id.in_(request.paper_ids)
+            )
+        )
+        favorited_ids = set(result.scalars().all())
+        
+        # 构建响应
+        response = [
+            BatchCheckResponse(
+                paper_id=paper_id,
+                is_favorited=paper_id in favorited_ids
+            )
+            for paper_id in request.paper_ids
+        ]
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="批量检查收藏状态失败"
+        ) 

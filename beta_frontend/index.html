@@ -2,42 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PaperIgnition - AI-Powered Academic Paper Discovery</title>
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Discover the most relevant academic papers with AI-powered recommendations. Join thousands of researchers finding breakthrough papers.">
-    <meta name="keywords" content="academic papers, research, AI recommendations, paper discovery, scientific literature">
-    <meta name="author" content="PaperIgnition Team">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://paperignition.ai/">
-    <meta property="og:title" content="PaperIgnition - AI-Powered Academic Paper Discovery">
-    <meta property="og:description" content="Discover the most relevant academic papers with AI-powered recommendations.">
-    <meta property="og:image" content="https://paperignition.ai/og-image.png">
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://paperignition.ai/">
-    <meta property="twitter:title" content="PaperIgnition - AI-Powered Academic Paper Discovery">
-    <meta property="twitter:description" content="Discover the most relevant academic papers with AI-powered recommendations.">
-    <meta property="twitter:image" content="https://paperignition.ai/twitter-image.png">
-    
-    <!-- PWA Support -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#dc2626">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="PaperIgnition">
-    <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -128,6 +94,12 @@
             color: var(--text-primary);
         }
 
+        .nav a.active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent-red);
+            padding-bottom: 2px;
+        }
+
         .search-container {
             flex: 1;
             max-width: 400px;
@@ -191,32 +163,7 @@
             font-size: 12px;
             text-align: center;
             font-weight: 500;
-            position: relative;
-            overflow: hidden;
         }
-        
-        .paper-thumbnail::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        
-        .paper-card:hover .paper-thumbnail::before {
-            opacity: 1;
-        }
-        
-        /* Different gradient colors for variety */
-        .paper-thumbnail.variant-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .paper-thumbnail.variant-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .paper-thumbnail.variant-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .paper-thumbnail.variant-4 { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-        .paper-thumbnail.variant-5 { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
 
         .paper-content {
             flex: 1;
@@ -322,13 +269,31 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .container {
-                padding: 0 16px;
-            }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .bookmark-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .bookmark-btn:hover:not(:disabled) {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .bookmark-btn.bookmarked:hover:not(:disabled) {
+            background-color: #b91c1c;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
@@ -350,7 +315,6 @@
 
             .paper-card {
                 flex-direction: column;
-                padding: 16px;
             }
 
             .paper-thumbnail {
@@ -362,41 +326,6 @@
                 flex-direction: row;
                 justify-content: space-between;
                 align-items: center;
-            }
-
-            .paper-title {
-                font-size: 16px;
-            }
-
-            .paper-abstract {
-                -webkit-line-clamp: 4;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo {
-                font-size: 20px;
-            }
-
-            .nav a {
-                font-size: 14px;
-            }
-
-            .main {
-                padding: 24px 0;
-            }
-
-            .paper-card {
-                padding: 14px;
-            }
-
-            .paper-thumbnail {
-                height: 100px;
-                font-size: 11px;
-            }
-
-            .search-input {
-                font-size: 16px; /* Prevents zoom on iOS */
             }
         }
     </style>
@@ -412,8 +341,8 @@
                 </div>
                 
                 <nav class="nav">
-                    <a href="index.html">Explore</a>
-                    <a href="#favorites">Favorites</a>
+                    <a href="index.html" class="active">Explore</a>
+                    <a href="favorites.html">Favorites</a>
                     <a href="#profile" id="profileLink">Login</a>
                 </nav>
             </div>
@@ -433,98 +362,7 @@
         </div>
     </main>
 
-    <script src="config.js"></script>
     <script type="module" src="./js/auth.js"></script>
     <script type="module" src="./js/main.js"></script>
-    
-    <!-- Service Worker Registration -->
-    <script>
-        // Register Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then((registration) => {
-                        console.log('SW registered: ', registration);
-                    })
-                    .catch((registrationError) => {
-                        console.log('SW registration failed: ', registrationError);
-                    });
-            });
-        }
-
-        // PWA Install Prompt
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            showInstallPrompt();
-        });
-
-        function showInstallPrompt() {
-            // Create install button if it doesn't exist
-            if (!document.getElementById('installBtn')) {
-                const installBtn = document.createElement('button');
-                installBtn.id = 'installBtn';
-                installBtn.innerHTML = '📱 Install App';
-                installBtn.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background: var(--accent-red);
-                    color: white;
-                    border: none;
-                    padding: 12px 16px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-                    z-index: 1000;
-                    transition: transform 0.2s ease;
-                `;
-                
-                installBtn.addEventListener('mouseover', () => {
-                    installBtn.style.transform = 'translateY(-2px)';
-                });
-                
-                installBtn.addEventListener('mouseout', () => {
-                    installBtn.style.transform = 'translateY(0)';
-                });
-
-                installBtn.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        console.log(`User response to install prompt: ${outcome}`);
-                        deferredPrompt = null;
-                        installBtn.remove();
-                    }
-                });
-
-                document.body.appendChild(installBtn);
-                
-                // Auto-hide after 10 seconds
-                setTimeout(() => {
-                    if (installBtn && installBtn.parentNode) {
-                        installBtn.style.opacity = '0.7';
-                        setTimeout(() => {
-                            if (installBtn && installBtn.parentNode) {
-                                installBtn.remove();
-                            }
-                        }, 5000);
-                    }
-                }, 10000);
-            }
-        }
-
-        // Handle successful installation
-        window.addEventListener('appinstalled', (evt) => {
-            console.log('PWA was installed');
-            const installBtn = document.getElementById('installBtn');
-            if (installBtn) {
-                installBtn.remove();
-            }
-        });
-    </script>
 </body>
 </html>
