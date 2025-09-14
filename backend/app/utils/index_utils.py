@@ -8,12 +8,14 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     """Search papers using the /find_similar/ endpoint for a single query.
     Returns a list of paper dictionaries corresponding to the results.
     """
+    # 根据新的API结构构建payload
     payload = {
         "query": query,
         "top_k": 3,
         "similarity_cutoff": similarity_cutoff,
-        "strategy_type": search_strategy,
-        "filters": filters
+        "search_strategies": [(search_strategy, 0.5)],  # 新API使用元组格式 (strategy, threshold)
+        "filters": filters,
+        "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }
     try:
         response = requests.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)

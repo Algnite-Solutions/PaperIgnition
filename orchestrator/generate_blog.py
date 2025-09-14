@@ -85,7 +85,8 @@ async def run_batch_generation(papers):
             abstract=paper.abstract, 
             text_chunks=paper.text_chunks,
             image_path=image_path,
-            arxiv_id=paper.doc_id
+            arxiv_id=paper.doc_id,
+            table_chunks=paper.table_chunks,
         )
         if len(paper.text_chunks) > 10000:
             prompt = prompt[:10000]

@@ -80,7 +80,7 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
                     }
                 }
                 print(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
-                papers = utils.search_papers_via_api(index_api_url, query, 'vector', 0.1, filter_params)
+                papers = utils.search_papers_via_api(index_api_url, "llm", 'tf-idf', 0.1, filter_params)
             else:
                 papers = utils.search_papers_via_api(index_api_url, query, 'vector', 0.1)
             
