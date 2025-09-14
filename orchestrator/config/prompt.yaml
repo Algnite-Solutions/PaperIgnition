@@ -43,6 +43,7 @@ prompts:
       作者：{authors}
       摘要：{abstract}
       论文内容：{text_chunks}
+      论文中的表格：{table_chunks}
       
   blog_generation_abs:
     system_prompt: |

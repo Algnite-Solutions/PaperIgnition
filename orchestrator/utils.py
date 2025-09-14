@@ -48,7 +48,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         "top_k": 2,
         "similarity_cutoff": similarity_cutoff,
         "search_strategies": [(search_strategy, 0.0)],  # 新API使用元组格式 (strategy, threshold)
-        #"filters": filters,
+        "filters": filters,
         "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }
     try:
