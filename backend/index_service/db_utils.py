@@ -1,6 +1,6 @@
 from typing import Tuple, Dict, Any, Optional
 from pathlib import Path
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 import logging
 import os
 import yaml
@@ -76,11 +76,129 @@ def load_config(config_path: Optional[str] = None, set_env: bool = True) -> Dict
             set_config_environment_variables(config)
         
         logger.info(f"Successfully loaded configuration from file: {config_path}")
+        
+        # Display current storage information
+        _display_storage_info(config)
+        
         return config
         
     except Exception as e:
         logger.error(f"Failed to load configuration: {str(e)}")
         raise ValueError(f"Error loading config: {str(e)}")
+
+def _display_storage_info(config: Dict[str, Any]) -> None:
+    """Display current storage information for metadata_db and vector_db.
+    
+    Args:
+        config: Configuration dictionary containing database settings
+    """
+    try:
+        logger.info("=" * 60)
+        logger.info("📊 CURRENT STORAGE INFORMATION")
+        logger.info("=" * 60)
+        
+        # Vector DB Storage Information
+        vector_db_path = config['vector_db']['db_path']
+        logger.info(f"🗂️  Vector Database Path: {vector_db_path}")
+        
+        # Check if vector database exists and get info
+        if os.path.exists(vector_db_path):
+            index_file = os.path.join(vector_db_path, "index.pkl")
+            faiss_file = os.path.join(vector_db_path, "index.faiss")
+            
+            if os.path.exists(index_file) and os.path.exists(faiss_file):
+                # Get file sizes
+                index_size = os.path.getsize(index_file)
+                faiss_size = os.path.getsize(faiss_file)
+                total_size = index_size + faiss_size
+                
+                logger.info(f"   ✅ Vector DB exists")
+                logger.info(f"   📁 Index file size: {_format_bytes(index_size)}")
+                logger.info(f"   📁 FAISS file size: {_format_bytes(faiss_size)}")
+                logger.info(f"   📊 Total size: {_format_bytes(total_size)}")
+                
+                # Try to get vector count (if possible without full initialization)
+                try:
+                    # Quick check without full model loading
+                    import pickle
+                    with open(index_file, 'rb') as f:
+                        index_data = pickle.load(f)
+                        if hasattr(index_data, 'docstore') and hasattr(index_data.docstore, '_dict'):
+                            vector_count = len(index_data.docstore._dict)
+                            logger.info(f"   🔢 Vector count: {vector_count}")
+                        else:
+                            logger.info(f"   🔢 Vector count: Unable to determine")
+                except Exception as e:
+                    logger.info(f"   🔢 Vector count: Unable to determine ({str(e)})")
+            else:
+                logger.info(f"   ❌ Vector DB files incomplete or missing")
+        else:
+            logger.info(f"   ❌ Vector DB directory does not exist")
+        
+        logger.info("")
+        
+        # Metadata DB Storage Information
+        db_url = config['metadata_db']['db_url']
+        logger.info(f"🗄️  Metadata Database URL: {db_url}")
+        
+        # Try to connect and get metadata info
+        try:
+            engine = create_engine(db_url)
+            with engine.connect() as conn:
+                # Check if tables exist
+                inspector = inspect(engine)
+                tables = inspector.get_table_names()
+                
+                if 'papers' in tables:
+                    # Get paper count
+                    result = conn.execute(text("SELECT COUNT(*) FROM papers"))
+                    paper_count = result.scalar()
+                    logger.info(f"   ✅ Metadata DB connected")
+                    logger.info(f"   📄 Papers table exists")
+                    logger.info(f"   🔢 Paper count: {paper_count}")
+                    
+                    # Get text chunks count if table exists
+                    if 'text_chunks' in tables:
+                        result = conn.execute(text("SELECT COUNT(*) FROM text_chunks"))
+                        chunk_count = result.scalar()
+                        logger.info(f"   📝 Text chunks count: {chunk_count}")
+                    
+                    # Get database size (PostgreSQL specific)
+                    if 'postgresql' in db_url:
+                        try:
+                            result = conn.execute(text("""
+                                SELECT pg_size_pretty(pg_database_size(current_database())) as db_size
+                            """))
+                            db_size = result.scalar()
+                            logger.info(f"   💾 Database size: {db_size}")
+                        except Exception:
+                            logger.info(f"   💾 Database size: Unable to determine")
+                else:
+                    logger.info(f"   ❌ Papers table does not exist")
+                    logger.info(f"   📋 Available tables: {', '.join(tables) if tables else 'None'}")
+                    
+        except Exception as e:
+            logger.info(f"   ❌ Cannot connect to metadata DB: {str(e)}")
+        
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"Failed to display storage information: {str(e)}")
+
+def _format_bytes(bytes_size: int) -> str:
+    """Format bytes into human readable format.
+    
+    Args:
+        bytes_size: Size in bytes
+        
+    Returns:
+        Formatted string with appropriate unit
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_size < 1024.0:
+            return f"{bytes_size:.1f} {unit}"
+        bytes_size /= 1024.0
+    return f"{bytes_size:.1f} PB"
 
 def _load_config_from_environment(set_env: bool = True) -> Dict[str, Any]:
     """Load configuration from environment variables.
@@ -147,6 +265,10 @@ def _load_config_from_environment(set_env: bool = True) -> Dict[str, Any]:
             raise ValueError(f"Missing required MinIO environment variable 'PAPERIGNITION_MINIO_{param.upper()}'")
     
     logger.info("Successfully loaded configuration from environment variables")
+    
+    # Display current storage information
+    _display_storage_info(config)
+    
     return config
 
 def set_config_environment_variables(config: Dict[str, Any]) -> None:
@@ -285,6 +407,18 @@ def init_databases(
             raise
     
     # Initialize MinIO image database with proper error handling
-    image_db = None
+    try:
+        minio_config = config['minio_db']
+        image_db = MinioImageDB(
+            endpoint=minio_config['endpoint'],
+            access_key=minio_config['access_key'],
+            secret_key=minio_config['secret_key'],
+            bucket_name=minio_config['bucket_name'],
+            secure=minio_config.get('secure', False)
+        )
+        logger.debug("MinIO image database initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize MinIO image database: {str(e)}")
+        image_db = None
     
     return _vector_db_instance, metadata_db, image_db

@@ -58,6 +58,7 @@ from pathlib import Path
 from typing import Dict, Any
 from AIgnite.data.docset import DocSet, TextChunk, ChunkType, DocSetList
 from backend.index_service.db_utils import load_config
+from backend.index_service.models import IndexPapersRequest
 import sqlalchemy
 
 # 使用测试专用配置文件
@@ -89,6 +90,23 @@ def setup_test_files():
 
 # Create test files
 test_pdfs = setup_test_files()
+
+# Create test image files
+def setup_test_images():
+    """Create test image files."""
+    test_images = {}
+    for i in range(3):
+        image_path = os.path.join(TEMP_DIR, f"test_image_{i}.png")
+        # Create a simple 1x1 pixel PNG image for testing
+        # This is a minimal valid PNG file (1x1 transparent pixel)
+        png_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        with open(image_path, 'wb') as f:
+            f.write(png_data)
+        test_images[f"test_image_{i}"] = image_path
+    return test_images
+
+# Create test image files
+test_images = setup_test_images()
 
 
 # Delete test papers from metadata_db before running tests, it includes tables from papers and text_chunks
@@ -256,7 +274,11 @@ async def test_connection_health():
 async def test_index_2_papers():
     """Index the first 2 papers only."""
     async with httpx.AsyncClient() as client:
-        data = DocSetList(docsets=docsets[:2]).dict()
+        data = IndexPapersRequest(
+            docsets=DocSetList(docsets=docsets[:2]),
+            store_images=False,
+            keep_temp_image=False
+        ).dict()
         response = await client.post(
             f"{BASE_URL}/index_papers/",
             json=data,
@@ -285,7 +307,11 @@ async def test_get_metadata_2():
 async def test_indexer_reload_and_incremental_indexing():
     """Re-init indexer (without recreating DB), index last 3 papers."""
     async with httpx.AsyncClient() as client:
-        data = DocSetList(docsets=docsets[2:]).dict()
+        data = IndexPapersRequest(
+            docsets=DocSetList(docsets=docsets[2:]),
+            store_images=False,
+            keep_temp_image=False
+        ).dict()
         response = await client.post(
             f"{BASE_URL}/index_papers/",
             json=data,
@@ -834,6 +860,94 @@ async def test_advanced_filters():
         print("✅ Date filter working correctly")
         print("✅ Combined filters working correctly")
 
+async def test_save_image():
+    """Test save_image API functionality."""
+    async with httpx.AsyncClient() as client:
+        print("\n🔍 Testing save_image API functionality...")
+        
+        # Test 1: Save image using file path
+        print("\n📋 Test 1: Save image using file path")
+        save_image_path_request = {
+            "object_name": "test_paper_001_fig1",
+            "image_path": test_images["test_image_0"]
+        }
+        
+        response = await client.post(f"{BASE_URL}/save_image/", json=save_image_path_request, timeout=10.0)
+        assert response.status_code == 200, f"Save image with path failed: {response.text}"
+        result = response.json()
+        
+        assert result["success"] == True, "Save image should return success=True"
+        assert result["object_name"] == "test_paper_001_fig1", "Object name should match"
+        assert "saved successfully" in result["message"], "Message should indicate success"
+        print(f"✅ Save image with path: {result['message']}")
+        
+        # Test 2: Save image using image data (base64 encoded)
+        print("\n📋 Test 2: Save image using image data")
+        import base64
+        # Use the same PNG data as in setup_test_images for consistency
+        png_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        test_image_data = base64.b64encode(png_data).decode()
+        save_image_data_request = {
+            "object_name": "test_paper_002_fig1",
+            "image_data": test_image_data
+        }
+        
+        response = await client.post(f"{BASE_URL}/save_image/", json=save_image_data_request, timeout=10.0)
+        assert response.status_code == 200, f"Save image with data failed: {response.text}"
+        result = response.json()
+        
+        assert result["success"] == True, "Save image should return success=True"
+        assert result["object_name"] == "test_paper_002_fig1", "Object name should match"
+        assert "saved successfully" in result["message"], "Message should indicate success"
+        print(f"✅ Save image with data: {result['message']}")
+        
+
+async def test_save_image_error_cases():
+    """Test save_image API error handling."""
+    async with httpx.AsyncClient() as client:
+        print("\n🔍 Testing save_image API error handling...")
+        
+        # Test 1: Missing both image_path and image_data
+        print("\n📋 Test 1: Missing both image_path and image_data")
+        invalid_request = {
+            "object_name": "test_invalid"
+        }
+        
+        response = await client.post(f"{BASE_URL}/save_image/", json=invalid_request, timeout=10.0)
+        assert response.status_code == 422, f"Expected 422 for missing image data, got {response.status_code}"
+        print("✅ Missing image data validation working correctly")
+        
+        # Test 2: Providing both image_path and image_data
+        print("\n📋 Test 2: Providing both image_path and image_data")
+        import base64
+        png_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        test_image_data = base64.b64encode(png_data).decode()
+        invalid_request = {
+            "object_name": "test_invalid",
+            "image_path": test_images["test_image_0"],
+            "image_data": test_image_data
+        }
+        
+        response = await client.post(f"{BASE_URL}/save_image/", json=invalid_request, timeout=10.0)
+        assert response.status_code == 422, f"Expected 422 for both image data provided, got {response.status_code}"
+        print("✅ Both image data validation working correctly")
+        
+        # Test 3: Non-existent file path
+        print("\n📋 Test 3: Non-existent file path")
+        invalid_request = {
+            "object_name": "test_invalid",
+            "image_path": "/non/existent/path/image.png"
+        }
+        
+        response = await client.post(f"{BASE_URL}/save_image/", json=invalid_request, timeout=10.0)
+        assert response.status_code == 500, f"Expected 500 for non-existent file, got {response.status_code}"
+        print("✅ Non-existent file path handling working correctly")
+        
+        print("\n🎉 All save_image error case tests completed successfully!")
+        print("✅ Missing image data validation working correctly")
+        print("✅ Both image data validation working correctly")
+        print("✅ Non-existent file path handling working correctly")
+
 async def test_error_cases():
     """Test error handling."""
     async with httpx.AsyncClient() as client:
@@ -932,6 +1046,10 @@ async def run_tests():
         await test_text_type_filters()
         await test_result_include_types()
         #await test_advanced_filters()
+        
+        # Image storage tests
+        await test_save_image()
+        await test_save_image_error_cases()
         
         # Error case tests
         await test_error_cases()

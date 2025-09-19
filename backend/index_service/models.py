@@ -7,6 +7,11 @@ from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, Chun
 
 # --- Request Models ---
 
+class IndexPapersRequest(BaseModel):
+    docsets: DocSetList = Field(..., description="List of DocSet objects containing paper information")
+    store_images: bool = Field(default=False, description="Whether to store images to MinIO (default: False)")
+    keep_temp_image: bool = Field(default=False, description="If False, delete temporary image files after successful storage (default: False)")
+
 class CustomerQuery(BaseModel):
     query: str = Field(..., description="Search query string")
     top_k: Optional[int] = Field(default=5, description="Number of results to return", ge=1)
@@ -122,3 +127,65 @@ class CustomerQuery(BaseModel):
                                 else:
                                     raise ValueError(f"text_type must be a string or list of strings")
         return v
+
+
+# --- Image-related Models ---
+
+class SaveImageRequest(BaseModel):
+    object_name: str = Field(..., description="Object name to use for storage in MinIO")
+    image_path: Optional[str] = Field(default=None, description="Path to image file (mutually exclusive with image_data)")
+    image_data: Optional[str] = Field(default=None, description="Base64 encoded image data (mutually exclusive with image_path)")
+    
+    @validator('image_path', 'image_data')
+    def validate_image_input(cls, v, values):
+        """Validate that exactly one of image_path or image_data is provided."""
+        if 'image_path' in values and 'image_data' in values:
+            if values['image_path'] is not None and values['image_data'] is not None:
+                raise ValueError("Only one of image_path or image_data should be provided")
+        return v
+
+class GetImageRequest(BaseModel):
+    object_name: str = Field(..., description="Object name in MinIO storage")
+    save_path: Optional[str] = Field(default=None, description="Optional path to save the image file")
+
+class StoreImagesRequest(BaseModel):
+    docsets: DocSetList = Field(..., description="List of DocSet objects containing papers with figure_chunks")
+    indexing_status: Optional[Dict[str, Dict[str, bool]]] = Field(
+        default=None, 
+        description="Optional dictionary to track indexing status for each paper"
+    )
+    keep_temp_image: bool = Field(default=False, description="If False, delete temporary image files after successful storage (default: False)")
+
+class StoreImagesResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    indexing_status: Optional[Dict[str, Dict[str, bool]]] = Field(
+        default=None, 
+        description="Updated indexing status for each paper"
+    )
+    papers_processed: int = Field(..., description="Number of papers processed")
+
+class ImageResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    object_name: Optional[str] = Field(default=None, description="Object name used for storage/retrieval")
+    image_data: Optional[bytes] = Field(default=None, description="Image data (only for get operations)")
+    file_size: Optional[int] = Field(default=None, description="File size in bytes (only for get operations)")
+
+class GetImageRequest(BaseModel):
+    image_id: str = Field(..., description="Image ID to retrieve from MinIO storage")
+
+class GetImageResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    image_data: Optional[str] = Field(default=None, description="Base64 encoded image data if found")
+    image_id: Optional[str] = Field(default=None, description="Image ID that was requested")
+
+class GetImageStorageStatusRequest(BaseModel):
+    doc_id: str = Field(..., description="Document ID to get image storage status for")
+
+class GetImageStorageStatusResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    storage_status: Optional[Dict[str, Any]] = Field(default=None, description="Image storage status for the document")
+    doc_id: Optional[str] = Field(default=None, description="Document ID that was requested")

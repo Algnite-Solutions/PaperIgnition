@@ -3,10 +3,11 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
 
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
-from ..db_utils import get_db
+from ..db_utils import get_db, INDEX_SERVICE_URL
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -99,3 +100,49 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         await db.rollback()
         print(f"添加推荐记录时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail="添加推荐记录失败")
+
+@router.get("/image/{image_id}")
+async def get_paper_image(image_id: str):
+    """Get an image from MinIO storage via index_service.
+    
+    Args:
+        image_id: Image ID to retrieve
+        
+    Returns:
+        Image data and metadata from index_service
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{INDEX_SERVICE_URL}/get_image/",
+                json={"image_id": image_id}
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get image: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/image_storage_status/{doc_id}")
+async def get_paper_image_storage_status(doc_id: str):
+    """Get image storage status for a document via index_service.
+    
+    Args:
+        doc_id: Document ID to get storage status for
+        
+    Returns:
+        Storage status information from index_service
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{INDEX_SERVICE_URL}/get_image_storage_status/",
+                json={"doc_id": doc_id}
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get image storage status: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

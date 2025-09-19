@@ -14,7 +14,7 @@ INDEX_SERVICE:
     endpoint: localhost:9081
     access_key: XOrv2wfoWfPypp2zGIae
     secret_key: k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3
-    bucket_name: aignite-test-papers
+    bucket_name: aignite-papers-new
     secure: false
 
 APP_SERVICE:
