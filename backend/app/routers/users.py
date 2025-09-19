@@ -283,8 +283,8 @@ async def update_user_profile(
                         
                         search_results = search_papers_via_api(
                             INDEX_SERVICE_URL, 
-                            interest, 
-                            'vector', 
+                            "llm", 
+                            'tf-idf', 
                             0.1, 
                             filter_params
                         )
@@ -330,7 +330,6 @@ async def update_user_profile(
                                     authors=authors_data,
                                     abstract=result.get('abstract', ''),
                                     url=result.get('url', ''),
-                                    content=result.get('content', ''),
                                     blog=blogbot_blog or '',  # 使用从BlogBot记录中获取的blog内容
                                     recommendation_reason=f"基于用户兴趣'{interest}'的向量搜索，从BlogBot推荐论文中筛选，相似度: {result.get('score', 0):.3f}",
                                     relevance_score=result.get('score', 0.0)
