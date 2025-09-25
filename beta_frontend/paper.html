@@ -423,8 +423,7 @@
     </main>
 
     <script>
-        // API Configuration
-        const API_BASE_URL = 'http://10.0.1.226:8888';
+        // API Configuration - use relative URLs to proxy through frontend server
 
         // Get paper ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -491,7 +490,7 @@
 
         async function loadPaperContent() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/papers/paper_content/${encodeURIComponent(paperId)}`);
+                const response = await fetch(`/api/papers/paper_content/${encodeURIComponent(paperId)}`);
                 
                 if (!response.ok) {
                     if (response.status === 404) {

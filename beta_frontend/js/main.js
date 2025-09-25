@@ -1,6 +1,3 @@
-// API Configuration
-const API_BASE_URL = 'http://10.0.1.226:8888';
-
 // Paper data (using the same data from the Taro app)
 const samplePapers = [
     {
@@ -119,7 +116,7 @@ async function loadUserRecommendations() {
     try {
         // Call the backend recommendations API
         const username = currentUser.username;
-        const response = await fetch(`${API_BASE_URL}/api/papers/recommendations/${encodeURIComponent(username)}`, {
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -316,7 +313,7 @@ async function toggleBookmark(paperId, event) {
         
         if (isCurrentlyFavorited) {
             // Remove from favorites
-            const response = await fetch(`${API_BASE_URL}/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+            const response = await fetch(`/api/favorites/remove/${encodeURIComponent(paperId)}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -365,7 +362,7 @@ async function toggleBookmark(paperId, event) {
             console.log('JSON body:', JSON.stringify(favoriteData));
             console.log('Token:', token ? 'Token exists' : 'No token');
             
-            const response = await fetch(`${API_BASE_URL}/api/favorites/add`, {
+            const response = await fetch(`/api/favorites/add`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -475,7 +472,7 @@ async function loadUserFavorites() {
     
     try {
         const token = window.AuthService.getToken();
-        const response = await fetch(`${API_BASE_URL}/api/favorites/list`, {
+        const response = await fetch(`/api/favorites/list`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

@@ -415,7 +415,6 @@
     <script type="module" src="./js/auth.js"></script>
     <script>
         // API Configuration
-        const API_BASE_URL = 'http://10.0.1.226:8888';
 
         // State management
         let favoritePapers = [];
@@ -474,7 +473,7 @@
                 
                 // 直接使用原来的favorites/list接口
                 console.log('Calling favorites/list API...');
-                const response = await fetch(`${API_BASE_URL}/api/favorites/list`, {
+                const response = await fetch('/api/favorites/list', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -615,7 +614,7 @@
             
             try {
                 const token = window.AuthService.getToken();
-                const response = await fetch(`${API_BASE_URL}/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+                const response = await fetch(`/api/favorites/remove/${encodeURIComponent(paperId)}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -714,7 +713,7 @@
                 };
                 
                 console.log('Adding test paper:', testPaper);
-                const addResponse = await fetch(`${API_BASE_URL}/api/favorites/add`, {
+                const addResponse = await fetch('/api/favorites/add', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
