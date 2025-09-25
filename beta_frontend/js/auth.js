@@ -1,6 +1,5 @@
 // Authentication Service for PaperIgnition Web App
 
-const API_BASE_URL = 'http://10.0.1.226:8888';
 
 class AuthService {
     constructor() {
@@ -52,7 +51,7 @@ class AuthService {
     // Login with email and password
     async login(email, password) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/login-email`, {
+            const response = await fetch('/api/auth/login-email', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json' 
@@ -135,7 +134,7 @@ class AuthService {
             
             // For real implementation:
             /*
-            const response = await fetch(`${API_BASE_URL}/api/auth/register-email`, {
+            const response = await fetch('/api/auth/register-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, username })
@@ -202,7 +201,7 @@ class AuthService {
             
             // For real implementation:
             /*
-            const response = await fetch(`${API_BASE_URL}/users/me`, {
+            const response = await fetch('/users/me', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${this.getToken()}`
@@ -252,7 +251,7 @@ class AuthService {
             
             // For real implementation:
             /*
-            const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
+            const response = await fetch('/users/me/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
