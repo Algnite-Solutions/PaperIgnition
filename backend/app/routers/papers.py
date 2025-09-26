@@ -111,7 +111,7 @@ async def process_markdown_images(markdown_content: str) -> str:
         try:
             #filename = "test.png"
             #await serve_file(bucket="aignite-papers-new", key=filename)
-            presigned_url = f" http://10.0.1.226:8888/files/aignite-papers-new/{filename}"
+            presigned_url = f"/files/aignite-papers-new/{filename}"
             
             if presigned_url:
                 return f'![{alt_text}]({presigned_url})'
