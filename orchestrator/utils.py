@@ -45,7 +45,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     # 根据新的API结构构建payload
     payload = {
         "query": query,
-        "top_k": 2,
+        "top_k": 1,
         "similarity_cutoff": similarity_cutoff,
         "search_strategies": [(search_strategy, 0.0)],  # 新API使用元组格式 (strategy, threshold)
         "filters": filters,
@@ -58,25 +58,53 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         print(f"\nResults for query '{query}' (strategy: {search_strategy}, cutoff: {similarity_cutoff}):")
         docsets = []
         for r in results:
-            # Print for debug
-            score = r.get('score', r.get('similarity_score'))
-            title = r.get('title', r.get('metadata', {}).get('title'))
-            print(f"  doc_id: {r.get('doc_id')}, score: {score}, title: {title}")
-            
             # Create DocSet instance (handle missing fields gracefully)
             try:
-                # 为缺失的必需字段提供默认值
+                # 提取metadata中的信息
+                metadata = r.get('metadata', {})
+                
+                # 处理chunks数据，确保符合DocSet定义
+                def process_text_chunks(chunks_data):
+                    """处理text_chunks数据，转换为符合DocSet定义的格式"""
+                    if not chunks_data:
+                        return []
+                    
+                    processed_chunks = []
+                    for chunk in chunks_data:
+                        if isinstance(chunk, dict):
+                            # 检查是否已经是正确的格式
+                            if 'id' in chunk and 'type' in chunk and 'text' in chunk:
+                                processed_chunks.append(chunk)
+                            elif 'chunk_id' in chunk and 'text_content' in chunk:
+                                # 转换API格式到DocSet格式
+                                converted_chunk = {
+                                    'id': chunk['chunk_id'],
+                                    'type': 'text',
+                                    'text': chunk['text_content']
+                                }
+                                processed_chunks.append(converted_chunk)
+                            else:
+                                # 跳过无效的chunk
+                                print(f"Warning: Skipping invalid text chunk: {chunk}")
+                        else:
+                            print(f"Warning: Skipping non-dict text chunk: {chunk}")
+                    return processed_chunks
+                
+                # 为缺失的必需字段提供默认值，确保符合DocSet定义
                 docset_data = {
                     'doc_id': r.get('doc_id'),
-                    'title': title if title else 'Unknown Title',
-                    'authors': r.get('authors', []),
-                    'categories': r.get('categories', []),
-                    'published_date': r.get('published_date', ''),
-                    'abstract': r.get('abstract', ''),
-                    'pdf_path': r.get('pdf_path', ''),
-                    'HTML_path': r.get('HTML_path', ''),
-                    'comments': r.get('comments', ''),
-                    'score': score  # 保留相似度分数
+                    'title': metadata.get('title', 'Unknown Title'),
+                    'authors': metadata.get('authors', []),
+                    'categories': metadata.get('categories', []),
+                    'published_date': metadata.get('published_date', ''),
+                    'abstract': metadata.get('abstract', ''),
+                    'pdf_path': metadata.get('pdf_path', ''),
+                    'HTML_path': metadata.get('HTML_path'),
+                    'text_chunks': process_text_chunks(r.get('text_chunks', [])),
+                    'figure_chunks': [],
+                    'table_chunks': [],
+                    'metadata': metadata,
+                    'comments': metadata.get('comments', '')
                 }
                 
                 docset = DocSet(**docset_data)
@@ -134,8 +162,8 @@ def fetch_daily_papers(index_api_url: str, config):
             print("Exiting due to failed health check after initialization.")
             sys.exit(1)
 
-    papers = paper_pull.fetch_daily_papers()
-    #papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
+    #papers = paper_pull.fetch_daily_papers()
+    papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
 
     # 2. Index papers

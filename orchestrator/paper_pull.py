@@ -76,7 +76,7 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
                     i += 1
-                    if i > 3:
+                    if i > 1:
                         break
                     data = json.load(f)
                     docset = DocSet(**data)
