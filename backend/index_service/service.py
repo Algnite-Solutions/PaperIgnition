@@ -23,7 +23,7 @@ def create_indexer(vector_db, metadata_db, image_db) -> PaperIndexer:
         logger.error(error_msg)
         raise RuntimeError(error_msg)
 
-def index_papers(indexer: PaperIndexer, docsets: List[DocSet]) -> bool:
+def index_papers(indexer: PaperIndexer, docsets: List[DocSet], store_images: bool = False, keep_temp_image: bool = False) -> bool:
     """Index a list of papers into the database using AIgnite's parallel storage architecture.
     
     This function stores papers across multiple databases:
@@ -34,12 +34,14 @@ def index_papers(indexer: PaperIndexer, docsets: List[DocSet]) -> bool:
     Args:
         indexer: PaperIndexer instance with configured databases
         docsets: List of DocSet objects containing paper information
+        store_images: Whether to store images to MinIO (default: False)
+        keep_temp_image: If False, delete temporary image files after successful storage (default: False)
         
     Returns:
         bool: True if indexing completed successfully, False otherwise
     """
     try:
-        indexing_status = indexer.index_papers(docsets)
+        indexing_status = indexer.index_papers(docsets, store_images=store_images, keep_temp_image=keep_temp_image)
         # Check if all papers were indexed successfully
         all_successful = all(
             status.get("metadata", False) or status.get("vectors", False) or status.get("images", False)
@@ -65,6 +67,50 @@ def get_metadata(indexer: PaperIndexer, doc_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get metadata for {doc_id}: {str(e)}")
         return {}
+
+
+def get_image(indexer: PaperIndexer, image_id: str) -> Optional[str]:
+    """Get an image from MinIO storage using AIgnite's image storage architecture.
+    
+    This function retrieves images from the MinioImageDB with the specified image ID.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        image_id: Image ID to retrieve
+        
+    Returns:
+        Base64 encoded image data if found, otherwise None
+    """
+    try:
+        import base64
+        image_bytes = indexer._get_image(image_id)
+        if image_bytes is not None:
+            return base64.b64encode(image_bytes).decode('utf-8')
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get image for {image_id}: {str(e)}")
+        return None
+
+
+def get_image_storage_status(indexer: PaperIndexer, doc_id: str) -> Optional[Dict[str, Any]]:
+    """Get the image storage status for a specific document from the MetadataDB.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        doc_id: Document ID to retrieve
+        
+    Returns:
+        Dictionary with storage status if found, None if document not found
+    """
+    try:
+        status = indexer.get_image_storage_status_for_doc(doc_id)
+        # If the status is empty (document not found), return None to trigger 404
+        if not status:
+            return None
+        return status
+    except Exception as e:
+        logger.error(f"Failed to get image storage status for {doc_id}: {str(e)}")
+        return None
 
 def find_similar(
     indexer: PaperIndexer,
@@ -125,5 +171,108 @@ def find_similar(
         #logger.error(f"Failed to find similar papers: {str(e)}")
         raise ValueError(f"Failed to find similar papers, please verify the input parameters: {str(e)}")
         #return []
+
+def save_image(indexer: PaperIndexer, object_name: str, image_path: str = None, image_data: str = None) -> bool:
+    """Save an image to MinIO storage using AIgnite's image storage architecture.
+    
+    This function stores images in the MinioImageDB with the specified object name.
+    The object name follows the format: {doc_id}_{figure_id} as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        object_name: Object name to use for storage in MinIO (format: {doc_id}_{figure_id})
+        image_path: Path to image file (mutually exclusive with image_data)
+        image_data: Base64 encoded image data (mutually exclusive with image_path)
+        
+    Returns:
+        bool: True if image was saved successfully, False otherwise
+        
+    Raises:
+        ValueError: If input parameters are invalid
+        RuntimeError: If image saving fails
+    """
+    try:
+        # Validate input parameters
+        if not object_name or not object_name.strip():
+            raise ValueError("Object name cannot be empty")
+        
+        if not image_path and not image_data:
+            raise ValueError("Either image_path or image_data must be provided")
+        
+        if image_path and image_data:
+            raise ValueError("Only one of image_path or image_data should be provided")
+        
+        # Check if image_db is available
+        if indexer.image_db is None:
+            raise RuntimeError("Image database is not initialized")
+        
+        # Decode base64 image data if provided
+        decoded_image_data = None
+        if image_data:
+            try:
+                import base64
+                decoded_image_data = base64.b64decode(image_data)
+            except Exception as e:
+                raise ValueError(f"Invalid base64 image data: {str(e)}")
+        
+        # Call the image_db save_image method directly
+        success = indexer.image_db.save_image(
+            object_name=object_name.strip(),
+            image_path=image_path,
+            image_data=decoded_image_data
+        )
+        
+        if not success:
+            raise RuntimeError(f"Failed to save image with object_name: {object_name}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to save image with object_name {object_name}: {str(e)}")
+        raise
+
+def store_images(indexer: PaperIndexer, docsets: List[DocSet], indexing_status: Dict[str, Dict[str, bool]] = None, keep_temp_image: bool = False) -> Dict[str, Dict[str, bool]]:
+    """Store images from papers to MinIO storage using AIgnite's image storage architecture.
+    
+    This function stores images from figure_chunks in papers to MinIO storage.
+    The object name follows the format: {doc_id}_{figure_id} as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        docsets: List of DocSet objects containing papers with figure_chunks
+        indexing_status: Optional dictionary to track indexing status for each paper
+        keep_temp_image: If False, delete temporary image files after successful storage (default: False)
+        
+    Returns:
+        Dictionary mapping doc_ids to their indexing status for each database type
+        
+    Raises:
+        RuntimeError: If indexer is not initialized or image storage fails
+    """
+    try:
+        # Check if indexer is initialized
+        if indexer is None:
+            raise RuntimeError("Indexer not initialized")
+        
+        # Check if image_db is available
+        if indexer.image_db is None:
+            raise RuntimeError("Image database is not initialized")
+        
+        # Call the indexer's store_images method
+        updated_indexing_status = indexer.store_images(
+            papers=docsets,
+            indexing_status=indexing_status,
+            keep_temp_image=keep_temp_image
+        )
+        
+        return updated_indexing_status
+        
+    except Exception as e:
+        logger.error(f"Failed to store images: {str(e)}")
+        raise RuntimeError(f"Failed to store images: {str(e)}")
+
+
 
 
