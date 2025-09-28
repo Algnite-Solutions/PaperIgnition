@@ -482,7 +482,6 @@
         const interestsDebugInfo = document.getElementById('interestsDebugInfo');
 
         let currentProfile = null;
-        const API_BASE_URL = 'http://10.0.1.226:8888';
         
         // Show debug info if URL contains debug parameter
         const showDebug = window.location.search.includes('debug=true');
@@ -508,7 +507,7 @@
             try {
                 // Use the backend API to get user profile
                 const token = window.AuthService.getToken();
-                const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+                const response = await fetch('/api/users/me', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -628,7 +627,7 @@
 
             try {
                 const token = window.AuthService.getToken();
-                const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
+                const response = await fetch('/api/users/me/profile', {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -754,9 +753,9 @@
             try {
                 const token = window.AuthService.getToken();
                 console.log('Saving interests:', interests);
-                console.log('API URL:', `${API_BASE_URL}/api/users/me/profile`);
+                console.log('API URL:', '/api/users/me/profile');
                 
-                const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
+                const response = await fetch('/api/users/me/profile', {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -801,7 +800,7 @@
                 const token = window.AuthService.getToken();
                 console.log('Using token:', token ? token.substring(0, 50) + '...' : 'No token');
                 
-                const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+                const response = await fetch('/api/users/me', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
