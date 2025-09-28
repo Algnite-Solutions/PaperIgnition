@@ -7,6 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
+
+from ..models.users import User, UserPaperRecommendation
+from ..models.papers import PaperBase, PaperRecommendation
+from ..db_utils import get_db, INDEX_SERVICE_URL
 from minio import Minio
 from minio.error import S3Error
 import yaml
@@ -275,72 +280,49 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         await db.rollback()
         print(f"添加推荐记录时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail="添加推荐记录失败")
-
-# 博客反馈相关接口
-class BlogFeedbackRequest(BaseModel):
-    paper_id: str
-    liked: bool  # True=喜欢, False=不喜欢
-
-@router.post("/blog-feedback", status_code=status.HTTP_200_OK)
-async def submit_blog_feedback(
-    feedback: BlogFeedbackRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """提交博客反馈（喜欢/不喜欢）"""
+        
+@router.get("/image/{image_id}")
+async def get_paper_image(image_id: str):
+    """Get an image from MinIO storage via index_service.
+    
+    Args:
+        image_id: Image ID to retrieve
+        
+    Returns:
+        Image data and metadata from index_service
+    """
     try:
-        # 查找对应的推荐记录
-        result = await db.execute(
-            select(UserPaperRecommendation).where(
-                UserPaperRecommendation.username == current_user.username,
-                UserPaperRecommendation.paper_id == feedback.paper_id
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{INDEX_SERVICE_URL}/get_image/",
+                json={"image_id": image_id}
             )
-        )
-        recommendation = result.scalar_one_or_none()
-        
-        if not recommendation:
-            raise HTTPException(
-                status_code=404,
-                detail="推荐记录不存在"
-            )
-        
-        # 更新博客反馈
-        recommendation.blog_liked = feedback.liked
-        recommendation.blog_feedback_date = datetime.now(timezone.utc)
-        
-        await db.commit()
-        
-        return {
-            "message": "博客反馈提交成功",
-            "liked": feedback.liked
-        }
-        
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get image: {str(e)}")
     except Exception as e:
-        await db.rollback()
-        print(f"提交博客反馈时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail="提交博客反馈失败")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@router.get("/blog-feedback/{paper_id}")
-async def get_blog_feedback(
-    paper_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """获取用户对特定论文博客的反馈状态"""
+@router.get("/image_storage_status/{doc_id}")
+async def get_paper_image_storage_status(doc_id: str):
+    """Get image storage status for a document via index_service.
+    
+    Args:
+        doc_id: Document ID to get storage status for
+        
+    Returns:
+        Storage status information from index_service
+    """
     try:
-        result = await db.execute(
-            select(UserPaperRecommendation.blog_liked).where(
-                UserPaperRecommendation.username == current_user.username,
-                UserPaperRecommendation.paper_id == paper_id
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{INDEX_SERVICE_URL}/get_image_storage_status/",
+                json={"doc_id": doc_id}
             )
-        )
-        blog_liked = result.scalar_one_or_none()
-        
-        return {
-            "paper_id": paper_id,
-            "blog_liked": blog_liked  # None=未评价, True=喜欢, False=不喜欢
-        }
-        
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get image storage status: {str(e)}")
     except Exception as e:
-        print(f"获取博客反馈时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail="获取博客反馈失败")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

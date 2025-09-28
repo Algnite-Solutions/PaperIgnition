@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, Body
-from .models import CustomerQuery
+from .models import CustomerQuery, SaveImageRequest, GetImageRequest, ImageResponse, StoreImagesRequest, StoreImagesResponse, IndexPapersRequest, GetImageRequest, GetImageResponse, GetImageStorageStatusRequest, GetImageStorageStatusResponse
 from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, ChunkType, DocSetList
 from typing import Dict, Any, List, Optional
-from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer
+from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer, save_image, store_images, get_image, get_image_storage_status
 from AIgnite.index.paper_indexer import PaperIndexer
 from pydantic import BaseModel, validator
 import logging
@@ -62,7 +62,7 @@ async def init_database_route(
         raise HTTPException(status_code=500, detail=f"Database initialization failed: {str(e)}")
 
 @router.post("/index_papers/")
-async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
+async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
     """Index a list of papers using AIgnite's parallel storage architecture.
     
     This endpoint stores papers across multiple databases:
@@ -72,13 +72,19 @@ async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
     
     The indexing process uses parallel storage to maximize performance and
     provides detailed status reporting for each database type.
+    
+    Args:
+        request: IndexPapersRequest containing docsets, store_images, and keep_temp_image parameters
+        
+    Returns:
+        Success message with number of papers indexed
     """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
     
     try:
         docsets = []
-        for paper in docset_list.docsets:
+        for paper in request.docsets.docsets:
             docsets.append(DocSet(
                 doc_id=paper.doc_id,
                 title=paper.title,
@@ -94,7 +100,7 @@ async def index_papers_route(docset_list: DocSetList) -> Dict[str, str]:
                 metadata=paper.metadata or {},
                 comments=paper.comments
             ))
-        success = index_papers(paper_indexer, docsets)
+        success = index_papers(paper_indexer, docsets, store_images=request.store_images, keep_temp_image=request.keep_temp_image)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to index papers")
         return {"message": f"{len(docsets)} papers indexed successfully"}
@@ -218,3 +224,240 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error in similarity search: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/save_image/")
+async def save_image_route(request: SaveImageRequest) -> ImageResponse:
+    """Save an image to MinIO storage using AIgnite's image storage architecture.
+    
+    This endpoint stores images in the MinioImageDB with the specified object name.
+    The object name follows the format: {doc_id}_{figure_id} as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    The endpoint supports two input methods:
+    - image_path: Path to an image file on the server
+    - image_data: Raw image bytes (for direct upload)
+    
+    Args:
+        request: SaveImageRequest containing object_name and either image_path or image_data
+        
+    Returns:
+        ImageResponse with success status and message
+        
+    Raises:
+        HTTPException: If indexer not initialized, validation fails, or save operation fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Validate request parameters
+        if not request.object_name or not request.object_name.strip():
+            raise HTTPException(status_code=422, detail="Object name cannot be empty")
+        
+        if not request.image_path and not request.image_data:
+            raise HTTPException(
+                status_code=422, 
+                detail="Either image_path or image_data must be provided"
+            )
+        
+        if request.image_path and request.image_data:
+            raise HTTPException(
+                status_code=422,
+                detail="Only one of image_path or image_data should be provided"
+            )
+        
+        # Call the service function
+        success = save_image(
+            indexer=paper_indexer,
+            object_name=request.object_name.strip(),
+            image_path=request.image_path,
+            image_data=request.image_data
+        )
+        
+        if success:
+            return ImageResponse(
+                success=True,
+                message=f"Image saved successfully with object_name: {request.object_name}",
+                object_name=request.object_name.strip()
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to save image with object_name: {request.object_name}"
+            )
+            
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error saving image with object_name {request.object_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save image: {str(e)}")
+
+@router.post("/store_images/")
+async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse:
+    """Store images from papers to MinIO storage using AIgnite's image storage architecture.
+    
+    This endpoint stores images from figure_chunks in papers to MinIO storage.
+    The object name follows the format: {doc_id}_{figure_id} as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    This endpoint supports two storage scenarios:
+    1. **Integrated storage**: Images stored during index_papers with store_images=True
+    2. **Independent storage**: Images stored separately after metadata storage
+    
+    Args:
+        request: StoreImagesRequest containing docsets, indexing_status, and keep_temp_image parameters
+        
+    Returns:
+        StoreImagesResponse with success status, message, and updated indexing status
+        
+    Raises:
+        HTTPException: If indexer not initialized, validation fails, or storage operation fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Convert DocSetList to List[DocSet]
+        docsets = []
+        for paper in request.docsets.docsets:
+            docsets.append(DocSet(
+                doc_id=paper.doc_id,
+                title=paper.title,
+                abstract=paper.abstract,
+                authors=paper.authors,
+                categories=paper.categories,
+                published_date=paper.published_date,
+                pdf_path=paper.pdf_path,
+                HTML_path=paper.HTML_path,
+                text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
+                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
+                metadata=paper.metadata or {},
+                comments=paper.comments
+            ))
+        
+        # Call the service function
+        updated_indexing_status = store_images(
+            indexer=paper_indexer,
+            docsets=docsets,
+            indexing_status=request.indexing_status,
+            keep_temp_image=request.keep_temp_image
+        )
+        
+        return StoreImagesResponse(
+            success=True,
+            message=f"Images stored successfully for {len(docsets)} papers",
+            indexing_status=updated_indexing_status,
+            papers_processed=len(docsets)
+        )
+            
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error storing images: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to store images: {str(e)}")
+
+@router.post("/get_image/")
+async def get_image_route(request: GetImageRequest) -> GetImageResponse:
+    """Get an image from MinIO storage using AIgnite's image storage architecture.
+    
+    This endpoint retrieves images from the MinioImageDB with the specified image ID.
+    
+    Args:
+        request: GetImageRequest containing image_id
+        
+    Returns:
+        GetImageResponse with image data if found, otherwise error message
+        
+    Raises:
+        HTTPException: If indexer not initialized or image retrieval fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Validate request parameters
+        if not request.image_id or not request.image_id.strip():
+            raise HTTPException(status_code=422, detail="Image ID cannot be empty")
+        
+        # Call the service function
+        image_data = get_image(
+            indexer=paper_indexer,
+            image_id=request.image_id.strip()
+        )
+        
+        if image_data is not None:
+            return GetImageResponse(
+                success=True,
+                message=f"Image retrieved successfully for image_id: {request.image_id}",
+                image_data=image_data,
+                image_id=request.image_id.strip()
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Image not found for image_id: {request.image_id}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting image for {request.image_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get image: {str(e)}")
+
+@router.post("/get_image_storage_status/")
+async def get_image_storage_status_route(request: GetImageStorageStatusRequest) -> GetImageStorageStatusResponse:
+    """Get the image storage status for a specific document from the MetadataDB.
+    
+    This endpoint retrieves the image storage status for a document, showing which
+    images have been stored and their current status.
+    
+    Args:
+        request: GetImageStorageStatusRequest containing doc_id
+        
+    Returns:
+        GetImageStorageStatusResponse with storage status information
+        
+    Raises:
+        HTTPException: If indexer not initialized or status retrieval fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Validate request parameters
+        if not request.doc_id or not request.doc_id.strip():
+            raise HTTPException(status_code=422, detail="Document ID cannot be empty")
+        
+        # Call the service function
+        storage_status = get_image_storage_status(
+            indexer=paper_indexer,
+            doc_id=request.doc_id.strip()
+        )
+        
+        if storage_status is not None:
+            return GetImageStorageStatusResponse(
+                success=True,
+                message=f"Image storage status retrieved successfully for doc_id: {request.doc_id}",
+                storage_status=storage_status,
+                doc_id=request.doc_id.strip()
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Image storage status not found for doc_id: {request.doc_id}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting image storage status for {request.doc_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get image storage status: {str(e)}")
+
+
