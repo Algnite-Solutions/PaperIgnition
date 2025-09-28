@@ -1,7 +1,32 @@
 import requests
 from openai import OpenAI
 import re
+import logging
+logger = logging.getLogger(__name__)
 
+def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
+    """Search papers using the /find_similar/ endpoint for a single query.
+    Returns a list of paper dictionaries corresponding to the results.
+    """
+    # 根据新的API结构构建payload
+    payload = {
+        "query": query,
+        "top_k": 3,
+        "similarity_cutoff": similarity_cutoff,
+        "search_strategies": [(search_strategy, 0.5)],  # 新API使用元组格式 (strategy, threshold)
+        "filters": filters,
+        "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
+    }
+    try:
+        response = requests.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)
+        response.raise_for_status()
+        results = response.json()
+        logger.info(f"搜索结果数量: {len(results)} for query '{query}'")
+        return results
+    except Exception as e:
+        logger.error(f"搜索论文失败 '{query}': {e}")
+        return []
+        
 def get_openai_client(base_url="http://10.0.1.226:5666/v1", api_key="EMPTY"):
     """初始化OpenAI客户端"""
     return OpenAI(
@@ -18,7 +43,7 @@ def translate_text(client, text):
     """使用Qwen翻译文本，并处理输出以获取纯翻译结果"""
     try:
         resp = client.chat.completions.create(
-            model="Qwen/Qwen3-32B",
+            model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "You are a professional translator. Translate the Chinese text to English accurately. ONLY return the translated English text without ANY explanations, thoughts, or additional content. Do not include phrases like 'Translation:', 'Here's the translation:', etc."},
                 {"role": "user", "content": f"Translate this Chinese text to English: {text}"}

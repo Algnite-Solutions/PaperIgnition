@@ -142,16 +142,23 @@ const Interests = () => {
       
       // 使用与handleSave相同的token获取逻辑
       let token: string | null = null;
-      if (Taro && typeof Taro.getStorageSync === 'function') {
-        try {
-          token = Taro.getStorageSync('token');
-        } catch (e) {
-          if (typeof localStorage !== 'undefined') {
-            token = localStorage.getItem('token');
-          }
+      // if (Taro && typeof Taro.getStorageSync === 'function') {
+      //   try {
+      //     token = Taro.getStorageSync('token');
+      //   } catch (e) {
+      //     if (typeof localStorage !== 'undefined') {
+      //       token = localStorage.getItem('token');
+      //     }
+      //   }
+      // } else if (typeof localStorage !== 'undefined') {
+      //   token = localStorage.getItem('token');
+      // }
+      try {
+        if (typeof localStorage !== 'undefined') {
+          token = localStorage.getItem('token');
         }
-      } else if (typeof localStorage !== 'undefined') {
-        token = localStorage.getItem('token');
+      } catch (error) {
+        console.error('[ Interests Page handleSave ] ==> Error accessing localStorage:', error);
       }
 
       if (!token) {
