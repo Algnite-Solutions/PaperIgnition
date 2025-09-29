@@ -28,6 +28,15 @@ class JobLogger:
         self._session_factory = None
         self._setup_database()
         self._table_created = False
+        self._closed = False
+
+    def __del__(self):
+          if not self._closed:
+              print("⚠️ JobLogger: Auto-closing unclosed connection")
+              try:
+                  asyncio.run(self.close())
+              except Exception as e:
+                  print(f"Error in JobLogger cleanup: {e}")
 
     def _setup_database(self):
         """Setup database connection"""
@@ -184,7 +193,7 @@ class JobLogger:
         """
         return await self.update_job_log(
             job_id=job_id,
-            status="comnpleted",
+            status="completed",
             error_message=error_message,
             details=details
         )
@@ -250,78 +259,54 @@ class JobLogger:
         """Close database connections"""
         if self._engine:
             await self._engine.dispose()
-
-    async def __aenter__(self):
-        """Context manager entry - called when entering 'async with' block"""
-        await self.create_table_if_not_exists()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - called when leaving 'async with' block"""
-        await self.close()
-        return False  # Don't suppress exceptions
+        self._closed = True
+        print("✅ Database connection closed")
 
 # Example usage and testing
 if __name__ == "__main__":
-    async def test_context_manager():
+    async def test_simple():
         """Test using context manager (recommended approach)"""
         print("=== Testing Context Manager (Recommended) ===\n")
 
         # Test 1: Full job lifecycle with context manager
         print("1. Testing context manager pattern...")
-        async with JobLogger() as logger:
-            # Start a job
-            job_id = await logger.start_job_log("data_processing", username="test@example.com")
-            print(f"   Started job: {job_id}")
+        logger = JobLogger()
+        # Start a job
+        job_id = await logger.start_job_log("data_processing", username="test@example.com")
+        print(f"   Started job: {job_id}")
 
-            # Update progress multiple times
-            await logger.update_job_log(job_id, status="running", details={"progress": "25%"})
-            print("   Updated: 25% complete")
+        # Update progress multiple times
+        await logger.update_job_log(job_id, status="running", details={"progress": "25%"})
+        print("   Updated: 25% complete")
 
-            await logger.update_job_log(job_id, status="running", details={"progress": "75%"})
-            print("   Updated: 75% complete")
+        await logger.update_job_log(job_id, status="running", details={"progress": "75%"})
+        print("   Updated: 75% complete")
 
-            # Complete the job
-            await logger.complete_job_log(
-                job_id,
-                details={"progress": "100%", "total_time": "120.5 seconds"}
-            )
-            print(f"   Completed job: {job_id}")
-        # Database connection automatically closed here
-        print("   Database connection automatically closed\n")
+        # Complete the job
+        await logger.complete_job_log(
+            job_id,
+            details={"progress": "100%", "total_time": "120.5 seconds"}
+        )
+        print(f"   Completed job: {job_id}")
 
         # Test 2: One-shot logging with context manager
         print("2. Testing one-shot logging...")
-        async with JobLogger() as logger:
-            job_id = await logger.log_job_result(
-                job_type="email_notification",
-                status="success",
-                username="admin@example.com",
-                duration_seconds=45.2,
-                details={"emails_sent": 150, "failures": 2}
-            )
-            print(f"   Logged completed job: {job_id}")
-        print("   Database connection automatically closed\n")
+        job_id = await logger.log_job_result(
+            job_type="email_notification",
+            status="completed",
+            username="admin@example.com",
+            duration_seconds=45.2,
+            details={"emails_sent": 150, "failures": 2}
+        )
+        print(f"   Logged completed job: {job_id}")
 
-        # Test 3: Error handling with context manager
-        print("3. Testing error handling...")
-        try:
-            async with JobLogger() as logger:
-                job_id = await logger.start_job_log("error_test")
-                print(f"   Started job: {job_id}")
-
-                # Simulate an error
-                raise Exception("Simulated error during processing")
-
-        except Exception as e:
-            print(f"   Caught error: {e}")
-            print("   Database connection still automatically closed\n")
+        await logger.close()
 
     async def test_all():
         """Run all tests"""
         print("=== Job Logging Utility Tests ===\n")
 
-        await test_context_manager()
+        await test_simple()
 
         print("=== All tests completed ===")
         print("\n💡 Recommendation: Use the context manager pattern for better resource management!")
