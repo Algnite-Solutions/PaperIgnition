@@ -100,7 +100,7 @@ async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, 
 
 
 def main():
-    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/test_config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
     config = load_backend_config(config_path)
     index_api_url = config['INDEX_SERVICE']["host"]
     backend_api_url = config['APP_SERVICE']["host"]

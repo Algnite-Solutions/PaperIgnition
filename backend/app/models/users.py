@@ -103,3 +103,32 @@ class UserPaperRecommendation(Base):
     blog_feedback_date = Column(DateTime(timezone=True), nullable=True)  # 博客反馈时间
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")
+
+
+class JobLog(Base):
+    """作业执行日志表"""
+    __tablename__ = "job_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String(100), nullable=False, index=True)  # e.g., "blog_generation", "paper_recommendation"
+    job_id = Column(String(255), nullable=False, index=True)    # unique job identifier
+    status = Column(String(50), nullable=False, index=True)     # "success", "failed", "partial", "running"
+
+    # Job details
+    username = Column(String(50), nullable=True, index=True)    # associated user if applicable
+    papers_processed = Column(Integer, nullable=True)           # number of papers processed
+    papers_success = Column(Integer, nullable=True)             # number of successful papers
+    papers_failed = Column(Integer, nullable=True)              # number of failed papers
+
+    # Timing
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+
+    # Additional data
+    error_message = Column(Text, nullable=True)                 # error details if failed
+    details = Column(Text, nullable=True)                       # JSON string for additional details
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
