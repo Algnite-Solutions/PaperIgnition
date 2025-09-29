@@ -167,7 +167,6 @@ class JobLogger:
     async def complete_job_log(
         self,
         job_id: str,
-        status: str,
         error_message: str = None,
         details: Dict[str, Any] = None
     ) -> bool:
@@ -185,7 +184,7 @@ class JobLogger:
         """
         return await self.update_job_log(
             job_id=job_id,
-            status=status,
+            status="comnpleted",
             error_message=error_message,
             details=details
         )
@@ -285,7 +284,6 @@ if __name__ == "__main__":
             # Complete the job
             await logger.complete_job_log(
                 job_id,
-                status="success",
                 details={"progress": "100%", "total_time": "120.5 seconds"}
             )
             print(f"   Completed job: {job_id}")
