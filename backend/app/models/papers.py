@@ -12,6 +12,9 @@ class PaperBase(BaseModel):
     authors: str
     abstract: str
     url: Optional[str] = None
+    submitted: Optional[str] = None
+    recommendation_date: Optional[str] = None
+    viewed: bool = False
 
     @classmethod
     def from_docset(cls, docset: DocSet):
@@ -26,8 +29,9 @@ class PaperBase(BaseModel):
 class PaperDetail(PaperBase):
     markdownContent: str
 
-# TODO(@Qi): Delete this function
 class PaperRecommendation(BaseModel):
+    id: Optional[int] = None
+    username: str
     paper_id: str
     title: Optional[str] = None
     authors: Optional[str] = None
@@ -35,12 +39,18 @@ class PaperRecommendation(BaseModel):
     url: Optional[str] = None
     content: Optional[str] = None
     blog: Optional[str] = None
-    blog_abs: Optional[str] = None
-    blog_title: Optional[str] = None
-    recommendation_reason: Optional[str] = None
+    reason: Optional[str] = None
+    recommendation_date: Optional[str] = None
+    viewed: bool = False
     relevance_score: Optional[float] = None
-    submitted: Optional[str] = None  # 提交信息
-    comment: Optional[str] = None    # 评论
+    recommendation_reason: Optional[str] = None
+    blog_title: Optional[str] = None
+    blog_abs: Optional[str] = None
+    submitted: Optional[str] = None
+    comment: Optional[str] = None
+    is_saved: bool = False
+    blog_liked: bool = False
+    blog_feedback_date: Optional[str] = None
 
 # 模拟论文数据
 MOCK_PAPERS = [

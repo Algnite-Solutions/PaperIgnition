@@ -61,7 +61,10 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
             UserPaperRecommendation.title,
             UserPaperRecommendation.authors,
             UserPaperRecommendation.abstract,
-            UserPaperRecommendation.url
+            UserPaperRecommendation.url,
+            UserPaperRecommendation.submitted,
+            UserPaperRecommendation.recommendation_date,
+            UserPaperRecommendation.viewed
         ).where(UserPaperRecommendation.username == username)
         .order_by(UserPaperRecommendation.recommendation_date.desc())
     )
@@ -75,19 +78,25 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
         authors = rec[2] or ""
         abstract = rec[3] or ""
         url = rec[4]  # url允许为None
-        
+        submitted = rec[5]  # submitted允许为None
+        recommendation_date = rec[6]  # recommendation_date允许为None
+        viewed = rec[7] or False  # viewed默认为False
+
         # 构建符合PaperBase模型的数据
         paper_data = {
             "id": paper_id,
             "title": title,
             "authors": authors,
-            "abstract": abstract
+            "abstract": abstract,
+            "submitted": submitted,
+            "recommendation_date": recommendation_date.isoformat() if recommendation_date else None,
+            "viewed": viewed
         }
-        
+
         # 只有当url不为None时才添加到字典
         if url is not None:
             paper_data["url"] = url
-            
+
         papers.append(PaperBase(**paper_data))
     
     return papers

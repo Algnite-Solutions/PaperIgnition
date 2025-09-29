@@ -11,39 +11,6 @@ const samplePapers = [
         comments: 'Accepted at SIGMOD 2025',
         thumbnail: 'Graph DB'
     },
-    {
-        id: '2',
-        title: 'CLOG-CD: Curriculum Learning based on Oscillating Granularity of Class Decomposed Medical Image Classification',
-        authors: ['Asmaa Abbas', 'Mohamed Gaber', 'Mohammed M. Abdelsamea'],
-        abstract: 'In this paper, we have also investigated the classification performance of our proposed method based on different acceleration factors and pace function curricula. We used two pre-trained networks, ResNet-50 and DenseNet-121, as the backbone for CLOG-CD. The results with ResNet-50 show that CLOG-CD has the ability to improve classification performance significantly.',
-        tags: ['Medical Imaging', 'Curriculum Learning', 'Deep Learning'],
-        submittedDate: '3 May, 2025',
-        publishDate: 'May 2025',
-        comments: 'Published in: IEEE Transactions on Emerging Topics in Computing',
-        thumbnail: 'Medical AI'
-    },
-    {
-        id: '3',
-        title: 'Attention-Based Feature Fusion for Visual Odometry with Unsupervised Scale Recovery',
-        authors: ['Liu Wei', 'Zhang Chen', 'Wang Mei'],
-        abstract: 'We present a novel approach for visual odometry that integrates attention mechanisms to fuse features from multiple sources. Our method addresses the scale ambiguity problem in monocular visual odometry through an unsupervised learning framework. Experimental results on KITTI dataset demonstrate superior performance compared to existing methods.',
-        tags: ['Visual Odometry', 'Attention Mechanism', 'Unsupervised Learning'],
-        submittedDate: '28 April, 2025',
-        publishDate: 'April 2025',
-        comments: 'To appear in International Conference on Robotics and Automation 2025',
-        thumbnail: 'Computer Vision'
-    },
-    {
-        id: '4',
-        title: 'FedMix: Adaptive Knowledge Distillation for Personalized Federated Learning',
-        authors: ['Sarah Johnson', 'David Chen', 'Michael Brown'],
-        abstract: 'This paper introduces FedMix, a novel framework for personalized federated learning that employs adaptive knowledge distillation to balance model personalization and global knowledge sharing. Our approach dynamically adjusts the knowledge transfer between global and local models based on client data distribution characteristics.',
-        tags: ['Federated Learning', 'Knowledge Distillation', 'Personalization'],
-        submittedDate: '15 April, 2025',
-        publishDate: 'April 2025',
-        comments: 'Accepted at International Conference on Machine Learning 2025',
-        thumbnail: 'Fed Learning'
-    }
 ];
 
 // State management
@@ -132,16 +99,16 @@ async function loadUserRecommendations() {
         
         // Transform backend data to match frontend format
         currentPapers = papers.map(paper => ({
-            id: paper.id,
+            id: paper.paper_id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
-            abstract: paper.abstract || '',
+            abstract: paper.blog_abs || '',
             url: paper.url || '',
-            tags: ['AI', 'Research'], // Default tags since backend doesn't provide them
-            submittedDate: 'Recently',
-            publishDate: 'Recent',
-            comments: 'Recommended for you',
-            thumbnail: 'Paper'
+            publishDate: paper.submitted,
+            thumbnail: 'Paper',
+            viewed: paper.viewed || false,
+            recommendationDate: paper.recommendation_date,
+            relevanceScore: paper.relevance_score
         }));
         
         renderPapers();
@@ -234,21 +201,27 @@ function createPaperCard(paper) {
     
     // 移除了收藏状态检查，因为不再显示Save按钮
     
+    const viewedIndicator = paper.viewed ? '<span class="viewed-indicator">👁️ Viewed</span>' : '<span class="unviewed-indicator">📄 New</span>';
+    const publishTime = paper.publishDate && paper.publishDate !== 'Recent' ? `Published: ${paper.publishDate}` : 'Recently published';
+    const recommendationTime = `Recommended: ${formatDate(paper.recommendationDate)}`;
+
     card.innerHTML = `
         <div class="paper-thumbnail">
             ${paper.thumbnail}
         </div>
         <div class="paper-content">
-            <h2 class="paper-title">${paper.title}</h2>
+            <div class="paper-header">
+                <h2 class="paper-title">${paper.title}</h2>
+                ${viewedIndicator}
+            </div>
             <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
             <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
-                <span>${paper.publishDate}</span>
+                <span>${publishTime}</span>
                 <span>•</span>
-                <span>${paper.comments}</span>
-            </div>
-            <div class="paper-tags">
-                ${paper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                <span>${recommendationTime}</span>
+                <span>TEST VERSION</span>
+                ${paper.url ? `<span>•</span><a href="${paper.url}" target="_blank" class="paper-link" onclick="event.stopPropagation()">Paper Link</a>` : ''}
             </div>
         </div>
     `;
@@ -631,6 +604,23 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// Utility function for date formatting
+function formatDate(dateString) {
+    if (!dateString || dateString === 'undefined' || dateString === 'null') {
+        return 'recently';
+    }
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return 'recently';
+        }
+        return date.toLocaleDateString();
+    } catch (error) {
+        console.error('Error formatting date:', dateString, error);
+        return 'recently';
+    }
 }
 
 // API service functions (similar to the original services)
