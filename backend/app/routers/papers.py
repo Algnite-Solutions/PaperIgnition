@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import re
 import logging
 from datetime import timedelta
@@ -9,8 +9,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-from ..models.users import User, UserPaperRecommendation
-from ..models.papers import PaperBase, PaperRecommendation
+from ..models.users import User, UserPaperRecommendation, PaperBase
 from ..db_utils import get_db, INDEX_SERVICE_URL
 from minio import Minio
 from minio.error import S3Error
@@ -19,10 +18,24 @@ import os
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from fastapi.responses import RedirectResponse, Response
-from ..models.users import User, UserPaperRecommendation
-from ..models.papers import PaperBase, PaperRecommendation
+from ..models.users import User, UserPaperRecommendation, PaperBase
 from ..db_utils import get_db
 from ..auth.utils import get_current_user
+
+# Request model for adding recommendations
+class AddRecommendationRequest(BaseModel):
+    paper_id: str
+    title: Optional[str] = None
+    authors: Optional[str] = None
+    abstract: Optional[str] = None
+    url: Optional[str] = None
+    blog: Optional[str] = None
+    blog_abs: Optional[str] = None
+    blog_title: Optional[str] = None
+    recommendation_reason: Optional[str] = None
+    relevance_score: Optional[float] = None
+    submitted: Optional[str] = None
+    comment: Optional[str] = None
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -61,7 +74,10 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
             UserPaperRecommendation.title,
             UserPaperRecommendation.authors,
             UserPaperRecommendation.abstract,
-            UserPaperRecommendation.url
+            UserPaperRecommendation.url,
+            UserPaperRecommendation.submitted,
+            UserPaperRecommendation.recommendation_date,
+            UserPaperRecommendation.viewed
         ).where(UserPaperRecommendation.username == username)
         .order_by(UserPaperRecommendation.recommendation_date.desc())
     )
@@ -75,19 +91,25 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
         authors = rec[2] or ""
         abstract = rec[3] or ""
         url = rec[4]  # url允许为None
-        
+        submitted = rec[5]  # submitted允许为None
+        recommendation_date = rec[6]  # recommendation_date允许为None
+        viewed = rec[7] or False  # viewed默认为False
+
         # 构建符合PaperBase模型的数据
         paper_data = {
             "id": paper_id,
             "title": title,
             "authors": authors,
-            "abstract": abstract
+            "abstract": abstract,
+            "submitted": submitted,
+            "recommendation_date": recommendation_date.isoformat() if recommendation_date else None,
+            "viewed": viewed
         }
-        
+
         # 只有当url不为None时才添加到字典
         if url is not None:
             paper_data["url"] = url
-            
+
         papers.append(PaperBase(**paper_data))
     
     return papers
@@ -245,7 +267,7 @@ async def serve_file(bucket: str, key: str):
 # 接口为{backend_url}/api/papers/recommend
 # TODO(@Hui Chen): 需要添加安全验证
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
-async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
+async def add_paper_recommendation(username:str, rec: AddRecommendationRequest, db: AsyncSession = Depends(get_db)):
     """根据username和paper详细信息插入推荐记录到UserPaperRecommendation表中"""
     try:
         # 验证用户是否存在
