@@ -75,9 +75,6 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
-                    i += 1
-                    if i > 1:
-                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")

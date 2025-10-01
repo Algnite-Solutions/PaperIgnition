@@ -39,8 +39,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
     print([user.get("username") for user in all_users])
     for user in all_users:
         username = user.get("username")
-        if username != "test@tongji.edu.cn":
-            continue
+        '''if username != "test@tongji.edu.cn":
+            continue'''
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:
@@ -80,7 +80,7 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
                     }
                 }
                 print(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
-                papers = utils.search_papers_via_api(index_api_url, "llm", 'tf-idf', 0.1, filter_params)
+                papers = utils.search_papers_via_api(index_api_url, query, 'vector', 0.1, filter_params)
             else:
                 papers = utils.search_papers_via_api(index_api_url, query, 'vector', 0.1)
             
@@ -123,12 +123,15 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
                 blog_abs_content = blog_abs[i] if blog_abs and i < len(blog_abs) else None
                 blog_title_content = blog_title[i] if blog_title and i < len(blog_title) else None
                 
+                
+                paper_url = f"https://arxiv.org/abs/{paper.doc_id}"
+                
                 paper_infos.append({
                     "paper_id": paper.doc_id,
                     "title": paper.title,
                     "authors": ", ".join(paper.authors),
                     "abstract": paper.abstract,
-                    "url": paper.HTML_path,
+                    "url": paper_url,
                     "content": paper.abstract,  # 或其他内容
                     "blog": blog,
                     "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
