@@ -116,9 +116,9 @@ class JobLog(Base):
 
     # Job details
     username = Column(String(50), nullable=True, index=True)    # associated user if applicable
-    papers_processed = Column(Integer, nullable=True)           # number of papers processed
-    papers_success = Column(Integer, nullable=True)             # number of successful papers
-    papers_failed = Column(Integer, nullable=True)              # number of failed papers
+    # papers_processed = Column(Integer, nullable=True)           # number of papers processed
+    # papers_success = Column(Integer, nullable=True)             # number of successful papers
+    # papers_failed = Column(Integer, nullable=True)              # number of failed papers
 
     # Timing
     start_time = Column(DateTime(timezone=True), nullable=True)

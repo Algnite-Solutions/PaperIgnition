@@ -11,7 +11,7 @@ import httpx
 
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
-from ..db_utils import get_db, INDEX_SERVICE_URL
+from ..db_utils import get_db, get_index_service_url
 from minio import Minio
 from minio.error import S3Error
 import yaml
@@ -282,19 +282,22 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         raise HTTPException(status_code=500, detail="添加推荐记录失败")
         
 @router.get("/image/{image_id}")
-async def get_paper_image(image_id: str):
+async def get_paper_image(
+    image_id: str,
+    index_service_url: str = Depends(get_index_service_url)
+):
     """Get an image from MinIO storage via index_service.
-    
+
     Args:
         image_id: Image ID to retrieve
-        
+
     Returns:
         Image data and metadata from index_service
     """
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{INDEX_SERVICE_URL}/get_image/",
+                f"{index_service_url}/get_image/",
                 json={"image_id": image_id}
             )
             response.raise_for_status()
@@ -305,19 +308,22 @@ async def get_paper_image(image_id: str):
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.get("/image_storage_status/{doc_id}")
-async def get_paper_image_storage_status(doc_id: str):
+async def get_paper_image_storage_status(
+    doc_id: str,
+    index_service_url: str = Depends(get_index_service_url)
+):
     """Get image storage status for a document via index_service.
-    
+
     Args:
         doc_id: Document ID to get storage status for
-        
+
     Returns:
         Storage status information from index_service
     """
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{INDEX_SERVICE_URL}/get_image_storage_status/",
+                f"{index_service_url}/get_image_storage_status/",
                 json={"doc_id": doc_id}
             )
             response.raise_for_status()

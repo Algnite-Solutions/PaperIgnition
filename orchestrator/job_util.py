@@ -9,10 +9,8 @@ from typing import List, Dict, Any, Optional
 # Add backend to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
-from backend.app.db_utils import load_config
+from backend.app.db_utils import DatabaseManager
 from backend.app.models.users import JobLog
 
 
@@ -23,50 +21,25 @@ class JobLogger:
         if not config_path:
             config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/test_config.yaml")
 
-        self.config = load_config(config_path)
-        self._engine = None
-        self._session_factory = None
-        self._setup_database()
+        self.db_manager = DatabaseManager(config_path=config_path)
         self._table_created = False
-        self._closed = False
 
-    def __del__(self):
-          if not self._closed:
-              print("⚠️ JobLogger: Auto-closing unclosed connection")
-              try:
-                  asyncio.run(self.close())
-              except Exception as e:
-                  print(f"Error in JobLogger cleanup: {e}")
+    async def _ensure_initialized(self):
+        """Ensure database manager is initialized"""
+        if not self.db_manager._initialized:
+            await self.db_manager.initialize()
 
-    def _setup_database(self):
-        """Setup database connection"""
-        db_config = self.config["USER_DB"]
-        database_url = (
-            f"postgresql+asyncpg://{db_config['db_user']}:{db_config['db_password']}"
-            f"@{db_config['db_host']}:{db_config['db_port']}/{db_config['db_name']}"
-        )
-
-        self._engine = create_async_engine(
-            database_url,
-            echo=False,  # Set to True for SQL debugging
-            future=True
-        )
-
-        self._session_factory = sessionmaker(
-            self._engine,
-            class_=AsyncSession,
-            expire_on_commit=False
-        )
-
-    async def get_session(self) -> AsyncSession:
+    async def get_session(self):
         """Get database session"""
-        return self._session_factory()
+        await self._ensure_initialized()
+        return self.db_manager.get_session()
 
     async def create_table_if_not_exists(self):
         """Create job_logs table if it doesn't exist"""
+        await self._ensure_initialized()
         if not self._table_created:
             try:
-                async with self._engine.begin() as conn:
+                async with self.db_manager._engine.begin() as conn:
                     await conn.run_sync(JobLog.metadata.create_all)
                     print("✅ job_logs table created/verified")
                     self._table_created = True
@@ -97,7 +70,7 @@ class JobLogger:
         if not job_id:
             job_id = f"{job_type}_{uuid.uuid4().hex[:8]}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
-        async with self._session_factory() as session:
+        async with await self.get_session() as session:
             try:
                 job_log = JobLog(
                     job_type=job_type,
@@ -136,7 +109,7 @@ class JobLogger:
         Returns:
             bool: True if updated successfully
         """
-        async with self._session_factory() as session:
+        async with await self.get_session() as session:
             try:
                 # Find the job log
                 result = await session.execute(
@@ -176,6 +149,7 @@ class JobLogger:
     async def complete_job_log(
         self,
         job_id: str,
+        status: str = "success",
         error_message: str = None,
         details: Dict[str, Any] = None
     ) -> bool:
@@ -193,7 +167,7 @@ class JobLogger:
         """
         return await self.update_job_log(
             job_id=job_id,
-            status="completed",
+            status=status,
             error_message=error_message,
             details=details
         )
@@ -223,7 +197,7 @@ class JobLogger:
         """
         job_id = f"{job_type}_{uuid.uuid4().hex[:8]}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
-        async with self._session_factory() as session:
+        async with await self.get_session() as session:
             try:
                 now = datetime.now(timezone.utc)
                 start_time = now
@@ -257,10 +231,8 @@ class JobLogger:
 
     async def close(self):
         """Close database connections"""
-        if self._engine:
-            await self._engine.dispose()
-        self._closed = True
-        print("✅ Database connection closed")
+        await self.db_manager.close()
+        print("✅ JobLogger database connection closed")
 
 # Example usage and testing
 if __name__ == "__main__":

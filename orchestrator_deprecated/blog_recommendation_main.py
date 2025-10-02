@@ -1,21 +1,21 @@
 import sys
 import os
 import asyncio
-sys.path.append(os.path.dirname(__file__))
+# sys.path.append(os.path.dirname(__file__))
 import utils
 import paper_pull
 from generate_blog import run_batch_generation
 #from backend.index_service import index_papers
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import requests
 import os
 from backend.app.db_utils import load_config as load_backend_config
 from AIgnite.data.docset import DocSetList, DocSet
-import httpx
 import sys
-import yaml
 from generate_blog import run_batch_generation, run_batch_generation_abs, run_batch_generation_title
 from job_util import JobLogger
 
+LOCAL_MODE = True
 def get_user_interest(username: str,backend_api_url):
         response = requests.get(f"{backend_api_url}/api/users/by_email/{username}")
         response.raise_for_status()
@@ -43,7 +43,7 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
         username = user.get("username")
         '''if username != "test@tongji.edu.cn":
             continue'''
-        job_id = job_logger.start_job_log(job_type="daily_blog_generation", username=username)
+        job_id = await job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
@@ -150,7 +150,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
             continue
 
 def main():
-    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
+    config_file = "../backend/configs/test_config.yaml" if LOCAL_MODE else "../backend/configs/app_config.yaml"
+    config_path = os.path.join(os.path.dirname(__file__), config_file)
     config = load_backend_config(config_path)
     index_api_url = config['INDEX_SERVICE']["host"]
     backend_api_url = config['APP_SERVICE']["host"]
