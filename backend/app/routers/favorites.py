@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from ..models.users import User, FavoritePaper
+from ..models.papers import PaperBase
 from ..db_utils import get_db
 from ..auth.utils import get_current_user
 

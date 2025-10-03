@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, SecurityScopes # Import SecurityScopes
@@ -17,16 +17,16 @@ SECRET_KEY = "aignite_secret_key_change_in_production"  # 生产环境中应使�
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30天
 
-# 密码哈希工具
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 密码哈希工具 - using pwdlib with bcrypt
+pwd_hash = PasswordHash.recommended()
 
 def verify_password(plain_password, hashed_password):
     """验证密码"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_hash.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     """获取密码哈希"""
-    return pwd_context.hash(password)
+    return pwd_hash.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """创建访问令牌"""

@@ -65,7 +65,8 @@ class AuthService {
                 // Store token and user info
                 localStorage.setItem('token', data.access_token);
                 this.setUser(data.user_info);
-                
+
+
                 return {
                     success: true,
                     needsSetup: data.needs_interest_setup
@@ -89,63 +90,47 @@ class AuthService {
     // Register new user
     async register(email, password, username) {
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // For demo purposes, accept any valid email
+            console.log('Register called with:', { email, username });
+
+            // Validation
             if (!email || !password || !username) {
                 return {
                     success: false,
                     error: 'All fields are required'
                 };
             }
-            
+
             if (!/\S+@\S+\.\S+/.test(email)) {
                 return {
                     success: false,
                     error: 'Please enter a valid email address'
                 };
             }
-            
+
             if (password.length < 6) {
                 return {
                     success: false,
                     error: 'Password must be at least 6 characters'
                 };
             }
-            
-            // Simulate successful registration
-            const mockResponse = {
-                access_token: 'demo-token-' + Date.now(),
-                user_info: {
-                    email: email,
-                    username: username
-                },
-                needs_interest_setup: true
-            };
-            
-            localStorage.setItem('token', mockResponse.access_token);
-            this.setUser(mockResponse.user_info);
-            
-            return {
-                success: true,
-                needsSetup: mockResponse.needs_interest_setup
-            };
-            
-            // For real implementation:
-            /*
+
+            console.log('Making API call to register...');
             const response = await fetch('/api/auth/register-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, username })
             });
-            
+
+            console.log('API response status:', response.status);
             const data = await response.json();
-            
+            console.log('API response data:', data);
+
             if (response.ok) {
+                // Backend now returns EmailLoginResponse: { access_token, user_info, needs_interest_setup }
+                // Store token and user info for auto-login
                 localStorage.setItem('token', data.access_token);
                 this.setUser(data.user_info);
-                
+
                 return {
                     success: true,
                     needsSetup: data.needs_interest_setup
@@ -156,7 +141,6 @@ class AuthService {
                     error: data.detail || 'Registration failed'
                 };
             }
-            */
             
         } catch (error) {
             console.error('Registration error:', error);

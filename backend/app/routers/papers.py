@@ -1,41 +1,20 @@
-from typing import List, Optional
+from typing import List
 import re
 import logging
-from datetime import timedelta
 from sqlalchemy.future import select
-from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-from ..models.users import User, UserPaperRecommendation, PaperBase
+from ..models.users import User, UserPaperRecommendation
+from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db, INDEX_SERVICE_URL
 from minio import Minio
 from minio.error import S3Error
-import yaml
-import os
-from pydantic import BaseModel
-from datetime import datetime, timezone
-from fastapi.responses import RedirectResponse, Response
-from ..models.users import User, UserPaperRecommendation, PaperBase
+from fastapi.responses import Response
+from ..models.users import User, UserPaperRecommendation
+from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
-from ..auth.utils import get_current_user
-
-# Request model for adding recommendations
-class AddRecommendationRequest(BaseModel):
-    paper_id: str
-    title: Optional[str] = None
-    authors: Optional[str] = None
-    abstract: Optional[str] = None
-    url: Optional[str] = None
-    blog: Optional[str] = None
-    blog_abs: Optional[str] = None
-    blog_title: Optional[str] = None
-    recommendation_reason: Optional[str] = None
-    relevance_score: Optional[float] = None
-    submitted: Optional[str] = None
-    comment: Optional[str] = None
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -65,7 +44,7 @@ def get_minio_client():
 
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
-async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
+async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncSession = Depends(get_db)):
     """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
     # 直接从UserPaperRecommendation表获取论文信息，按推荐日期降序排序（越晚的排越上面）
     result = await db.execute(
@@ -80,6 +59,7 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
             UserPaperRecommendation.viewed
         ).where(UserPaperRecommendation.username == username)
         .order_by(UserPaperRecommendation.recommendation_date.desc())
+        .limit(limit)
     )
     recommendations = result.all()
     
@@ -267,7 +247,7 @@ async def serve_file(bucket: str, key: str):
 # 接口为{backend_url}/api/papers/recommend
 # TODO(@Hui Chen): 需要添加安全验证
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
-async def add_paper_recommendation(username:str, rec: AddRecommendationRequest, db: AsyncSession = Depends(get_db)):
+async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
     """根据username和paper详细信息插入推荐记录到UserPaperRecommendation表中"""
     try:
         # 验证用户是否存在

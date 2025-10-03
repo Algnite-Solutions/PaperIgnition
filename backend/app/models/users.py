@@ -2,8 +2,6 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, T
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
-from pydantic import BaseModel
-from typing import List, Optional
 
 from ..db_utils import Base
 
@@ -105,21 +103,3 @@ class UserPaperRecommendation(Base):
     blog_feedback_date = Column(DateTime(timezone=True), nullable=True)  # 博客反馈时间
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")
-
-
-# Pydantic Models for API responses
-class PaperBase(BaseModel):
-    id: str
-    title: str
-    authors: str
-    abstract: str
-    url: Optional[str] = None
-    submitted: Optional[str] = None
-    recommendation_date: Optional[str] = None
-    viewed: bool = False
-
-
-class PaperDetail(PaperBase):
-    markdownContent: str
-
-

@@ -526,11 +526,8 @@
                     <h1 class="paper-title">${currentPaper.title}</h1>
                     <p class="paper-authors">${Array.isArray(currentPaper.authors) ? currentPaper.authors.join(', ') : currentPaper.authors || 'Unknown authors'}</p>
                     <div class="paper-meta">
-                        ${currentPaper.publishDate ? `<span>${currentPaper.publishDate}</span>` : ''}
-                        ${currentPaper.publishDate && currentPaper.comments ? '<span>•</span>' : ''}
-                        ${currentPaper.comments ? `<span>${currentPaper.comments}</span>` : ''}
-                        ${(currentPaper.publishDate || currentPaper.comments) && currentPaper.submittedDate ? '<span>•</span>' : ''}
-                        ${currentPaper.submittedDate ? `<span>Submitted: ${currentPaper.submittedDate}</span>` : ''}
+                        <span>Publish Time: ${currentPaper.publishDate ? new Date(currentPaper.publishDate).toLocaleDateString() : "Recent"}</span>
+                        <span>Recommend Time: ${currentPaper.recommendationDate ? new Date(currentPaper.recommendationDate).toLocaleDateString() : "Recent"}</span>
                     </div>
                     ${currentPaper.tags && currentPaper.tags.length > 0 ? `
                     <div class="paper-tags">
@@ -547,12 +544,6 @@
                 </div>
                 
                 <div class="paper-content">
-                    ${currentPaper.abstract ? `
-                    <div class="section-title">Abstract</div>
-                    <div class="abstract">${currentPaper.abstract}</div>
-                    ` : ''}
-                    
-                    <div class="section-title">Full Content</div>
                     <div class="content" id="paperContentDiv">${formatMarkdown(paperContent)}</div>
                 </div>
             `;
