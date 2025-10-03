@@ -31,14 +31,12 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 async def create_user_email(db: AsyncSession, user_in: auth_schemas.UserCreateEmail) -> User:
     """
     通过邮箱和密码创建新用户
-    Username将设置为邮箱地址。
     """
     hashed_password = get_password_hash(user_in.password)
-    # 使用邮箱作为用户名，确保唯一性，并满足User模型中username的非空约束（如果email也非空）
     db_user = User(
-        email=user_in.email, 
+        email=user_in.email,
         hashed_password=hashed_password,
-        username=user_in.email  # Set username to email
+        username=user_in.username  # Use the provided username
     )
     db.add(db_user)
     await db.commit()
