@@ -38,7 +38,7 @@ async function initializeApp() {
     if (savedBookmarks) {
         bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
     }
-    
+
     // Check if user is logged in and load their recommendations
     if (window.AuthService && window.AuthService.isLoggedIn()) {
         // 先加载收藏状态，再加载推荐论文，确保收藏状态正确显示
@@ -47,8 +47,8 @@ async function initializeApp() {
         console.log('Loading user recommendations...');
         await loadUserRecommendations();
     } else {
-        // Show login prompt or demo papers for non-logged-in users
-        showLoginPrompt();
+        // Load default user recommendations with login suggestion
+        await loadDefaultUserRecommendations();
     }
 }
 
@@ -96,19 +96,18 @@ async function loadUserRecommendations() {
         }
         
         const papers = await response.json();
-        
+
         // Transform backend data to match frontend format
         currentPapers = papers.map(paper => ({
-            id: paper.paper_id,
+            id: paper.id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
-            abstract: paper.blog_abs || '',
+            abstract: paper.abstract || '',
             url: paper.url || '',
             publishDate: paper.submitted,
             thumbnail: 'Paper',
             viewed: paper.viewed || false,
             recommendationDate: paper.recommendation_date,
-            relevanceScore: paper.relevance_score
         }));
         
         renderPapers();
@@ -125,6 +124,75 @@ async function loadUserRecommendations() {
         isLoading = false;
         hideLoading();
     }
+}
+
+async function loadDefaultUserRecommendations() {
+    const defaultUsername = 'BlogBot@gmail.com'; // Default user
+
+    isLoading = true;
+    showLoading();
+
+    try {
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const papers = await response.json();
+
+        currentPapers = papers.map(paper => ({
+            id: paper.id,
+            title: paper.title,
+            authors: paper.authors ? paper.authors.split(', ') : [],
+            abstract: paper.abstract || '',
+            url: paper.url || '',
+            publishDate: paper.submitted,
+            thumbnail: 'Paper',
+            viewed: paper.viewed || false,
+            recommendationDate: paper.recommendation_date,
+        }));
+
+        renderPapers();
+        showLoginSuggestion();
+
+    } catch (error) {
+        console.error('Error loading default recommendations:', error);
+        showErrorMessage('Failed to load recommendations. Showing sample papers.');
+        await loadSamplePapers();
+    } finally {
+        isLoading = false;
+        hideLoading();
+    }
+}
+
+function showLoginSuggestion() {
+    // Add a login suggestion banner at the top of papers container
+    const banner = document.createElement('div');
+    banner.id = 'loginSuggestionBanner';
+    banner.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 24px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    `;
+    banner.innerHTML = `
+        <p style="margin: 0; font-size: 16px;">
+            📚 You're viewing sample recommendations.
+            <a href="login.html" style="color: #ffd700; font-weight: bold; text-decoration: underline;">Login</a>
+            to see personalized paper recommendations tailored for you!
+        </p>
+    `;
+
+    papersContainer.insertBefore(banner, papersContainer.firstChild);
 }
 
 function showLoginPrompt() {
@@ -202,13 +270,8 @@ function createPaperCard(paper) {
     // 移除了收藏状态检查，因为不再显示Save按钮
     
     const viewedIndicator = paper.viewed ? '<span class="viewed-indicator">👁️ Viewed</span>' : '<span class="unviewed-indicator">📄 New</span>';
-    const publishTime = paper.publishDate && paper.publishDate !== 'Recent' ? `Published: ${paper.publishDate}` : 'Recently published';
-    const recommendationTime = `Recommended: ${formatDate(paper.recommendationDate)}`;
 
     card.innerHTML = `
-        <div class="paper-thumbnail">
-            ${paper.thumbnail}
-        </div>
         <div class="paper-content">
             <div class="paper-header">
                 <h2 class="paper-title">${paper.title}</h2>
@@ -217,10 +280,9 @@ function createPaperCard(paper) {
             <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
             <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
-                <span>${publishTime}</span>
+                <span>Publish Time: ${paper.publishDate ? new Date(paper.publishDate).toLocaleDateString() : "Recent"}</span>
                 <span>•</span>
-                <span>${recommendationTime}</span>
-                <span>TEST VERSION</span>
+                <span>Recommend Time: ${paper.recommendationDate ? new Date(paper.recommendationDate).toLocaleDateString() : "Recent"}</span>
                 ${paper.url ? `<span>•</span><a href="${paper.url}" target="_blank" class="paper-link" onclick="event.stopPropagation()">Paper Link</a>` : ''}
             </div>
         </div>
@@ -604,23 +666,6 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
-}
-
-// Utility function for date formatting
-function formatDate(dateString) {
-    if (!dateString || dateString === 'undefined' || dateString === 'null') {
-        return 'recently';
-    }
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-            return 'recently';
-        }
-        return date.toLocaleDateString();
-    } catch (error) {
-        console.error('Error formatting date:', dateString, error);
-        return 'recently';
-    }
 }
 
 // API service functions (similar to the original services)

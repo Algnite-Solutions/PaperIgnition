@@ -1,11 +1,8 @@
 from typing import List
 import re
 import logging
-from datetime import timedelta
 from sqlalchemy.future import select
-from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
@@ -14,15 +11,10 @@ from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db, INDEX_SERVICE_URL
 from minio import Minio
 from minio.error import S3Error
-import yaml
-import os
-from pydantic import BaseModel
-from datetime import datetime, timezone
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import Response
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db
-from ..auth.utils import get_current_user
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -52,7 +44,7 @@ def get_minio_client():
 
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
-async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(get_db)):
+async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncSession = Depends(get_db)):
     """根据username查询UserPaperRecommendation表中对应的paper基础信息列表"""
     # 直接从UserPaperRecommendation表获取论文信息，按推荐日期降序排序（越晚的排越上面）
     result = await db.execute(
@@ -67,6 +59,7 @@ async def get_recommended_papers_info(username: str, db: AsyncSession = Depends(
             UserPaperRecommendation.viewed
         ).where(UserPaperRecommendation.username == username)
         .order_by(UserPaperRecommendation.recommendation_date.desc())
+        .limit(limit)
     )
     recommendations = result.all()
     
