@@ -52,23 +52,26 @@ def load_config(config_path: Optional[str] = None, set_env: bool = True) -> Dict
             config = full_config["INDEX_SERVICE"]
         
         # Validate required sections for index service
-        required_sections = ['vector_db', 'metadata_db', 'minio_db']
-        for section in required_sections:
-            if section not in config:
-                raise ValueError(f"Missing required section '{section}' in config.yaml")
+        # required_sections = ['vector_db', 'metadata_db', 'minio_db']
+        # for section in required_sections:
+        #    if section not in config:
+        #        raise ValueError(f"Missing required section '{section}' in config.yaml")
         
         # Validate database configurations
-        if 'model_name' not in config['vector_db']:
-            raise ValueError("Missing 'model_name' in vector_db configuration")
-            
+        # vector db can be optional
+        if 'vector_db' in config:
+            if 'model_name' not in config['vector_db']:
+                raise ValueError("Missing 'model_name' in vector_db configuration")
+                
         if 'db_url' not in config['metadata_db']:
             raise ValueError("Missing 'db_url' in metadata_db configuration")
         
         # Validate MinIO configuration
-        minio_required = ['endpoint', 'access_key', 'secret_key', 'bucket_name']
-        for param in minio_required:
-            if param not in config['minio_db']:
-                raise ValueError(f"Missing required MinIO parameter '{param}' in config.yaml")
+        if 'minio_db' in config:
+            minio_required = ['endpoint', 'access_key', 'secret_key', 'bucket_name']
+            for param in minio_required:
+                if param not in config['minio_db']:
+                    raise ValueError(f"Missing required MinIO parameter '{param}' in config.yaml")
         
         # Set environment variables if requested
         if set_env:
@@ -357,32 +360,29 @@ def init_databases(
     if config is None:
         raise ValueError("No configuration provided")
     
-    # Validate configurations
-    if 'db_path' not in config['vector_db']:
-        raise ValueError("Vector database path (db_path) must be specified in configuration")
-    if 'model_name' not in config['vector_db']:
-        raise ValueError("Vector database model name must be specified in configuration")
+    # Handle vector database initialization
+    if 'vector_db' in config:
+        vector_db_path = config['vector_db']['db_path']
+        if 'db_path' not in config['vector_db']:
+            raise ValueError("Vector database path (db_path) must be specified in configuration")
+        if 'model_name' not in config['vector_db']:
+            raise ValueError("Vector database model name must be specified in configuration")
+        # Ensure vector database directory exists
+        os.makedirs(os.path.dirname(vector_db_path), exist_ok=True)
+        
+        # Initialize vector database with proper dimension
+        _vector_db_instance = VectorDB(
+            db_path=vector_db_path,
+            model_name=config['vector_db']['model_name'],
+            vector_dim=vector_dim
+        )
+        logger.debug(f"Vector database initialized with model {config['vector_db']['model_name']}")
+    else:
+        _vector_db_instance = None
+    
+    # Handle vector database initialization
     if 'db_url' not in config['metadata_db']:
         raise ValueError("Metadata database URL must be specified in configuration")
-    required_minio_fields = ['endpoint', 'access_key', 'secret_key', 'bucket_name']
-    missing_fields = [f for f in required_minio_fields if f not in config['minio_db']]
-    if missing_fields:
-        raise ValueError(f"Missing required MinIO configuration fields: {', '.join(missing_fields)}")
-        
-    # Handle vector database initialization
-    vector_db_path = config['vector_db']['db_path']
-
-    # Ensure vector database directory exists
-    os.makedirs(os.path.dirname(vector_db_path), exist_ok=True)
-        
-    # Initialize vector database with proper dimension
-    _vector_db_instance = VectorDB(
-        db_path=vector_db_path,
-        model_name=config['vector_db']['model_name'],
-        vector_dim=vector_dim
-    )
-    logger.debug(f"Vector database initialized with model {config['vector_db']['model_name']}")
-    
     # Set up metadata database engine
     db_url = config['metadata_db']['db_url']
     engine = create_engine(db_url)
@@ -405,20 +405,26 @@ def init_databases(
             logger.warning("Full-text search initialization failed, but database is still usable")
         else:
             raise
-    
-    # Initialize MinIO image database with proper error handling
-    try:
-        minio_config = config['minio_db']
-        image_db = MinioImageDB(
-            endpoint=minio_config['endpoint'],
-            access_key=minio_config['access_key'],
-            secret_key=minio_config['secret_key'],
-            bucket_name=minio_config['bucket_name'],
-            secure=minio_config.get('secure', False)
-        )
-        logger.debug("MinIO image database initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize MinIO image database: {str(e)}")
+
+    if 'minio_db' in config:
+        required_minio_fields = ['endpoint', 'access_key', 'secret_key', 'bucket_name']
+        missing_fields = [f for f in required_minio_fields if f not in config['minio_db']]
+        if missing_fields:
+            raise ValueError(f"Missing required MinIO configuration fields: {', '.join(missing_fields)}")
+        # Initialize MinIO image database with proper error handling
+        try:
+            minio_config = config['minio_db']
+            image_db = MinioImageDB(
+                endpoint=minio_config['endpoint'],
+                access_key=minio_config['access_key'],
+                secret_key=minio_config['secret_key'],
+                bucket_name=minio_config['bucket_name'],
+                secure=minio_config.get('secure', False)
+            )
+            logger.debug("MinIO image database initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize MinIO image database: {str(e)}")
+    else:
         image_db = None
     
     return _vector_db_instance, metadata_db, image_db

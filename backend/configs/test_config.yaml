@@ -1,31 +1,19 @@
 INDEX_SERVICE:
   host: "http://localhost:8002"
 
-  vector_db:
-    model_name: "BAAI/bge-base-en-v1.5"
-    vector_dim: 768
-    db_path: "/data3/guofang/AIgnite-Solutions/PaperIgnition/vector_db/test_db"
-
   metadata_db:
-    db_url: "postgresql://postgres:11111@localhost:5432/paperignition_test"
+    db_url: "postgresql://test_user:11111@localhost:5432/test_metadata_db"
     # 测试环境使用独立的测试数据库
-
-  minio_db:
-    endpoint: localhost:9081
-    access_key: XOrv2wfoWfPypp2zGIae
-    secret_key: k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3
-    bucket_name: aignite-test-papers-test
-    secure: false
 
 APP_SERVICE:
   host: "http://localhost:8000"
   
 USER_DB:
-  db_user: postgres
+  db_user: test_user
   db_password: "11111"
   db_host: localhost
   db_port: "5432"
-  db_name: paperignition_user_test
+  db_name: test_user_db
 
 PAPER_STORAGE:
   json_folder: ""

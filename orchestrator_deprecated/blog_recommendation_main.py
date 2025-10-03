@@ -1,20 +1,21 @@
 import sys
 import os
 import asyncio
-sys.path.append(os.path.dirname(__file__))
+# sys.path.append(os.path.dirname(__file__))
 import utils
 import paper_pull
 from generate_blog import run_batch_generation
 #from backend.index_service import index_papers
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import requests
 import os
 from backend.app.db_utils import load_config as load_backend_config
 from AIgnite.data.docset import DocSetList, DocSet
-import httpx
 import sys
-import yaml
 from generate_blog import run_batch_generation, run_batch_generation_abs, run_batch_generation_title
+from job_util import JobLogger
 
+LOCAL_MODE = True
 def get_user_interest(username: str,backend_api_url):
         response = requests.get(f"{backend_api_url}/api/users/by_email/{username}")
         response.raise_for_status()
@@ -29,11 +30,12 @@ def get_all_users(backend_api_url):
     resp.raise_for_status()
     return resp.json()
 
-async def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str):
+async def blog_generation_for_existing_user(index_api_url: str, backend_api_url: str, job_logger: JobLogger):
     """
     Generate blog digests for existing users based on their interests.
     This function is a placeholder and should be replaced with the actual implementation.
     """
+
     all_users = get_all_users(backend_api_url)
     print(f"✅ 共获取到 {len(all_users)} 个用户")
     print([user.get("username") for user in all_users])
@@ -41,6 +43,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
         username = user.get("username")
         '''if username != "test@tongji.edu.cn":
             continue'''
+        job_id = await job_logger.start_job_log(job_type="daily_blog_generation", username=username)
+
         interests = get_user_interest(username,backend_api_url)
         print(f"\n=== 用户: {username}，兴趣: {interests} ===")
         if not interests:
@@ -139,20 +143,23 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
 
             # 5. Write recommendations
             utils.save_recommendations(username, paper_infos, backend_api_url)
+            job_logger.complete_job_log(job_id=job_id, details=f"Recommended {len(paper_infos)} papers.")
         else:
             print("没有找到相关论文，跳过博客生成和推荐保存")
+            job_logger.update_job_log(job_id=job_id, status="failed", details="No relevant papers found.")
             continue
 
 def main():
-    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
+    config_file = "../backend/configs/test_config.yaml" if LOCAL_MODE else "../backend/configs/app_config.yaml"
+    config_path = os.path.join(os.path.dirname(__file__), config_file)
     config = load_backend_config(config_path)
     index_api_url = config['INDEX_SERVICE']["host"]
     backend_api_url = config['APP_SERVICE']["host"]
     print("backend：",backend_api_url)
     print("index：",index_api_url)
-
+    job_logger = JobLogger(config_path=config_path)
     print("Starting blog generation for existing users...")
-    asyncio.run(blog_generation_for_existing_user(index_api_url, backend_api_url))
+    asyncio.run(blog_generation_for_existing_user(index_api_url, backend_api_url, job_logger))
     print("Blog generation for existing users complete.")
     
 if __name__ == "__main__":

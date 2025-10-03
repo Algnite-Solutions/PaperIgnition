@@ -28,7 +28,7 @@ def load_config():
 logger = logging.getLogger(__name__)
 
 from ..models.users import User, ResearchDomain, user_domain_association, UserPaperRecommendation
-from ..db_utils import get_db, INDEX_SERVICE_URL
+from ..db_utils import get_db, get_index_service_url
 
 from ..auth.schemas import UserOut, UserProfileUpdate
 from ..auth.utils import get_current_user
@@ -208,7 +208,8 @@ async def translate_and_update_in_background(user_id: int, text_to_translate: st
 async def update_user_profile(
     profile_data: UserProfileUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    index_service_url: str = Depends(get_index_service_url)
 ):
     """更新当前用户的个人资料"""
     # 检查research_interests_text是否有变化
@@ -282,10 +283,10 @@ async def update_user_profile(
                             logger.info(f"应用过滤器：包含 {len(blogbot_paper_ids)} 个BlogBot推荐论文")
                         
                         search_results = search_papers_via_api(
-                            INDEX_SERVICE_URL, 
-                            "llm", 
-                            'tf-idf', 
-                            0.1, 
+                            index_service_url,
+                            interest,
+                            'vector',
+                            0.1,
                             filter_params
                         )
                         
@@ -330,6 +331,7 @@ async def update_user_profile(
                                     authors=authors_data,
                                     abstract=result.get('abstract', ''),
                                     url=result.get('url', ''),
+                                    content=result.get('content', ''),
                                     blog=blogbot_blog or '',  # 使用从BlogBot记录中获取的blog内容
                                     recommendation_reason=f"基于用户兴趣'{interest}'的向量搜索，从BlogBot推荐论文中筛选，相似度: {result.get('score', 0):.3f}",
                                     relevance_score=result.get('score', 0.0)
