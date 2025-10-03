@@ -10,7 +10,7 @@ from ..crud import user as crud_user # aliased for clarity
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/register-email", response_model=auth_schemas.UserOut)
+@router.post("/register-email", response_model=auth_schemas.EmailLoginResponse)
 async def register_email(user_in: auth_schemas.UserCreateEmail, db: AsyncSession = Depends(get_db)):
     """用户通过邮箱密码注册"""
     db_user = await crud_user.get_user_by_email(db, email=user_in.email)
@@ -20,11 +20,22 @@ async def register_email(user_in: auth_schemas.UserCreateEmail, db: AsyncSession
             detail="此邮箱已被注册"
         )
     created_user = await crud_user.create_user_email(db=db, user_in=user_in)
-    # Optionally, create a token upon registration:
-    # access_token = create_access_token(data={"sub": created_user.email})
-    # return {"access_token": access_token, "token_type": "bearer", "user": created_user} 
-    # For now, just returning user info as per UserOut schema which includes id, email, username.
-    return created_user
+
+    # Create access token for auto-login
+    access_token = create_access_token(data={"sub": created_user.email})
+
+    # Check if user needs interest setup (new users always do)
+    needs_interest_setup = not created_user.interests_description or len(created_user.interests_description) == 0
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "needs_interest_setup": needs_interest_setup,
+        "user_info": {
+            "email": created_user.email,
+            "username": created_user.username
+        }
+    }
 
 @router.post("/login-email", response_model=auth_schemas.EmailLoginResponse)
 async def login_email(user_in: auth_schemas.UserLoginEmail, db: AsyncSession = Depends(get_db)):

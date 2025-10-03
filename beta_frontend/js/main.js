@@ -11,39 +11,6 @@ const samplePapers = [
         comments: 'Accepted at SIGMOD 2025',
         thumbnail: 'Graph DB'
     },
-    {
-        id: '2',
-        title: 'CLOG-CD: Curriculum Learning based on Oscillating Granularity of Class Decomposed Medical Image Classification',
-        authors: ['Asmaa Abbas', 'Mohamed Gaber', 'Mohammed M. Abdelsamea'],
-        abstract: 'In this paper, we have also investigated the classification performance of our proposed method based on different acceleration factors and pace function curricula. We used two pre-trained networks, ResNet-50 and DenseNet-121, as the backbone for CLOG-CD. The results with ResNet-50 show that CLOG-CD has the ability to improve classification performance significantly.',
-        tags: ['Medical Imaging', 'Curriculum Learning', 'Deep Learning'],
-        submittedDate: '3 May, 2025',
-        publishDate: 'May 2025',
-        comments: 'Published in: IEEE Transactions on Emerging Topics in Computing',
-        thumbnail: 'Medical AI'
-    },
-    {
-        id: '3',
-        title: 'Attention-Based Feature Fusion for Visual Odometry with Unsupervised Scale Recovery',
-        authors: ['Liu Wei', 'Zhang Chen', 'Wang Mei'],
-        abstract: 'We present a novel approach for visual odometry that integrates attention mechanisms to fuse features from multiple sources. Our method addresses the scale ambiguity problem in monocular visual odometry through an unsupervised learning framework. Experimental results on KITTI dataset demonstrate superior performance compared to existing methods.',
-        tags: ['Visual Odometry', 'Attention Mechanism', 'Unsupervised Learning'],
-        submittedDate: '28 April, 2025',
-        publishDate: 'April 2025',
-        comments: 'To appear in International Conference on Robotics and Automation 2025',
-        thumbnail: 'Computer Vision'
-    },
-    {
-        id: '4',
-        title: 'FedMix: Adaptive Knowledge Distillation for Personalized Federated Learning',
-        authors: ['Sarah Johnson', 'David Chen', 'Michael Brown'],
-        abstract: 'This paper introduces FedMix, a novel framework for personalized federated learning that employs adaptive knowledge distillation to balance model personalization and global knowledge sharing. Our approach dynamically adjusts the knowledge transfer between global and local models based on client data distribution characteristics.',
-        tags: ['Federated Learning', 'Knowledge Distillation', 'Personalization'],
-        submittedDate: '15 April, 2025',
-        publishDate: 'April 2025',
-        comments: 'Accepted at International Conference on Machine Learning 2025',
-        thumbnail: 'Fed Learning'
-    }
 ];
 
 // State management
@@ -71,7 +38,7 @@ async function initializeApp() {
     if (savedBookmarks) {
         bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
     }
-    
+
     // Check if user is logged in and load their recommendations
     if (window.AuthService && window.AuthService.isLoggedIn()) {
         // 先加载收藏状态，再加载推荐论文，确保收藏状态正确显示
@@ -80,8 +47,8 @@ async function initializeApp() {
         console.log('Loading user recommendations...');
         await loadUserRecommendations();
     } else {
-        // Show login prompt or demo papers for non-logged-in users
-        showLoginPrompt();
+        // Load default user recommendations with login suggestion
+        await loadDefaultUserRecommendations();
     }
 }
 
@@ -129,7 +96,7 @@ async function loadUserRecommendations() {
         }
         
         const papers = await response.json();
-        
+
         // Transform backend data to match frontend format
         currentPapers = papers.map(paper => ({
             id: paper.id,
@@ -137,11 +104,10 @@ async function loadUserRecommendations() {
             authors: paper.authors ? paper.authors.split(', ') : [],
             abstract: paper.abstract || '',
             url: paper.url || '',
-            tags: ['AI', 'Research'], // Default tags since backend doesn't provide them
-            submittedDate: 'Recently',
-            publishDate: 'Recent',
-            comments: 'Recommended for you',
-            thumbnail: 'Paper'
+            publishDate: paper.submitted,
+            thumbnail: 'Paper',
+            viewed: paper.viewed || false,
+            recommendationDate: paper.recommendation_date,
         }));
         
         renderPapers();
@@ -158,6 +124,75 @@ async function loadUserRecommendations() {
         isLoading = false;
         hideLoading();
     }
+}
+
+async function loadDefaultUserRecommendations() {
+    const defaultUsername = 'BlogBot@gmail.com'; // Default user
+
+    isLoading = true;
+    showLoading();
+
+    try {
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const papers = await response.json();
+
+        currentPapers = papers.map(paper => ({
+            id: paper.id,
+            title: paper.title,
+            authors: paper.authors ? paper.authors.split(', ') : [],
+            abstract: paper.abstract || '',
+            url: paper.url || '',
+            publishDate: paper.submitted,
+            thumbnail: 'Paper',
+            viewed: paper.viewed || false,
+            recommendationDate: paper.recommendation_date,
+        }));
+
+        renderPapers();
+        showLoginSuggestion();
+
+    } catch (error) {
+        console.error('Error loading default recommendations:', error);
+        showErrorMessage('Failed to load recommendations. Showing sample papers.');
+        await loadSamplePapers();
+    } finally {
+        isLoading = false;
+        hideLoading();
+    }
+}
+
+function showLoginSuggestion() {
+    // Add a login suggestion banner at the top of papers container
+    const banner = document.createElement('div');
+    banner.id = 'loginSuggestionBanner';
+    banner.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 24px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    `;
+    banner.innerHTML = `
+        <p style="margin: 0; font-size: 16px;">
+            📚 You're viewing sample recommendations.
+            <a href="login.html" style="color: #ffd700; font-weight: bold; text-decoration: underline;">Login</a>
+            to see personalized paper recommendations tailored for you!
+        </p>
+    `;
+
+    papersContainer.insertBefore(banner, papersContainer.firstChild);
 }
 
 function showLoginPrompt() {
@@ -234,21 +269,21 @@ function createPaperCard(paper) {
     
     // 移除了收藏状态检查，因为不再显示Save按钮
     
+    const viewedIndicator = paper.viewed ? '<span class="viewed-indicator">👁️ Viewed</span>' : '<span class="unviewed-indicator">📄 New</span>';
+
     card.innerHTML = `
-        <div class="paper-thumbnail">
-            ${paper.thumbnail}
-        </div>
         <div class="paper-content">
-            <h2 class="paper-title">${paper.title}</h2>
+            <div class="paper-header">
+                <h2 class="paper-title">${paper.title}</h2>
+                ${viewedIndicator}
+            </div>
             <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
             <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
-                <span>${paper.publishDate}</span>
+                <span>Publish Time: ${paper.publishDate ? new Date(paper.publishDate).toLocaleDateString() : "Recent"}</span>
                 <span>•</span>
-                <span>${paper.comments}</span>
-            </div>
-            <div class="paper-tags">
-                ${paper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                <span>Recommend Time: ${paper.recommendationDate ? new Date(paper.recommendationDate).toLocaleDateString() : "Recent"}</span>
+                ${paper.url ? `<span>•</span><a href="${paper.url}" target="_blank" class="paper-link" onclick="event.stopPropagation()">Paper Link</a>` : ''}
             </div>
         </div>
     `;
