@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 export PAPERIGNITION_CONFIG="backend/configs/test_config.yaml"
 export PAPERIGNITION_ENV="testing"
 export PAPERIGNITION_LOCAL_MODE="true"
+export PYTHONPATH="/Users/bran/Desktop/AIgnite-Solutions/AIgnite/src"
 
 echo "🧪 Starting Index API Server in TEST mode..."
 echo "📁 Using config: $PAPERIGNITION_CONFIG"
