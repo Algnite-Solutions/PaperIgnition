@@ -1,6 +1,10 @@
 import asyncio
+import os
+import sys
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from backend.app.db_utils import engine, Base, AsyncSessionLocal
 from backend.app.models.users import ResearchDomain, UserPaperRecommendation
