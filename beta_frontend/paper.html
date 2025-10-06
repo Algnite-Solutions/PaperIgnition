@@ -627,19 +627,182 @@
             return bookmarks.includes(paperId);
         }
 
-        function toggleBookmark(paperId) {
-            let bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+        async function toggleBookmark(paperId) {
             const button = document.querySelector('.action-btn.primary');
-            
-            if (bookmarks.includes(paperId)) {
-                bookmarks = bookmarks.filter(id => id !== paperId);
-                button.innerHTML = '☆ Save Paper';
-            } else {
-                bookmarks.push(paperId);
-                button.innerHTML = '★ Saved';
+            const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
+
+            console.log('toggleBookmark called with paperId:', paperId, isLoggedIn);
+
+            if (!isLoggedIn) {
+                showErrorMessage('Please log in to save papers');
+                return;
             }
-            
-            localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
+
+            // Logged in - use API
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+            const isCurrentlyFavorited = bookmarks.includes(paperId);
+
+            console.log('Currently favorited:', isCurrentlyFavorited);
+
+            // Show loading state
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = isCurrentlyFavorited ? 'Removing...' : 'Adding...';
+            button.style.opacity = '0.6';
+
+            try {
+                const token = window.AuthService.getToken();
+                console.log('Token available:', !!token);
+
+                if (!token) {
+                    throw new Error('No authentication token available');
+                }
+
+                if (isCurrentlyFavorited) {
+                    // Remove from favorites
+                    console.log('Calling DELETE /api/favorites/remove/', paperId);
+                    const response = await fetch(`/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    console.log('DELETE response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    }
+
+                    // Update local state
+                    bookmarks = bookmarks.filter(id => id !== paperId);
+                    localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
+
+                    button.innerHTML = '☆ Save Paper';
+                    showSuccessMessage('Removed from favorites');
+
+                } else {
+                    // Add to favorites
+                    console.log('Calling POST /api/favorites/add');
+
+                    const authorsStr = Array.isArray(currentPaper.authors) ? currentPaper.authors.join(', ') : currentPaper.authors;
+
+                    const cleanAbstract = (currentPaper.abstract || '')
+                        .replace(/\r\n/g, '\n')
+                        .replace(/[""]/g, '"')
+                        .replace(/['']/g, "'")
+                        .replace(/…/g, '...')
+                        .trim();
+
+                    const favoriteData = {
+                        paper_id: String(currentPaper.id).substring(0, 50),
+                        title: String(currentPaper.title).substring(0, 255),
+                        authors: String(authorsStr).substring(0, 255),
+                        abstract: cleanAbstract
+                    };
+
+                    if (currentPaper.url && /^https?:\/\//i.test(String(currentPaper.url))) {
+                        favoriteData.url = String(currentPaper.url).substring(0, 255);
+                    }
+
+                    console.log('Sending favorite data:', favoriteData);
+
+                    const response = await fetch(`/api/favorites/add`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(favoriteData)
+                    });
+
+                    console.log('POST response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+
+                        if (response.status === 400 && errorData.detail?.includes('已在收藏')) {
+                            // Already favorited
+                            bookmarks.push(paperId);
+                            localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
+                            button.innerHTML = '★ Saved';
+                            showSuccessMessage('Already in favorites');
+                            return;
+                        }
+
+                        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    }
+
+                    // Update local state
+                    bookmarks.push(paperId);
+                    localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarks));
+
+                    button.innerHTML = '★ Saved';
+                    showSuccessMessage('Added to favorites');
+                }
+
+            } catch (error) {
+                console.error('Error toggling favorite:', error);
+
+                // Restore original state
+                button.innerHTML = originalText;
+
+                showErrorMessage(`Failed to ${isCurrentlyFavorited ? 'remove from' : 'add to'} favorites: ${error.message}`);
+
+            } finally {
+                // Restore button state
+                button.disabled = false;
+                button.style.opacity = '1';
+            }
+        }
+
+        function showSuccessMessage(message) {
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #10b981;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            successDiv.textContent = message;
+
+            document.body.appendChild(successDiv);
+
+            setTimeout(() => {
+                if (document.body.contains(successDiv)) {
+                    document.body.removeChild(successDiv);
+                }
+            }, 2000);
+        }
+
+        function showErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #ef4444;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            errorDiv.textContent = message;
+
+            document.body.appendChild(errorDiv);
+
+            setTimeout(() => {
+                if (document.body.contains(errorDiv)) {
+                    document.body.removeChild(errorDiv);
+                }
+            }, 3000);
         }
 
         function sharePaper() {
@@ -664,5 +827,6 @@
             `;
         }
     </script>
+    <script type="module" src="./js/auth.js"></script>
 </body>
 </html>
