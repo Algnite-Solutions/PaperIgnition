@@ -16,14 +16,6 @@ import os
 # 从utils目录导入index_utils
 from ..utils.index_utils import get_openai_client, translate_text, search_papers_via_api
 
-# 加载配置文件
-def load_config():
-    """加载应用配置文件"""
-    config_path = Path(__file__).parent.parent.parent / "configs/app_config.yaml"
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    return config
-
 # 设置日志
 logger = logging.getLogger(__name__)
 
@@ -163,7 +155,7 @@ async def translate_and_update_in_background(user_id: int, text_to_translate: st
         openai_config = config.get("OPENAI_SERVICE", {})
         client = get_openai_client(
             base_url=openai_config.get("base_url", "https://api.deepseek.com"),
-            api_key=openai_config.get("api_key", "sk-7d1b4bfa589c45f9a352d3e22623eec1")
+            api_key=openai_config.get("api_key", "EMPTY")
         )
         logger.info(f"OpenAI客户端初始化成功")
 
@@ -186,8 +178,9 @@ async def translate_and_update_in_background(user_id: int, text_to_translate: st
             if user:
                 logger.info(f"找到用户: {user.username} (ID: {user_id})")
                 user.rewrite_interest = english_text
+                user.interests_description = [english_text]  # 同时更新interests_description
                 await session.commit()
-                logger.info(f"后台任务：用户 {user.username} (ID: {user_id}) 的rewrite_interest已更新")
+                logger.info(f"后台任务：用户 {user.username} (ID: {user_id}) 同时更新interests_description")
             else:
                 logger.error(f"后台任务：找不到ID为 {user_id} 的用户")
 

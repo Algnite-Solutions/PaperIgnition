@@ -31,7 +31,8 @@ def load_config(config_path: str | None = None) -> dict:
     return {
         "USER_DB": config["USER_DB"],
         "INDEX_SERVICE": config["INDEX_SERVICE"],
-        "APP_SERVICE": config["APP_SERVICE"]
+        "APP_SERVICE": config["APP_SERVICE"],
+        "OPENAI_SERVICE": config.get("OPENAI_SERVICE", {}),
     }
 
 # 声明基类
