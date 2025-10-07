@@ -46,6 +46,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
                 newly_fetched_ids.update(result)
     
     print(f"📊 新抓取论文ID数量: {len(newly_fetched_ids)}")
+    
     #summary docs from json - only return newly fetched papers
     new_docs = []
     for json_file in Path(json_output_path).glob("*.json"):
@@ -74,6 +75,9 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
+                    i += 1
+                    if i > 3:
+                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")
@@ -108,12 +112,9 @@ def run_extractor_for_timeslot(start_str, end_str):
     )
 
     extractor.extract_all_htmls()
-
-    # TODO: rongcan: a separater pdf_extractor instead of this fall back logic below
-    
-    #extractor.pdf_parser_helper.docs = extractor.docs
-    #extractor.pdf_parser_helper.remain_docparser()
-    #extractor.docs = extractor.pdf_parser_helper.docs
+    extractor.pdf_parser_helper.docs = extractor.docs
+    extractor.pdf_parser_helper.remain_docparser()
+    extractor.docs = extractor.pdf_parser_helper.docs
     
     # 记录新抓取的论文ID
     newly_fetched_ids = [doc.doc_id for doc in extractor.docs]

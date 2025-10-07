@@ -14,13 +14,20 @@ import httpx
 import sys
 import yaml
 
-async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, all_papers):
+from job_util import JobLogger
+
+async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, all_papers, job_logger: JobLogger):
     """
     Generate blog digests for existing users based on their interests.
     This function is a placeholder and should be replaced with the actual implementation.
     """
     username = "BlogBot@gmail.com"
-    
+
+    job_id = job_logger.start_job_log(
+        job_type="daily_blog_generation", username=username
+    )
+    print("Start JobLogger for job: ", job_id)
+
     seen_paper_ids = set()
     unique_papers = []
     for paper in all_papers:
@@ -40,7 +47,8 @@ async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, 
     batch_size = 50
     total_papers = len(all_papers)
     processed_count = 0
-    
+    failed_batches = 0
+
     for batch_start in range(0, total_papers, batch_size):
         batch_end = min(batch_start + batch_size, total_papers)
         batch_papers = all_papers[batch_start:batch_end]
@@ -87,9 +95,11 @@ async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, 
             
         except Exception as e:
             print(f"❌ Blog generation failed for batch {batch_start//batch_size + 1}: {e}")
+            failed_batches += 1
             continue
-    
-    print(f"🎉 All batches completed! Total processed: {processed_count}/{total_papers}")
+    detials = f"Total Papers: {total_papers}, Processed: {processed_count}, Failed Batches: {failed_batches}"
+    await job_logger.update_job_log(job_id=job_id, status="completed" if failed_batches == 0 else "completed_with_errors", details=detials) 
+    print(f"🎉 All batches completed! Detials: ", detials)
 
 
 def main():
@@ -99,15 +109,13 @@ def main():
     backend_api_url = config['APP_SERVICE']["host"]
     print("backend：",backend_api_url)
     print("index：",index_api_url)
-
-
+    job_logger = JobLogger(config_path=config_path)
     #print("Starting daily paper fetch...")
     papers = utils.fetch_daily_papers(index_api_url, config)
     #print("Daily paper fetch complete.")
 
     print("Starting blog generation for existing users...")
-    asyncio.run(blog_generation_for_storage(index_api_url, backend_api_url, papers))
+    asyncio.run(blog_generation_for_storage(index_api_url, backend_api_url, papers, job_logger))
     print("Blog generation for existing users complete.")
-    
 if __name__ == "__main__":
     main()

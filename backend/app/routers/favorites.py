@@ -18,7 +18,7 @@ class FavoriteRequest(BaseModel):
     title: str
     authors: str
     abstract: str
-    url: str = None
+    url: str = ""
 
 class FavoriteResponse(BaseModel):
     id: int
@@ -26,7 +26,7 @@ class FavoriteResponse(BaseModel):
     title: str
     authors: str
     abstract: str
-    url: str = None
+    url: str = ""
 
 @router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_to_favorites(

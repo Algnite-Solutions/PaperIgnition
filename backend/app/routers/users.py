@@ -16,19 +16,11 @@ import os
 # 从utils目录导入index_utils
 from ..utils.index_utils import get_openai_client, translate_text, search_papers_via_api
 
-# 加载配置文件
-def load_config():
-    """加载应用配置文件"""
-    config_path = Path(__file__).parent.parent.parent / "configs/app_config.yaml"
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    return config
-
 # 设置日志
 logger = logging.getLogger(__name__)
 
 from ..models.users import User, ResearchDomain, user_domain_association, UserPaperRecommendation
-from ..db_utils import get_db, INDEX_SERVICE_URL
+from ..db_utils import get_db, get_index_service_url
 
 from ..auth.schemas import UserOut, UserProfileUpdate
 from ..auth.utils import get_current_user
@@ -149,58 +141,49 @@ async def get_research_domains(db: AsyncSession = Depends(get_db)):
     return research_domains
 
 # 创建一个后台任务函数
-async def translate_and_update_in_background(user_id: int, text_to_translate: str, db_url: str):
+async def translate_and_update_in_background(user_id: int, text_to_translate: str):
     """
     后台任务：翻译文本并更新数据库
     此函数会在单独的任务中运行，不会阻塞主请求
     """
     try:
         logger.info(f"开始后台翻译任务: 用户ID={user_id}, 文本='{text_to_translate[:30]}...'")
-        
+
         # 加载配置并初始化OpenAI客户端
+        from ..db_utils import load_config, get_database_manager
         config = load_config()
         openai_config = config.get("OPENAI_SERVICE", {})
         client = get_openai_client(
-            base_url=openai_config.get("base_url", "https://api.deepseek.com"), 
-            api_key=openai_config.get("api_key", "")
+            base_url=openai_config.get("base_url", "https://api.deepseek.com"),
+            api_key=openai_config.get("api_key", "EMPTY")
         )
         logger.info(f"OpenAI客户端初始化成功")
-        
+
         # 翻译文本
         logger.info(f"开始调用Qwen翻译")
         english_text = translate_text(client, text_to_translate)
         logger.info(f"翻译完成，结果: '{english_text[:50]}...'")
-        
+
         if not english_text:
             logger.warning(f"翻译结果为空，用户ID: {user_id}")
             return
-        
-        # 创建新的数据库会话
-        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-        from sqlalchemy.orm import sessionmaker
-        from ..models.users import User
-        
-        # 创建新的数据库引擎和会话
-        logger.info(f"创建数据库连接: {db_url}")
-        engine = create_async_engine(db_url)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        
-        # 在新会话中更新数据库
+
+        # 创建新的数据库会话进行更新
         logger.info(f"开始更新数据库")
-        async with async_session() as session:
-            # 获取用户
-            from sqlalchemy.future import select
+        db_manager = get_database_manager()
+        async with db_manager.get_session() as session:
             result = await session.execute(select(User).where(User.id == user_id))
             user = result.scalars().first()
-            
+
             if user:
                 logger.info(f"找到用户: {user.username} (ID: {user_id})")
                 user.rewrite_interest = english_text
+                user.interests_description = [english_text]  # 同时更新interests_description
                 await session.commit()
-                logger.info(f"后台任务：用户 {user.username} (ID: {user_id}) 的rewrite_interest已更新")
+                logger.info(f"后台任务：用户 {user.username} (ID: {user_id}) 同时更新interests_description")
             else:
                 logger.error(f"后台任务：找不到ID为 {user_id} 的用户")
-                
+
     except Exception as e:
         logger.exception(f"后台翻译任务失败: {e}")
 
@@ -208,7 +191,8 @@ async def translate_and_update_in_background(user_id: int, text_to_translate: st
 async def update_user_profile(
     profile_data: UserProfileUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    index_service_url: str = Depends(get_index_service_url)
 ):
     """更新当前用户的个人资料"""
     # 检查research_interests_text是否有变化
@@ -282,10 +266,10 @@ async def update_user_profile(
                             logger.info(f"应用过滤器：包含 {len(blogbot_paper_ids)} 个BlogBot推荐论文")
                         
                         search_results = search_papers_via_api(
-                            INDEX_SERVICE_URL, 
-                            "llm", 
-                            'tf-idf', 
-                            0.1, 
+                            index_service_url,
+                            interest,
+                            'vector',
+                            0.1,
                             filter_params
                         )
                         
@@ -330,6 +314,7 @@ async def update_user_profile(
                                     authors=authors_data,
                                     abstract=result.get('abstract', ''),
                                     url=result.get('url', ''),
+                                    content=result.get('content', ''),
                                     blog=blogbot_blog or '',  # 使用从BlogBot记录中获取的blog内容
                                     recommendation_reason=f"基于用户兴趣'{interest}'的向量搜索，从BlogBot推荐论文中筛选，相似度: {result.get('score', 0):.3f}",
                                     relevance_score=result.get('score', 0.0)
@@ -365,24 +350,20 @@ async def update_user_profile(
     await db.refresh(current_user)
     
 
-    # 如果research_interests_text有变化，创建真正的后台任务进行翻译
+    # 如果research_interests_text有变化，在后台翻译并更新
     if research_interests_changed and new_research_interests_text:
         try:
-            # 获取数据库连接URL
-            from ..db_utils import DATABASE_URL
-            logger.info(f"准备创建翻译后台任务，数据库URL: {DATABASE_URL}")
-            
-            # 创建后台任务，不等待其完成
-            task = asyncio.create_task(
+            # 直接在后台任务中处理，传递当前user对象和db session
+            # 注意：我们需要在提交当前事务后再启动后台任务
+            logger.info(f"准备为用户 {current_user.username} 创建翻译后台任务")
+
+
+            # 创建后台任务进行翻译
+            asyncio.create_task(
                 translate_and_update_in_background(
-                    current_user.id, 
-                    new_research_interests_text,
-                    DATABASE_URL
+                    current_user.id,
+                    new_research_interests_text
                 )
-            )
-            # 添加任务完成回调
-            task.add_done_callback(
-                lambda t: logger.info(f"翻译任务完成状态: {'成功' if not t.exception() else f'失败: {t.exception()}'}")
             )
             logger.info(f"已为用户 {current_user.username} (ID: {current_user.id}) 创建翻译后台任务")
         except Exception as e:
