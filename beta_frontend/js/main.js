@@ -249,10 +249,10 @@ async function searchPapersAPI(query) {
         return results.map(result => ({
             id: result.doc_id || result.id,
             title: result.metadata?.title || 'Untitled',
-            authors: result.metadata?.authors?.split(', ') || [],
+            authors: result.metadata?.authors || [],
             abstract: result.metadata?.abstract || '',
             url: result.metadata?.url || '',
-            publishDate: result.metadata?.submitted || result.metadata?.date,
+            publishDate: result.metadata?.published_date || '',
             thumbnail: 'Paper',
             viewed: false,
             recommendationDate: null,
