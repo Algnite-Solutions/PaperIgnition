@@ -155,7 +155,7 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
     """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
-    
+    logger.info(f"Received similarity search query: {query}")
     try:
         # Validate parameters
         if not query.query or not query.query.strip():

@@ -26,7 +26,17 @@ def check_connection_health(api_url, timeout=5.0):
 
 def index_papers_via_api(papers, api_url):
     docset_list = DocSetList(docsets=papers)
-    data = docset_list.dict()
+
+    # Wrap in the expected format: {"docsets": DocSetList, "store_images": bool}
+    data = {
+        "docsets": docset_list.model_dump(),  # This creates {"docsets": [...]}
+        "store_images": False
+    }
+
+    print(f"📤 Sending {len(papers)} papers to index...")
+    if papers:
+        print(f"📋 First paper: {papers[0].doc_id} - {papers[0].title[:50]}...")
+
     try:
         response = httpx.post(f"{api_url}/index_papers/", json=data, timeout=3000.0)
         response.raise_for_status()

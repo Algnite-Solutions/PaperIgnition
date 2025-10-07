@@ -17,3 +17,7 @@ USER_DB:
 
 PAPER_STORAGE:
   json_folder: ""
+
+OPENAI_SERVICE:
+  base_url: "https://api.deepseek.com"
+  api_key: "sk-7d1b4bfa589c45f9a352d3e22623eec1"

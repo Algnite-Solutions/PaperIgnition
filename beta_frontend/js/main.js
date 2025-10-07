@@ -48,7 +48,11 @@ async function initializeApp() {
         await loadUserRecommendations();
     } else {
         // Load default user recommendations with login suggestion
+        if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+            showLoginSuggestion();
+        }
         await loadDefaultUserRecommendations();
+
     }
 }
 
@@ -82,8 +86,8 @@ async function loadUserRecommendations() {
     
     try {
         // Call the backend recommendations API
-        const username = currentUser.username;
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
+        const email = currentUser.email;
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(email)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -119,8 +123,12 @@ async function loadUserRecommendations() {
         console.error('Error loading recommendations:', error);
         // Fallback to demo papers on error
         showErrorMessage('Failed to load recommendations. Showing sample papers.');
-        await loadSamplePapers();
     } finally {
+        if (currentPapers.length === 0) {
+            console.log('No paper to display, loading default recommendations as fallback');
+            await loadDefaultUserRecommendations();
+            return; // loadDefaultUserRecommendations handles rendering
+        }
         isLoading = false;
         hideLoading();
     }
@@ -159,7 +167,6 @@ async function loadDefaultUserRecommendations() {
         }));
 
         renderPapers();
-        showLoginSuggestion();
 
     } catch (error) {
         console.error('Error loading default recommendations:', error);
@@ -209,9 +216,52 @@ function showLoginPrompt() {
 async function loadSamplePapers() {
     currentPapers = samplePapers;
     renderPapers();
-    
-    // 如果用户已登录，批量检查并同步当前论文的收藏状态
+
+    // 如果用户已登录，批量检查并同步当前论文的收藏状l态
     await syncCurrentPapersFavoriteStatus();
+}
+
+async function searchPapersAPI(query) {
+    /**
+     * Call the backend /find_similar/ API to search for papers
+     */
+    try {
+        const response = await fetch('/api/find_similar/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query: query,
+                search_strategies: [['tf-idf', 0.8]],  // Format: [[strategy, threshold]]
+                top_k: 5,
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const results = await response.json();
+        console.log('Search API results:', results);
+
+        // Transform API results to match frontend format
+        return results.map(result => ({
+            id: result.doc_id || result.id,
+            title: result.metadata?.title || 'Untitled',
+            authors: result.metadata?.authors || [],
+            abstract: result.metadata?.abstract || '',
+            url: result.metadata?.url || '',
+            publishDate: result.metadata?.published_date || '',
+            thumbnail: 'Paper',
+            viewed: false,
+            recommendationDate: null,
+            relevanceScore: result.similarity_score || result.score
+        }));
+    } catch (error) {
+        console.error('Error calling search API:', error);
+        throw error;
+    }
 }
 
 async function loadPapers(append = false) {
@@ -220,33 +270,39 @@ async function loadPapers(append = false) {
         await loadSamplePapers();
         return;
     }
-    
-    // For search functionality, filter current papers
+
+    // For logged-in users: use search API
     if (isLoading) return;
-    
+
     isLoading = true;
     showLoading();
-    
-    setTimeout(() => {
-        const filteredPapers = searchQuery 
-            ? currentPapers.filter(paper => 
-                paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                paper.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                paper.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase()))
-            )
-            : currentPapers;
-        
-        if (append) {
-            // For infinite scroll - in this case just show same papers
-            currentPapers = [...currentPapers, ...filteredPapers.slice(0, 2)];
+    console.log('Search input:', searchQuery);
+
+    try {
+        if (searchQuery && searchQuery.trim().length > 0) {
+            // Call backend search API
+            const searchResults = await searchPapersAPI(searchQuery);
+            currentPapers = searchResults;
+            console.log(`Search query: "${searchQuery}", Papers found: ${currentPapers.length}`);
+            if (!currentPapers || currentPapers.length === 0) {
+                console.log('No paper to display');
+            }
         } else {
-            currentPapers = filteredPapers;
+            // No search query - reload original recommendations
+            console.log('No search query, reloading user recommendations');
+            isLoading = false; // Reset loading to allow loadUserRecommendations to proceed
+            await loadUserRecommendations();
         }
-        
+
         renderPapers();
+
+    } catch (error) {
+        console.error('Error in loadPapers:', error);
+        showErrorMessage('Search failed');
+    } finally {
         isLoading = false;
         hideLoading();
-    }, 300);
+    }
 }
 
 function renderPapers() {

@@ -71,12 +71,12 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Find user in database by identifier (assuming 'sub' is either username or wx_openid)
+    # Find user in database by identifier (assuming 'sub' is either email or wx_openid)
     # In a real app, you might need to store token payload info to distinguish
     result = await db.execute(
         select(User).where(
             or_(
-                User.username == user_identifier,
+                User.email == user_identifier,
                 User.wx_openid == user_identifier
             )
         ).options(selectinload(User.research_domains))
