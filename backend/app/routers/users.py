@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 import asyncio
 import logging
 from sqlalchemy import and_
+from datetime import datetime, timezone
 import requests
 import yaml
 from pathlib import Path
@@ -19,10 +20,11 @@ from ..utils.index_utils import get_openai_client, translate_text, search_papers
 # 设置日志
 logger = logging.getLogger(__name__)
 
-from ..models.users import User, ResearchDomain, user_domain_association, UserPaperRecommendation
+from ..models.users import User, ResearchDomain, user_domain_association, UserPaperRecommendation, FavoritePaper
 from ..db_utils import get_db, get_index_service_url
+from sqlalchemy import func
 
-from ..auth.schemas import UserOut, UserProfileUpdate
+from ..auth.schemas import UserOut, UserProfileUpdate, ActivityData
 from ..auth.utils import get_current_user
 
 # 请求模型
@@ -77,7 +79,26 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
     if current_user.research_domains:
         for domain in current_user.research_domains:
             research_domain_ids.append(domain.id)
-    
+
+    # 查询用户收藏的论文数量
+    favorite_count = await db.scalar(
+        select(func.count(FavoritePaper.id)).where(FavoritePaper.user_id == current_user.id)
+    )
+
+    # 查询用户已读论文数量（viewed=True的推荐论文）
+    viewed_count = await db.scalar(
+        select(func.count(UserPaperRecommendation.id)).where(
+            UserPaperRecommendation.username == current_user.username,
+            UserPaperRecommendation.viewed == True
+        )
+    )
+
+    # 计算用户活跃天数（从创建账号到现在）
+    days_active = 0
+    if current_user.created_at:
+        now = datetime.now(timezone.utc)
+        days_active = (now - current_user.created_at).days
+
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -85,7 +106,12 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
         "is_active": current_user.is_active,
         "interests_description": current_user.interests_description or [],
         "research_interests_text": current_user.research_interests_text,
-        "research_domain_ids": research_domain_ids
+        "research_domain_ids": research_domain_ids,
+        "activity_data": {
+            "favorite_count": favorite_count or 0,
+            "viewed_count": viewed_count or 0,
+            "days_active": days_active
+        }
     }
 
 @router.post("/interests", response_model=UserOut)

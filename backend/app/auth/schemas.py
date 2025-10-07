@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
+from datetime import datetime
 
 class UserBase(BaseModel):
     username: Optional[str] = None
@@ -32,7 +33,13 @@ class Token(BaseModel):
     
 class TokenData(BaseModel):
     identifier: Optional[str] = None
-    
+
+class ActivityData(BaseModel):
+    """User activity statistics"""
+    favorite_count: int = 0
+    viewed_count: int = 0
+    days_active: int = 0
+
 class UserOut(UserBase):
     id: int
     is_active: Optional[bool] = True
@@ -40,7 +47,8 @@ class UserOut(UserBase):
     research_interests_text: Optional[str] = None
     username: str
     email: EmailStr
-    
+    activity_data: Optional[ActivityData] = None
+
     class Config:
         from_attributes = True
 
