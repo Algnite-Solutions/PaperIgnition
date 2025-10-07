@@ -58,6 +58,12 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     """Search papers using the /find_similar/ endpoint for a single query.
     Returns a list of DocSet objects corresponding to the results.
     """
+    # 检查连接健康状态
+    health = check_connection_health(api_url, timeout=5.0)
+    if not health:
+        print(f"❌ 搜索服务 {api_url} 不可用，跳过查询 '{query}'")
+        return []
+    
     # 根据新的API结构构建payload
     payload = {
         "query": query,
@@ -68,7 +74,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }
     try:
-        response = httpx.post(f"{api_url}/find_similar/", json=payload, timeout=10.0)
+        response = httpx.post(f"{api_url}/find_similar/", json=payload, timeout=30.0)
         response.raise_for_status()
         results = response.json()
         print(f"\nResults for query '{query}' (strategy: {search_strategy}, cutoff: {similarity_cutoff}):")
@@ -130,8 +136,18 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
                 print(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
                 continue
         return docsets
+    except httpx.TimeoutException:
+        print(f"❌ 搜索查询 '{query}' 超时（30秒），请检查网络连接或服务器状态")
+        return []
+    except httpx.ConnectError:
+        print(f"❌ 无法连接到搜索服务 {api_url}，请检查服务是否运行")
+        return []
+    except httpx.HTTPStatusError as e:
+        print(f"❌ 搜索查询 '{query}' 返回错误状态码: {e.response.status_code}")
+        print(f"错误详情: {e.response.text}")
+        return []
     except Exception as e:
-        print(f"Failed to search for query '{query}':", e)
+        print(f"❌ 搜索查询 '{query}' 时发生未知错误: {e}")
         return []
 
 def save_recommendations(username, papers, api_url):
@@ -149,6 +165,8 @@ def save_recommendations(username, papers, api_url):
             "relevance_score": paper.get("relevance_score", None),
             "blog_abs": paper.get("blog_abs", ""),
             "blog_title": paper.get("blog_title", ""),
+            "submitted": paper.get("submitted", ""),
+            "comment": paper.get("comment", ""),
         }
         try:
             resp = httpx.post(

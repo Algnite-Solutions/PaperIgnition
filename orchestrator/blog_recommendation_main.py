@@ -138,6 +138,8 @@ async def blog_generation_for_existing_user(index_api_url: str, backend_api_url:
                     "relevance_score": 0.5,
                     "blog_abs": blog_abs_content,
                     "blog_title": blog_title_content,
+                    "submitted": paper.published_date,
+                    "comment": paper.comments,
                 })
 
             # 5. Write recommendations
