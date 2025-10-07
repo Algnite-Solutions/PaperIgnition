@@ -48,11 +48,11 @@ async function initializeApp() {
         await loadUserRecommendations();
     } else {
         // Load default user recommendations with login suggestion
+        await loadDefaultUserRecommendations();
+        // Show login suggestion banner AFTER papers are rendered
         if (!window.AuthService || !window.AuthService.isLoggedIn()) {
             showLoginSuggestion();
         }
-        await loadDefaultUserRecommendations();
-
     }
 }
 
@@ -179,6 +179,11 @@ async function loadDefaultUserRecommendations() {
 }
 
 function showLoginSuggestion() {
+    // Check if banner already exists to prevent duplicates
+    if (document.getElementById('loginSuggestionBanner')) {
+        return;
+    }
+
     // Add a login suggestion banner at the top of papers container
     const banner = document.createElement('div');
     banner.id = 'loginSuggestionBanner';
