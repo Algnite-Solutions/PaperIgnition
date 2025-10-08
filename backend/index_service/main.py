@@ -16,7 +16,7 @@ async def startup_event():
     # Load configuration using enhanced load_config function
     # This will automatically set environment variables and cache the config
     config_path=os.environ.get('PAPERIGNITION_CONFIG')
-    config = load_config(config_path,set_env=True)
+    config = load_config(config_path,set_env=True,display_storage_info=True)
     
     print(f"📁 Configuration loaded from: {os.environ.get('PAPERIGNITION_CONFIG', 'default path')}")
     print(f"🌍 Environment variables set: {len([k for k in os.environ.keys() if k.startswith('PAPERIGNITION_')])} config variables")
