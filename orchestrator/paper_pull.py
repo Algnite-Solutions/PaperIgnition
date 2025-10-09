@@ -22,7 +22,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 3)
+    time_slots = divide_a_day_into(time, 1)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist

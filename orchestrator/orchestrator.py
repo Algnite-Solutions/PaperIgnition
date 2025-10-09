@@ -259,7 +259,7 @@ class PaperIgnitionOrchestrator:
                         }
                     }
                     logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
-                    papers = utils.search_papers_via_api(self.index_api_url, "llm", 'tf-idf', 0.1, filter_params)
+                    papers = utils.search_papers_via_api(self.index_api_url, query, 'vector', 0.1, filter_params)
                 else:
                     papers = utils.search_papers_via_api(self.index_api_url, query, 'vector', 0.1)
                 
@@ -425,7 +425,8 @@ class PaperIgnitionOrchestrator:
 # Main execution
 async def main():
     """Main function for running daily orchestration"""
-    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "true").lower() == "true"
+    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "true").lower() != "true"
+    print(f"PAPERIGNITION_LOCAL_MODE: {local_mode}")
     orchestrator = PaperIgnitionOrchestrator(local_mode=local_mode)
 
     try:

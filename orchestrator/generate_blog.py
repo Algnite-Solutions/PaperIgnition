@@ -8,6 +8,14 @@ import asyncio
 #from backend.index_service import index_papers, find_similar
 #from backend.user_service import get_all_users, get_user_interest
 
+# 加载配置文件
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/app_config.yaml")
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+
 # @ch, replace it with backend.user_service
 """
 to do:
@@ -27,7 +35,7 @@ def get_all_users():
             }
         ]
     """
-    response = requests.get("http://localhost:8000/api/users/all") # Assuming your backend runs on localhost:8000
+    response = requests.get(f"{config['APP_SERVICE']['host']}/api/users/all")
     response.raise_for_status()  # Raises an exception for bad status codes
     users_data = response.json()
     
@@ -46,7 +54,7 @@ def get_user_interest(username: str):
         ['大型语言模型', '图神经网络']
     """
     # 实际上username和user_email保持一致
-    response = requests.get(f"http://localhost:8000/api/users/by_email/{username}") 
+    response = requests.get(f"{config['APP_SERVICE']['host']}/api/users/by_email/{username}") 
     response.raise_for_status() # Raises an exception for bad status codes (e.g., 404)
     user_data = response.json()
     return user_data.get("interests_description", [])
@@ -62,17 +70,17 @@ def run_Gemini_blog_generation(papers, output_path="./blogByGemini"):
 
 async def run_batch_generation(papers, output_path="./blogs"):
     generator = AsyncvLLMGenerator(
-        model_name="Qwen/Qwen3-32B", 
-        api_base="http://localhost:5666/v1",
-        data_path="../imgs/", 
+        model_name=config['BLOG_GENERATION']['model_name'], 
+        api_base=config['BLOG_GENERATION']['api_base'],
+        data_path=config['BLOG_GENERATION']['data_path'], 
         output_path=output_path)
     
-    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    prompt_config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(prompt_config_path, "r") as f:
+        prompt_config = yaml.safe_load(f)
 
-    system_prompt = config['prompts']['blog_generation']['system_prompt']
-    user_prompt_template = config['prompts']['blog_generation']['user_prompt_template']
+    system_prompt = prompt_config['prompts']['blog_generation']['system_prompt']
+    user_prompt_template = prompt_config['prompts']['blog_generation']['user_prompt_template']
 
     prompts = []
     for paper in papers:
@@ -92,7 +100,7 @@ async def run_batch_generation(papers, output_path="./blogs"):
             prompt = prompt[:10000]
         prompts.append(prompt)
     try:
-        blog = await generator.batch_generate(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
+        blog = await generator.batch_generate(prompts=prompts, system_prompts=system_prompt, max_tokens=config['BLOG_GENERATION']['max_tokens'], papers=papers)
         return blog
     except Exception as e:
         print(f"Error: {e}")
@@ -100,17 +108,17 @@ async def run_batch_generation(papers, output_path="./blogs"):
 
 async def run_batch_generation_abs(papers):
     generator = AsyncvLLMGenerator(
-        model_name="Qwen/Qwen3-32B", 
-        api_base="http://localhost:5666/v1",
-        data_path="../imgs/", 
-        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
+        model_name=config['BLOG_GENERATION']['model_name'], 
+        api_base=config['BLOG_GENERATION']['api_base'],
+        data_path=config['BLOG_GENERATION']['data_path'], 
+        output_path=config['BLOG_GENERATION']['output_path'])
     
-    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    prompt_config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(prompt_config_path, "r") as f:
+        prompt_config = yaml.safe_load(f)
 
-    system_prompt = config['prompts']['blog_generation_abs']['system_prompt']
-    user_prompt_template = config['prompts']['blog_generation_abs']['user_prompt_template']
+    system_prompt = prompt_config['prompts']['blog_generation_abs']['system_prompt']
+    user_prompt_template = prompt_config['prompts']['blog_generation_abs']['user_prompt_template']
 
     prompts = []
     for paper in papers:  # 遍历 papers 而不是 blogs
@@ -128,7 +136,7 @@ async def run_batch_generation_abs(papers):
         prompts.append(prompt)
     
     try:
-        abs = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
+        abs = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=config['BLOG_GENERATION']['max_tokens'], papers=papers)
         return abs
     except Exception as e:
         print(f"Error: {e}")
@@ -137,17 +145,17 @@ async def run_batch_generation_abs(papers):
 
 async def run_batch_generation_title(papers):
     generator = AsyncvLLMGenerator(
-        model_name="Qwen/Qwen3-32B", 
-        api_base="http://localhost:5666/v1",
-        data_path="../imgs/", 
-        output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs")
+        model_name=config['BLOG_GENERATION']['model_name'], 
+        api_base=config['BLOG_GENERATION']['api_base'],
+        data_path=config['BLOG_GENERATION']['data_path'], 
+        output_path=config['BLOG_GENERATION']['output_path'])
     
-    config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    prompt_config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
+    with open(prompt_config_path, "r") as f:
+        prompt_config = yaml.safe_load(f)
 
-    system_prompt = config['prompts']['blog_generation_title']['system_prompt']
-    user_prompt_template = config['prompts']['blog_generation_title']['user_prompt_template']
+    system_prompt = prompt_config['prompts']['blog_generation_title']['system_prompt']
+    user_prompt_template = prompt_config['prompts']['blog_generation_title']['user_prompt_template']
 
     prompts = []
     for paper in papers:  # 遍历 papers 而不是 blogs
@@ -157,7 +165,7 @@ async def run_batch_generation_title(papers):
         prompts.append(prompt)
     
     try:
-        titles = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=2048, papers=papers)
+        titles = await generator.batch_generate_not_save(prompts=prompts, system_prompts=system_prompt, max_tokens=config['BLOG_GENERATION']['max_tokens'], papers=papers)
         return titles
     except Exception as e:
         print(f"Error: {e}")
@@ -165,23 +173,25 @@ async def run_batch_generation_title(papers):
 
 async def main():
     papers = []
-    for file in os.listdir("/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"):
+    json_folder = config['PAPER_STORAGE']['json_folder'] or "/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"
+    for file in os.listdir(json_folder):
         if len(papers) >= 2:
             break
-        with open(f"/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons/{file}", "r") as f:
+        with open(f"{json_folder}/{file}", "r") as f:
             data = json.load(f)
             papers.append(DocSet(**data))
             print(file)
     
     blog = await run_batch_generation(papers)
     
-    # 修改这里：传递 papers 而不是 blog
-    abs = await run_batch_generation_abs(papers)
-    print("摘要：",abs)
-    titles = await run_batch_generation_title(papers)
-    print("标题：",titles)
+    #abs = await run_batch_generation_abs(papers)
+    #print("摘要：",abs)
+    #titles = await run_batch_generation_title(papers)
+    #print("标题：",titles)
     #blog = run_Gemini_blog_generation(papers)
     #print("Blog generation completed:", blog)
+    abs = "摘要"
+    titles = "标题"
 
 if __name__ == "__main__":
     asyncio.run(main())

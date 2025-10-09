@@ -47,7 +47,7 @@ def index_papers_via_api(papers, api_url, store_images=False, keep_temp_image=Fa
         print(f"📋 First paper: {papers[0].doc_id} - {papers[0].title[:50]}...")
 
     try:
-        response = httpx.post(f"{api_url}/index_papers/", json=request_data, timeout=6000.0)
+        response = httpx.post(f"{api_url}/index_papers/", json=data, timeout=6000.0)
         response.raise_for_status()
         print("Indexing response:", response.json())
     except Exception as e:
@@ -68,7 +68,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         "query": query,
         "top_k": 1,
         "similarity_cutoff": similarity_cutoff,
-        "search_strategies": [(search_strategy, 0.99)],  # 新API使用元组格式 (strategy, threshold)
+        "search_strategies": [(search_strategy, 1.5)],  # 新API使用元组格式 (strategy, threshold)
         "filters": filters,
         "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }
@@ -153,12 +153,13 @@ def save_recommendations(username, papers, api_url):
     for paper in papers:
         print(paper)
         data = {
+            "username": username,
             "paper_id": paper.get("paper_id"),
             "title": paper.get("title", ""),
             "authors": paper.get("authors", ""),
             "abstract": paper.get("abstract", ""),
             "url": paper.get("url", ""),
-            "content": paper.get("content", ""),  # 必须补全
+            "content": paper.get("content", ""),
             "blog": paper.get("blog", ""),
             "recommendation_reason": paper.get("recommendation_reason", ""),
             "relevance_score": paper.get("relevance_score", None),
