@@ -22,7 +22,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 3)
+    time_slots = divide_a_day_into(time, 1)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
@@ -74,9 +74,6 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
-                    i += 1
-                    if i > 3:
-                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")
