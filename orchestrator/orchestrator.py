@@ -213,15 +213,27 @@ class PaperIgnitionOrchestrator:
         # await self.all_paper_blog_generation(papers)
         logging.info("Blog generation completed successfully")
 
-    async def blog_generation_for_all_users(self):
+    async def blog_generation_for_all_users(self, user_filters: List[str] = None, skip_existing_papers: bool = True):
         """
-        Generate blog digests for all users based on their interests
+        Generate blog digests for users based on their interests
+
+        Args:
+            user_filters: Optional list of usernames to filter. If provided, only generates for these users.
+            skip_existing_papers: If True, excludes papers user already has. If False, includes all papers.
         """
-        use_llm_rerank = True
+        use_llm_rerank = os.getenv("USE_LLM_RERANK", "false").lower() == "true"
         logging.info(f"LLM Reranking enabled: {use_llm_rerank}")
 
         all_users = get_all_users(self.backend_api_url)
         logging.info(f"✅ 共获取到 {len(all_users)} 个用户")
+
+        # Apply user filters if specified
+        if user_filters:
+            all_users = [u for u in all_users if u.get("username") in user_filters]
+            logging.info(f"🔍 User filters applied: {user_filters} ({len(all_users)} user(s) matched)")
+            if not all_users:
+                logging.error(f"❌ No users found matching filters {user_filters}")
+                return
 
         for user in all_users:
             username = user.get("username")
@@ -233,20 +245,23 @@ class PaperIgnitionOrchestrator:
                 logging.warning(f"用户 {username} 无兴趣关键词，跳过推荐。")
                 continue
             
-            # 获取用户已有的论文推荐，用于过滤
-            try:
-                user_papers_response = requests.get(f"{self.backend_api_url}/api/papers/recommendations/{username}")
-                if user_papers_response.status_code == 200:
-                    user_existing_papers = user_papers_response.json()
-                    existing_paper_ids = [paper["id"] for paper in user_existing_papers if paper.get("id")]
-                    logging.info(f"用户 {username} 已有 {len(existing_paper_ids)} 篇论文推荐")
-                    logging.info(f"已有论文ID: {existing_paper_ids[:5]}...")  # 只显示前5个
-                else:
-                    existing_paper_ids = []
-                    logging.error(f"获取用户 {username} 已有论文失败，状态码: {user_papers_response.status_code}")
-            except Exception as e:
-                logging.error(f"获取用户 {username} 已有论文时出错: {e}")
-                existing_paper_ids = []
+            # 获取用户已有的论文推荐，用于过滤（仅在skip_existing_papers=True时）
+            existing_paper_ids = []
+            if skip_existing_papers:
+                try:
+                    user_papers_response = requests.get(f"{self.backend_api_url}/api/papers/recommendations/{username}")
+                    if user_papers_response.status_code == 200:
+                        user_existing_papers = user_papers_response.json()
+                        existing_paper_ids = [paper["id"] for paper in user_existing_papers if paper.get("id")]
+                        logging.info(f"用户 {username} 已有 {len(existing_paper_ids)} 篇论文推荐")
+                        logging.info(f"已有论文ID: {existing_paper_ids[:5]}...")  # 只显示前5个
+                    else:
+                        logging.error(f"获取用户 {username} 已有论文失败，状态码: {user_papers_response.status_code}")
+                except Exception as e:
+                    logging.error(f"获取用户 {username} 已有论文时出错: {e}")
+            else:
+                logging.info(f"⚠️ Skip existing papers disabled - will include all papers")
+
             
             all_papers = []
             
@@ -303,13 +318,20 @@ class PaperIgnitionOrchestrator:
                 try:
                     if self.local_mode:
                         output_path = "./orchestrator/blogsByGemini"
+                        logging.info(f"📝 Generating blogs using Gemini API, output: {output_path}")
                         run_Gemini_blog_generation(all_papers, output_path=output_path)
+                        logging.info(f"✅ Gemini blog generation complete")
                     else:
                         output_path = "./orchestrator/blogs"
+                        logging.info(f"📝 Generating blogs using vLLM API, output: {output_path}")
                         await run_batch_generation(all_papers, output_path=output_path)
+                        logging.info(f"✅ vLLM blog generation complete")
                 except Exception as e:
                     logging.error(f"❌ Blog generation failed for user {username}: {e}")
-                    await self.job_logger.complete_job_log(job_id=job_id, status="failed", error_message=str(e))   
+                    import traceback
+                    traceback.print_exc()
+                    await self.job_logger.complete_job_log(job_id=job_id, status="failed", error_message=str(e))
+                    continue
                 logging.info("Digest generation complete.")
 
                 blog_abs = await run_batch_generation_abs(all_papers)
@@ -322,8 +344,8 @@ class PaperIgnitionOrchestrator:
                         with open(blog_path, encoding="utf-8") as file:
                             blog = file.read()
                     except FileNotFoundError:
-                        blog = None  # 或者其他处理方式
-                        print(f"❌ Blog file not found for {paper.doc_id}, expected at {blog_path}")
+                        logging.warning(f"❌ Blog file not found for {paper.doc_id}, skipping this paper")
+                        continue  # Skip papers without blogs
                     
                     # 获取对应的博客摘要和标题
                     blog_abs_content = blog_abs[i] if blog_abs and i < len(blog_abs) else None
