@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, Body
-from .models import CustomerQuery, SaveImageRequest, GetImageRequest, ImageResponse, StoreImagesRequest, StoreImagesResponse, IndexPapersRequest, GetImageRequest, GetImageResponse, GetImageStorageStatusRequest, GetImageStorageStatusResponse
+from .models import CustomerQuery, SaveImageRequest, GetImageRequest, ImageResponse, StoreImagesRequest, StoreImagesResponse, IndexPapersRequest, GetImageRequest, GetImageResponse, GetImageStorageStatusRequest, GetImageStorageStatusResponse, SaveVectorsRequest, SaveVectorsResponse, GetAllDocIdsResponse, DeleteVectorDocumentRequest, DeleteVectorDocumentResponse
 from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, ChunkType, DocSetList
 from typing import Dict, Any, List, Optional
-from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer, save_image, store_images, get_image, get_image_storage_status
+from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer, save_image, store_images, get_image, get_image_storage_status, save_vectors, get_all_metadata_doc_ids, get_all_vector_doc_ids, delete_vector_document
 from AIgnite.index.paper_indexer import PaperIndexer
 from pydantic import BaseModel, validator
 import logging
@@ -459,5 +459,207 @@ async def get_image_storage_status_route(request: GetImageStorageStatusRequest) 
     except Exception as e:
         logger.error(f"Error getting image storage status for {request.doc_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get image storage status: {str(e)}")
+
+@router.post("/save_vectors/")
+async def save_vectors_route(request: SaveVectorsRequest) -> SaveVectorsResponse:
+    """Store vectors from papers to FAISS storage using AIgnite's vector storage architecture.
+    
+    This endpoint stores vectors from papers to FAISS storage.
+    The vectors are created from paper title and abstract following the format: {title} . {abstract}
+    The vector_db_id follows the format: {doc_id}_abstract as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    This endpoint supports two storage scenarios:
+    1. **Integrated storage**: Vectors stored during index_papers with vector_db configured
+    2. **Independent storage**: Vectors stored separately after metadata storage
+    
+    Args:
+        request: SaveVectorsRequest containing docsets and indexing_status parameters
+        
+    Returns:
+        SaveVectorsResponse with success status, message, and updated indexing status
+        
+    Raises:
+        HTTPException: If indexer not initialized, validation fails, or storage operation fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Convert DocSetList to List[DocSet]
+        docsets = []
+        for paper in request.docsets.docsets:
+            docsets.append(DocSet(
+                doc_id=paper.doc_id,
+                title=paper.title,
+                abstract=paper.abstract,
+                authors=paper.authors,
+                categories=paper.categories,
+                published_date=paper.published_date,
+                pdf_path=paper.pdf_path,
+                HTML_path=paper.HTML_path,
+                text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
+                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
+                metadata=paper.metadata or {},
+                comments=paper.comments
+            ))
+        
+        # Call the service function
+
+        updated_indexing_status = save_vectors(
+            indexer=paper_indexer,
+            docsets=docsets,
+            indexing_status=request.indexing_status
+        )
+        
+        return SaveVectorsResponse(
+            success=True,
+            message=f"Vectors stored successfully for {len(docsets)} papers",
+            indexing_status=updated_indexing_status,
+            papers_processed=len(docsets)
+        )
+            
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error storing vectors: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to store vectors: {str(e)}")
+
+@router.get("/get_all_metadata_doc_ids/")
+async def get_all_metadata_doc_ids_route() -> GetAllDocIdsResponse:
+    """Get all document IDs from the MetadataDB.
+    
+    This endpoint retrieves all document IDs stored in the PostgreSQL metadata database.
+    Useful for database consistency checks, identifying all indexed papers, and comparing
+    with vector database contents.
+    
+    Returns:
+        GetAllDocIdsResponse with list of document IDs and count
+        
+    Raises:
+        HTTPException: If indexer not initialized, metadata database unavailable, or retrieval fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Call the service function
+        doc_ids = get_all_metadata_doc_ids(indexer=paper_indexer)
+        
+        return GetAllDocIdsResponse(
+            success=True,
+            message=f"Retrieved {len(doc_ids)} document IDs from metadata database",
+            doc_ids=doc_ids,
+            count=len(doc_ids),
+            database_type="metadata"
+        )
+            
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting all doc_ids from metadata database: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get all doc_ids from metadata database: {str(e)}")
+
+@router.get("/get_all_vector_doc_ids/")
+async def get_all_vector_doc_ids_route() -> GetAllDocIdsResponse:
+    """Get all unique document IDs from the VectorDB.
+    
+    This endpoint retrieves all unique document IDs stored in the FAISS vector database.
+    Useful for database consistency checks, comparing with metadata database, and
+    identifying documents that have vector representations.
+    
+    Returns:
+        GetAllDocIdsResponse with list of unique document IDs and count
+        
+    Raises:
+        HTTPException: If indexer not initialized, vector database unavailable, or retrieval fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Call the service function
+        doc_ids = get_all_vector_doc_ids(indexer=paper_indexer)
+        
+        return GetAllDocIdsResponse(
+            success=True,
+            message=f"Retrieved {len(doc_ids)} unique document IDs from vector database",
+            doc_ids=doc_ids,
+            count=len(doc_ids),
+            database_type="vector"
+        )
+            
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting all doc_ids from vector database: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get all doc_ids from vector database: {str(e)}")
+
+@router.post("/delete_vector_document/")
+async def delete_vector_document_route(request: DeleteVectorDocumentRequest) -> DeleteVectorDocumentResponse:
+    """Delete all vectors for a document from the VectorDB.
+    
+    This endpoint removes all vector representations associated with a document ID
+    from the FAISS vector database. It is useful for:
+    - Database maintenance and cleanup
+    - Removing outdated or incorrect vector data
+    - Testing database synchronization scenarios
+    
+    The endpoint will:
+    1. Delete all vectors associated with the doc_id
+    2. Save the vector database to persist changes
+    3. Return the operation status
+    
+    Args:
+        request: DeleteVectorDocumentRequest containing doc_id
+        
+    Returns:
+        DeleteVectorDocumentResponse with operation status
+        
+    Raises:
+        HTTPException: If indexer not initialized, vector database unavailable, or deletion fails
+    """
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+    
+    try:
+        # Validate request
+        if not request.doc_id or not request.doc_id.strip():
+            raise HTTPException(status_code=422, detail="Document ID cannot be empty")
+        
+        doc_id = request.doc_id.strip()
+        
+        # Call the service function
+        success = delete_vector_document(indexer=paper_indexer, doc_id=doc_id)
+        
+        if success:
+            return DeleteVectorDocumentResponse(
+                success=True,
+                message=f"Successfully deleted vectors for document: {doc_id}",
+                doc_id=doc_id,
+                vectors_deleted=True
+            )
+        else:
+            return DeleteVectorDocumentResponse(
+                success=False,
+                message=f"No vectors found for document: {doc_id}",
+                doc_id=doc_id,
+                vectors_deleted=False
+            )
+            
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error deleting vectors for document {request.doc_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete vectors: {str(e)}")
 
 

@@ -8,17 +8,28 @@ import yaml
 from AIgnite.db.metadata_db import MetadataDB, Base
 from AIgnite.db.vector_db import VectorDB
 from AIgnite.db.image_db import MinioImageDB
+from minio import Minio
+from minio.error import S3Error
 
 
 # Set up logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('asyncio').setLevel(logging.WARNING)
 
 # Global database instances for cleanup
 _vector_db_instance: Optional[VectorDB] = None
 
 #DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "configs/app_config.yaml"
 
-def load_config(config_path: Optional[str] = None, set_env: bool = True) -> Dict[str, Any]:
+def load_config(config_path: Optional[str] = None, set_env: bool = True,display_storage_info: bool = False) -> Dict[str, Any]:
     """Enhanced configuration loading function with environment variable support.
     
     Args:
@@ -81,7 +92,8 @@ def load_config(config_path: Optional[str] = None, set_env: bool = True) -> Dict
         logger.info(f"Successfully loaded configuration from file: {config_path}")
         
         # Display current storage information
-        _display_storage_info(config)
+        if display_storage_info:
+            _display_storage_info(config)
         
         return config
         
@@ -120,19 +132,15 @@ def _display_storage_info(config: Dict[str, Any]) -> None:
                 logger.info(f"   📁 FAISS file size: {_format_bytes(faiss_size)}")
                 logger.info(f"   📊 Total size: {_format_bytes(total_size)}")
                 
-                # Try to get vector count (if possible without full initialization)
+                # Try to get vector count from FAISS index
                 try:
-                    # Quick check without full model loading
-                    import pickle
-                    with open(index_file, 'rb') as f:
-                        index_data = pickle.load(f)
-                        if hasattr(index_data, 'docstore') and hasattr(index_data.docstore, '_dict'):
-                            vector_count = len(index_data.docstore._dict)
-                            logger.info(f"   🔢 Vector count: {vector_count}")
-                        else:
-                            logger.info(f"   🔢 Vector count: Unable to determine")
+                    import faiss
+                    faiss_index = faiss.read_index(faiss_file)
+                    vector_count = faiss_index.ntotal
+                    logger.info(f"   🔢 Vector count: {vector_count}")
                 except Exception as e:
-                    logger.info(f"   🔢 Vector count: Unable to determine ({str(e)})")
+                    logger.debug(f"Failed to read FAISS index for vector count: {str(e)}")
+                    logger.info(f"   🔢 Vector count: Unable to determine")
             else:
                 logger.info(f"   ❌ Vector DB files incomplete or missing")
         else:
@@ -182,6 +190,58 @@ def _display_storage_info(config: Dict[str, Any]) -> None:
                     
         except Exception as e:
             logger.info(f"   ❌ Cannot connect to metadata DB: {str(e)}")
+        
+        logger.info("")
+        
+        # MinIO DB Storage Information
+        if 'minio_db' in config:
+            minio_config = config['minio_db']
+            logger.info(f"🖼️  MinIO Image Storage: {minio_config['endpoint']}")
+            logger.info(f"   📦 Bucket: {minio_config['bucket_name']}")
+            
+            # Try to connect and get MinIO storage info
+            try:
+                # Create MinIO client
+                minio_client = Minio(
+                    endpoint=minio_config['endpoint'],
+                    access_key=minio_config['access_key'],
+                    secret_key=minio_config['secret_key'],
+                    secure=minio_config.get('secure', False)
+                )
+                
+                bucket_name = minio_config['bucket_name']
+                
+                # Check if bucket exists
+                if minio_client.bucket_exists(bucket_name):
+                    logger.info(f"   ✅ MinIO bucket exists")
+                    
+                    # List all objects and calculate statistics
+                    try:
+                        objects = minio_client.list_objects(bucket_name, recursive=True)
+                        
+                        object_count = 0
+                        total_size = 0
+                        
+                        for obj in objects:
+                            object_count += 1
+                            total_size += obj.size
+                        
+                        logger.info(f"   🔢 Image object count: {object_count}")
+                        logger.info(f"   💾 Total storage size: {_format_bytes(total_size)}")
+                        
+                    except Exception as e:
+                        logger.info(f"   ⚠️  Could not retrieve object statistics: {str(e)}")
+                        
+                else:
+                    logger.info(f"   ❌ MinIO bucket does not exist")
+                    
+            except S3Error as e:
+                logger.warning(f"   ⚠️  MinIO S3 Error: {str(e)}")
+            except Exception as e:
+                logger.warning(f"   ⚠️  Cannot connect to MinIO: {str(e)}")
+        else:
+            logger.info("")
+            logger.info("🖼️  MinIO Image Storage: Not configured")
         
         logger.info("=" * 60)
         
