@@ -86,8 +86,8 @@ async function loadUserRecommendations() {
     
     try {
         // Call the backend recommendations API
-        const email = currentUser.email;
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(email)}`, {
+        const username = currentUser.username;
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
