@@ -48,11 +48,11 @@ async function initializeApp() {
         await loadUserRecommendations();
     } else {
         // Load default user recommendations with login suggestion
+        await loadDefaultUserRecommendations();
+        // Show login suggestion banner AFTER papers are rendered
         if (!window.AuthService || !window.AuthService.isLoggedIn()) {
             showLoginSuggestion();
         }
-        await loadDefaultUserRecommendations();
-
     }
 }
 
@@ -86,8 +86,8 @@ async function loadUserRecommendations() {
     
     try {
         // Call the backend recommendations API
-        const email = currentUser.email;
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(email)}`, {
+        const username = currentUser.username;
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -179,6 +179,11 @@ async function loadDefaultUserRecommendations() {
 }
 
 function showLoginSuggestion() {
+    // Check if banner already exists to prevent duplicates
+    if (document.getElementById('loginSuggestionBanner')) {
+        return;
+    }
+
     // Add a login suggestion banner at the top of papers container
     const banner = document.createElement('div');
     banner.id = 'loginSuggestionBanner';
@@ -684,12 +689,29 @@ function handleScroll() {
     }
 }
 
-function showPaperDetail(paper) {
+async function showPaperDetail(paper) {
     if (!paper) return;
-    
+
+    // Mark paper as viewed if user is logged in
+    if (window.AuthService && window.AuthService.isLoggedIn()) {
+        try {
+            const token = window.AuthService.getToken();
+            // Call API in background, don't wait for response
+            fetch(`/api/papers/${encodeURIComponent(paper.id)}/mark-viewed`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }).catch(err => console.log('Failed to mark paper as viewed:', err));
+        } catch (error) {
+            console.log('Error marking paper as viewed:', error);
+        }
+    }
+
     // Store paper information in sessionStorage for the detail page
     sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
-    
+
     // Navigate to paper detail page
     window.location.href = `paper.html?id=${paper.id}`;
 }
