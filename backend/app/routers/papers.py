@@ -294,21 +294,29 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         if not user:
             raise HTTPException(status_code=404, detail=f"用户 {username} 不存在")
 
-        # 创建推荐记录（直接使用传入的数据）
+        # 创建推荐记录（截断超过数据库限制的字段）
+        # Database limits: title(255), authors(255), url(255), submitted(255)
+        def truncate_field(value: str, max_length: int) -> str:
+            """Truncate string to max_length if it exists and exceeds limit"""
+            if value and len(value) > max_length:
+                logger.warning(f"Truncating field from {len(value)} to {max_length} characters")
+                return value[:max_length]
+            return value
+
         new_rec = UserPaperRecommendation(
             username=username,
             paper_id=rec.paper_id,
-            title=rec.title,
-            authors=rec.authors,
-            abstract=rec.abstract,
-            url=rec.url,
-            blog=rec.blog,
-            blog_abs=rec.blog_abs,
-            blog_title=rec.blog_title,
-            recommendation_reason=rec.recommendation_reason,
+            title=truncate_field(rec.title, 255),
+            authors=truncate_field(rec.authors, 255),
+            abstract=rec.abstract,  # TEXT field, no limit
+            url=truncate_field(rec.url, 255),
+            blog=rec.blog,  # TEXT field, no limit
+            blog_abs=rec.blog_abs,  # TEXT field, no limit
+            blog_title=rec.blog_title,  # TEXT field, no limit
+            recommendation_reason=rec.recommendation_reason,  # TEXT field, no limit
             relevance_score=rec.relevance_score,
-            submitted=rec.submitted,  
-            comment=rec.comment
+            submitted=truncate_field(rec.submitted, 255),
+            comment=rec.comment  # TEXT field, no limit
         )
         db.add(new_rec)
         await db.commit()

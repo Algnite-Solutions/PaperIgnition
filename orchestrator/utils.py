@@ -1,8 +1,12 @@
 import paper_pull
 #from backend.index_service import index_papers
 from AIgnite.data.docset import DocSetList, DocSet
+from AIgnite.generation.generator import LLMReranker
 import httpx
 import sys
+import asyncio
+import os
+from typing import List, Optional
 
 def check_connection_health(api_url, timeout=5.0):
     try:
@@ -44,16 +48,16 @@ def index_papers_via_api(papers, api_url):
     except Exception as e:
         print("Failed to index papers:", e)
 
-def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
+def search_papers_via_api(api_url, query, top_k=5, search_strategy='tf-idf', similarity_cutoff=0.1, filters=None):
     """Search papers using the /find_similar/ endpoint for a single query.
     Returns a list of DocSet objects corresponding to the results.
     """
     # 根据新的API结构构建payload
     payload = {
         "query": query,
-        "top_k": 2,
+        "top_k": top_k,
         "similarity_cutoff": similarity_cutoff,
-        "search_strategies": [(search_strategy, 0.0)],  # 新API使用元组格式 (strategy, threshold)
+        "search_strategies": [(search_strategy, 0)],  # Threshold must be between 0.0 and 1.0
         "filters": filters,
         "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }
@@ -68,25 +72,29 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
             score = r.get('score', r.get('similarity_score'))
             title = r.get('title', r.get('metadata', {}).get('title'))
             print(f"  doc_id: {r.get('doc_id')}, score: {score}, title: {title}")
-            
+            metadata = r.get('metadata', {})
+            print(f"    metadata: {metadata}")
             # Create DocSet instance (handle missing fields gracefully)
             try:
+                # Extract metadata - most fields are nested inside 'metadata'
+                metadata = r.get('metadata', {})
+
                 # 为缺失的必需字段提供默认值
                 docset_data = {
                     'doc_id': r.get('doc_id'),
-                    'title': title if title else 'Unknown Title',
-                    'authors': r.get('authors', []),
-                    'categories': r.get('categories', []),
-                    'published_date': r.get('published_date', ''),
-                    'abstract': r.get('abstract', ''),
-                    'pdf_path': r.get('pdf_path', ''),
-                    'HTML_path': r.get('HTML_path', ''),
-                    'comments': r.get('comments', ''),
+                    'title': title if title else metadata.get('authors', []),
+                    'authors': metadata.get('authors', []),
+                    'categories': metadata.get('categories', []),
+                    'published_date': metadata.get('published_date', ''),
+                    'abstract': metadata.get('abstract', ''),
+                    'pdf_path': metadata.get('pdf_path', ''),
+                    'HTML_path': metadata.get('HTML_path', ''),
+                    'comments': metadata.get('comments', ''),
                     'score': score  # 保留相似度分数
                 }
-                
+
                 docset = DocSet(**docset_data)
-                print(f"[DocSet] Created with title: {docset.title}")
+                print(f"[DocSet] Created: {docset.doc_id} - {docset.title}, PDF: {docset.pdf_path}, HTML: {docset.HTML_path}")
                 docsets.append(docset)
             except Exception as e:
                 print(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
@@ -97,9 +105,11 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
         return []
 
 def save_recommendations(username, papers, api_url):
+    print(f"\n💾 Saving {len(papers)} recommendations for user {username}...")
     for paper in papers:
         print(paper)
         data = {
+            "username": username,  # Include username in body
             "paper_id": paper.get("paper_id"),
             "title": paper.get("title", ""),
             "authors": paper.get("authors", ""),
@@ -114,8 +124,7 @@ def save_recommendations(username, papers, api_url):
         }
         try:
             resp = httpx.post(
-                f"{api_url}/api/papers/recommend",
-                params={"username": username},
+                f"{api_url}/api/papers/recommend?username={username}",
                 json=data,
                 timeout=100.0
             )
@@ -146,6 +155,96 @@ def fetch_daily_papers(index_api_url: str, config, job_logger):
 
     # 2. Index papers
     index_papers_via_api(papers, index_api_url)
-    
+
     # 3. Return the papers for further processing
     return papers
+
+
+async def rerank_papers_with_llm(
+    query: str,
+    papers: List[DocSet],
+    top_k: int = 10,
+    api_key: Optional[str] = None,
+    customized_prompt: Optional[str] = None
+) -> List[DocSet]:
+    """
+    Rerank papers using LLM for better relevance scoring.
+
+    This function takes a user's research interest query and a list of candidate papers,
+    then uses an LLM to evaluate and rerank them based on relevance. The LLM provides
+    more nuanced relevance scoring than traditional similarity metrics.
+
+    Args:
+        query: User's research interest or search query
+        papers: List of candidate DocSet papers from search results
+        top_k: Number of top papers to return after reranking (default: 10)
+        api_key: OpenAI/DeepSeek API key (uses env var if not provided)
+        customized_prompt: Custom prompt template for reranking (optional)
+
+    Returns:
+        List[DocSet]: Reranked papers with LLM scores added as attributes
+
+    Example:
+        >>> papers = search_papers_via_api(...)
+        >>> reranked = await rerank_papers_with_llm(
+        ...     query="I'm interested in transformer architectures",
+        ...     papers=papers,
+        ...     top_k=5
+        ... )
+    """
+    if not papers:
+        print("⚠️ No papers to rerank")
+        return []
+
+    print(f"🤖 Starting LLM reranking for {len(papers)} papers...")
+
+    try:
+        # Convert DocSet objects to dict format for reranker
+        candidates = []
+        for paper in papers:
+            candidates.append({
+                'doc_id': paper.doc_id,
+                'metadata': {
+                    'title': paper.title or 'Unknown Title',
+                    'abstract': paper.abstract or '',
+                    'authors': ', '.join(paper.authors) if isinstance(paper.authors, list) else paper.authors
+                },
+                'similarity_score': getattr(paper, 'score', 0.0)
+            })
+
+        # Initialize LLM rerancker
+        reranker = LLMReranker(
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            model_name="deepseek-chat",
+            api_base="https://api.deepseek.com/v1",
+            customized_prompt=customized_prompt
+        )
+
+        # Perform reranking
+        print(f"📊 Calling LLM API for reranking...")
+        reranked_results = await reranker.rerank(
+            query=query,
+            candidates=candidates,
+            top_k=top_k
+        )
+
+        # Convert back to DocSet objects with LLM scores
+        # Create a mapping for fast lookup
+        paper_map = {p.doc_id: p for p in papers}
+
+        result = []
+        for reranked_item in reranked_results:
+            doc_id = reranked_item.get('doc_id')
+            if doc_id in paper_map:
+                original_paper = paper_map[doc_id]
+                result.append(original_paper)
+
+        print(f"✅ LLM reranking complete: {len(result)} papers reranked and sorted")
+        return result
+
+    except Exception as e:
+        print(f"⚠️ LLM reranking failed: {e}")
+        print(f"   Returning original {len(papers)} papers without reranking")
+        import traceback
+        traceback.print_exc()
+        return papers[:top_k] if len(papers) > top_k else papers
