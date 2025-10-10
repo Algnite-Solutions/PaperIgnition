@@ -550,18 +550,9 @@
             emailInput.value = profile.email;
 
             // Update statistics
-            paperCount.textContent = profile.paperCount || 0;
-            bookmarkCount.textContent = profile.bookmarkCount || 0;
-            
-            // Calculate days since joining
-            if (profile.joinDate) {
-                const joinDate = new Date(profile.joinDate);
-                const now = new Date();
-                const daysDiff = Math.floor((now - joinDate) / (1000 * 60 * 60 * 24));
-                joinDays.textContent = daysDiff;
-            } else {
-                joinDays.textContent = '0';
-            }
+            paperCount.textContent = profile.activity_data?.viewed_count || 0;
+            bookmarkCount.textContent = profile.activity_data?.favorite_count || 0;
+            joinDays.textContent = profile.activity_data?.days_active || 0;
 
             // Update interests - handle multiple possible field names and formats
             console.log('Updating interests display with profile:', profile);

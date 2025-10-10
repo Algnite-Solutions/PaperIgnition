@@ -9,6 +9,7 @@ import httpx
 from ..models.users import User, UserPaperRecommendation
 from ..models.papers import PaperBase, PaperRecommendation
 from ..db_utils import get_db, get_index_service_url
+from ..auth.utils import get_current_user
 from minio import Minio
 from minio.error import S3Error
 from fastapi.responses import Response
@@ -93,6 +94,41 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
         papers.append(PaperBase(**paper_data))
     
     return papers
+
+@router.post("/{paper_id}/mark-viewed", status_code=status.HTTP_200_OK)
+async def mark_paper_as_viewed(
+    paper_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark a paper as viewed/read for the current user"""
+    try:
+        # Find the recommendation record for this user and paper
+        result = await db.execute(
+            select(UserPaperRecommendation).where(
+                UserPaperRecommendation.username == current_user.username,
+                UserPaperRecommendation.paper_id == paper_id
+            )
+        )
+        recommendation = result.scalar_one_or_none()
+
+        if not recommendation:
+            # If no recommendation exists, this is fine - just return success
+            # The paper might not be in the user's recommendations
+            logger.info(f"No recommendation found for user {current_user.username} and paper {paper_id}")
+            return {"message": "Paper not in recommendations", "viewed": False}
+
+        # Update the viewed status
+        recommendation.viewed = True
+        await db.commit()
+
+        logger.info(f"Marked paper {paper_id} as viewed for user {current_user.username}")
+        return {"message": "Paper marked as viewed", "viewed": True}
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error marking paper as viewed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to mark paper as viewed")
 
 def extract_image_filename(image_path: str) -> str:
     """从图片路径中提取文件名"""
