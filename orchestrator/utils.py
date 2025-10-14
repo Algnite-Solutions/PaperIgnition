@@ -4,11 +4,15 @@ from AIgnite.data.docset import DocSetList, DocSet
 import httpx
 import sys
 
-def check_connection_health(api_url, timeout=5.0):
+def check_connection_health(api_url, timeout=30.0):
     try:
+        print(f"🔍 Checking health at: {api_url}/health")
+        # 禁用代理，直接连接
         response = httpx.get(f"{api_url}/health", timeout=timeout)
+        print(f"📡 Response status: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
+            print(f"📊 Response data: {data}")
             if data.get("status") == "healthy" and data.get("indexer_ready"):
                 print("✅ Connection health check passed")
                 return True
@@ -22,6 +26,7 @@ def check_connection_health(api_url, timeout=5.0):
     except Exception as e:
         print(f"❌ Error: API server not accessible at {api_url}")
         print(f"Error details: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
     return False
 
 def index_papers_via_api(papers, api_url, store_images=False, keep_temp_image=False):
@@ -58,7 +63,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     Returns a list of DocSet objects corresponding to the results.
     """
     # 检查连接健康状态
-    health = check_connection_health(api_url, timeout=5.0)
+    health = check_connection_health(api_url, timeout=30.0)
     if not health:
         print(f"❌ 搜索服务 {api_url} 不可用，跳过查询 '{query}'")
         return []
@@ -66,7 +71,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     # 根据新的API结构构建payload
     payload = {
         "query": query,
-        "top_k": 1,
+        "top_k": 2,
         "similarity_cutoff": similarity_cutoff,
         "search_strategies": [(search_strategy, 1.5)],  # 新API使用元组格式 (strategy, threshold)
         "filters": filters,
@@ -113,7 +118,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
                 
                 # 为缺失的必需字段提供默认值，确保符合DocSet定义
                 docset_data = {
-                    'doc_id': r.get('doc_id'),
+                    'doc_id': metadata.get('doc_id'),
                     'title': metadata.get('title', 'Unknown Title'),
                     'authors': metadata.get('authors', []),
                     'categories': metadata.get('categories', []),

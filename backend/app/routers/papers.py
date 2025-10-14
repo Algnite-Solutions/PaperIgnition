@@ -58,7 +58,12 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
             UserPaperRecommendation.submitted,
             UserPaperRecommendation.recommendation_date,
             UserPaperRecommendation.viewed
-        ).where(UserPaperRecommendation.username == username)
+        )
+        .where(
+            (UserPaperRecommendation.username == username) &
+            (UserPaperRecommendation.blog.isnot(None)) &
+            (UserPaperRecommendation.blog != '')
+        )
         .order_by(UserPaperRecommendation.recommendation_date.desc())
         .limit(limit)
     )
@@ -293,7 +298,8 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         user = user_result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail=f"用户 {username} 不存在")
-
+        if rec.blog is None or rec.blog == '':
+            return {"message": "博客内容为空", "id": None}
         # 创建推荐记录（直接使用传入的数据）
         new_rec = UserPaperRecommendation(
             username=username,
@@ -308,7 +314,7 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
             recommendation_reason=rec.recommendation_reason,
             relevance_score=rec.relevance_score,
             submitted=rec.submitted,  
-            comment=rec.comment
+            comment=rec.comment,
         )
         db.add(new_rec)
         await db.commit()

@@ -164,7 +164,7 @@ class PaperIgnitionOrchestrator:
                     run_Gemini_blog_generation(batch_papers, output_path=output_path)   
                 else:
                     output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
-                    await run_batch_generation(batch_papers, output_path=output_path)
+                    run_Gemini_blog_generation(batch_papers, output_path=output_path)
             
                 logging.info(f"✅ Blog generation completed for batch {batch_start//batch_size + 1}")
                 
@@ -188,6 +188,7 @@ class PaperIgnitionOrchestrator:
                         "content": paper.abstract,
                         "blog": blog,
                         "recommendation_reason": f"This is a dummy recommendation reason for paper {paper.title}",
+                        "submitted": paper.published_date,
                         "relevance_score": 0.5
                     })
                 
@@ -223,6 +224,7 @@ class PaperIgnitionOrchestrator:
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
+            #if username !="rongcan": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = get_user_interest(username, self.backend_api_url)
@@ -251,17 +253,25 @@ class PaperIgnitionOrchestrator:
             for query in interests:
                 logging.info(f"[VECTOR] 用户 {username} 兴趣: {query}")
                 
-                # 构建过滤器，排除用户已有的论文ID
-                if existing_paper_ids:
-                    filter_params = {
-                        "exclude": {
-                            "doc_ids": existing_paper_ids
-                        }
+                # 构建过滤器，排除用户已有的论文ID，同时只包含最近3天的论文
+                from datetime import datetime, timedelta
+                
+                # 计算最近3天的日期范围
+                end_date = datetime.now().strftime('%Y-%m-%d')
+                start_date = (datetime.now() - timedelta(days=4)).strftime('%Y-%m-%d')
+                
+                filter_params = {
+                    "include": {
+                        "published_date": [start_date, end_date]
+                    },
+                    "exclude": {
+                        "doc_ids": existing_paper_ids
                     }
-                    logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
-                    papers = utils.search_papers_via_api(self.index_api_url, query, 'vector', 0.1, filter_params)
-                else:
-                    papers = utils.search_papers_via_api(self.index_api_url, query, 'vector', 0.1)
+                }
+            
+                logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID，只包含最近3天的论文 ({start_date} 到 {end_date})")
+
+                papers = utils.search_papers_via_api(self.index_api_url, query, 'vector', 0.0, filter_params)
                 
                 all_papers.extend(papers)
 
@@ -283,11 +293,21 @@ class PaperIgnitionOrchestrator:
             logging.info("Generating blog digests for users...")
             if all_papers:
                 #run_batch_generation(all_papers)
-                blog = await run_batch_generation(all_papers)
+                output_path = ""
+                if self.local_mode:
+                    output_path = "./blogsByGemini"
+                    blog = run_Gemini_blog_generation(all_papers, output_path=output_path)
+                else:
+                    output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
+                    blog = run_Gemini_blog_generation(all_papers, output_path=output_path)
                 logging.info("Digest generation complete.")
 
-                blog_abs = await run_batch_generation_abs(all_papers)
-                blog_title = await run_batch_generation_title(all_papers)
+                #blog_abs = await run_batch_generation_abs(all_papers)
+                #blog_title = await run_batch_generation_title(all_papers)
+
+                blog_abs = ""
+                blog_title = ""
+                
                 paper_infos = []
                 for i, paper in enumerate(all_papers):
                     try:
@@ -307,13 +327,14 @@ class PaperIgnitionOrchestrator:
                         "title": paper.title,
                         "authors": ", ".join(paper.authors),
                         "abstract": paper.abstract,
-                        "url": paper.HTML_path,
-                        "content": paper.abstract,  # 或其他内容
+                        "url": "https://arxiv.org/pdf/"+paper.doc_id,
+                        "content": paper.abstract,  # 这里用abs填充吧
                         "blog": blog,
                         "recommendation_reason": "This is a dummy recommendation reason for paper " + paper.title,
                         "relevance_score": 0.5,
                         "blog_abs": blog_abs_content,
                         "blog_title": blog_title_content,
+                        "submitted": paper.published_date,
                     })
 
                 # 5. Write recommendations
@@ -362,7 +383,7 @@ class PaperIgnitionOrchestrator:
                     status="partial",
                     details={"reason": "No papers were fetched"}
                 )
-                return results
+                #return results
 
             # === Step 2: Blog generation for all papers ===
             logging.info("=== Step 2: Blog generation for all papers ===")
@@ -425,7 +446,7 @@ class PaperIgnitionOrchestrator:
 # Main execution
 async def main():
     """Main function for running daily orchestration"""
-    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "true").lower() != "true"
+    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "true").lower() == "true"
     print(f"PAPERIGNITION_LOCAL_MODE: {local_mode}")
     orchestrator = PaperIgnitionOrchestrator(local_mode=local_mode)
 

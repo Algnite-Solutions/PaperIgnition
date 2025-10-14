@@ -124,7 +124,7 @@ def run_extractor_for_timeslot(start_str, end_str):
 
 
 
-def get_time_str(location = "Asia/Shanghai", count_delay = 1):
+def get_time_str(location = "Asia/Shanghai", count_delay = 2):
     # 设定本地时区（可根据需要修改）
     local_tz = ZoneInfo(location)  # 例如上海
     # 获取本地当前时间，精确到分钟
