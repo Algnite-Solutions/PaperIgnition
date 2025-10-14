@@ -273,6 +273,162 @@ def store_images(indexer: PaperIndexer, docsets: List[DocSet], indexing_status: 
         logger.error(f"Failed to store images: {str(e)}")
         raise RuntimeError(f"Failed to store images: {str(e)}")
 
+def save_vectors(indexer: PaperIndexer, docsets: List[DocSet], indexing_status: Dict[str, Dict[str, bool]] = None) -> Dict[str, Dict[str, bool]]:
+    """Store vectors from papers to FAISS storage using AIgnite's vector storage architecture.
+    
+    This function stores vectors from papers to FAISS storage.
+    The vectors are created from paper title and abstract following the format: {title} . {abstract}
+    The vector_db_id follows the format: {doc_id}_abstract as described in the 
+    INDEX_PAPER_STORAGE_LOGIC.md documentation.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        docsets: List of DocSet objects containing papers
+        indexing_status: Optional dictionary to track indexing status for each paper
+        
+    Returns:
+        Dictionary mapping doc_ids to their indexing status for each database type
+        
+    Raises:
+        RuntimeError: If indexer is not initialized or vector storage fails
+    """
+    try:
+        # Check if indexer is initialized
+        if indexer is None:
+            raise RuntimeError("Indexer not initialized")
+        
+        # Check if vector_db is available
+        if indexer.vector_db is None:
+            raise RuntimeError("Vector database is not initialized")
+        
+        # Call the indexer's save_vectors method
+        updated_indexing_status = indexer.save_vectors(
+            papers=docsets,
+            indexing_status=indexing_status
+        )
+        
+        return updated_indexing_status
+        
+    except Exception as e:
+        logger.error(f"Failed to save vectors: {str(e)}")
+        raise RuntimeError(f"Failed to save vectors: {str(e)}")
+
+def get_all_metadata_doc_ids(indexer: PaperIndexer) -> List[str]:
+    """Get all document IDs from the MetadataDB.
+    
+    This function retrieves all document IDs stored in the PostgreSQL metadata database.
+    Useful for database consistency checks and identifying indexed papers.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        
+    Returns:
+        List of all document IDs in the metadata database
+        
+    Raises:
+        RuntimeError: If metadata database is not initialized
+    """
+    try:
+        # Check if indexer is initialized
+        if indexer is None:
+            raise RuntimeError("Indexer not initialized")
+        
+        # Check if metadata_db is available
+        if indexer.metadata_db is None:
+            raise RuntimeError("Metadata database is not initialized")
+        
+        # Call the metadata_db's get_all_doc_ids method
+        doc_ids = indexer.metadata_db.get_all_doc_ids()
+        
+        logger.info(f"Retrieved {len(doc_ids)} document IDs from metadata database")
+        return doc_ids
+        
+    except Exception as e:
+        logger.error(f"Failed to get all doc_ids from metadata database: {str(e)}")
+        raise RuntimeError(f"Failed to get all doc_ids from metadata database: {str(e)}")
+
+def get_all_vector_doc_ids(indexer: PaperIndexer) -> List[str]:
+    """Get all unique document IDs from the VectorDB.
+    
+    This function retrieves all unique document IDs stored in the FAISS vector database.
+    Useful for database consistency checks and comparing with metadata database.
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        
+    Returns:
+        List of unique document IDs in the vector database
+        
+    Raises:
+        RuntimeError: If vector database is not initialized
+    """
+    try:
+        # Check if indexer is initialized
+        if indexer is None:
+            raise RuntimeError("Indexer not initialized")
+        
+        # Check if vector_db is available
+        if indexer.vector_db is None:
+            raise RuntimeError("Vector database is not initialized")
+        
+        # Call the vector_db's get_all_doc_ids method
+        doc_ids = indexer.vector_db.get_all_doc_ids()
+        
+        logger.info(f"Retrieved {len(doc_ids)} unique document IDs from vector database")
+        return doc_ids
+        
+    except Exception as e:
+        logger.error(f"Failed to get all doc_ids from vector database: {str(e)}")
+        raise RuntimeError(f"Failed to get all doc_ids from vector database: {str(e)}")
+
+def delete_vector_document(indexer: PaperIndexer, doc_id: str) -> bool:
+    """Delete all vectors for a document from VectorDB.
+    
+    This function removes all vector representations associated with a document ID
+    from the FAISS vector database. This is useful for:
+    - Database maintenance and cleanup
+    - Removing outdated or incorrect vector data
+    - Testing database synchronization scenarios
+    
+    Args:
+        indexer: PaperIndexer instance with configured databases
+        doc_id: Document ID whose vectors should be deleted
+        
+    Returns:
+        True if vectors were successfully deleted, False otherwise
+        
+    Raises:
+        RuntimeError: If indexer or vector database is not initialized
+    """
+    try:
+        # Check if indexer is initialized
+        if indexer is None:
+            raise RuntimeError("Indexer not initialized")
+        
+        # Check if vector_db is available
+        if indexer.vector_db is None:
+            raise RuntimeError("Vector database is not initialized")
+        
+        # Call the vector_db's delete_document method
+        success = indexer.vector_db.delete_document(doc_id)
+        
+        if success:
+            # Save the vector database after deletion
+            save_success = indexer.vector_db.save()
+            if not save_success:
+                logger.warning(f"Vectors deleted for {doc_id} but failed to save vector database")
+                return False
+            
+            logger.info(f"Successfully deleted vectors for document: {doc_id}")
+            return True
+        else:
+            logger.warning(f"No vectors found to delete for document: {doc_id}")
+            return False
+        
+    except Exception as e:
+        logger.error(f"Failed to delete vectors for document {doc_id}: {str(e)}")
+        raise RuntimeError(f"Failed to delete vectors for document {doc_id}: {str(e)}")
+
 
 
 

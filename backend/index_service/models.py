@@ -83,8 +83,8 @@ class CustomerQuery(BaseModel):
                 strategy_type, threshold = strategy_tuple
                 if strategy_type not in ['vector', 'tf-idf']:
                     raise ValueError("Strategy type must be 'vector' or 'tf-idf'")
-                if not isinstance(threshold, (int, float)) or not (0.0 <= threshold <= 1.0):
-                    raise ValueError("Threshold must be a number between 0.0 and 1.0")
+                if not isinstance(threshold, (int, float)) or not (0.0 <= threshold <= 2.0):
+                    raise ValueError("Threshold must be a number between 0.0 and 2.0")
         return v
 
     @validator('result_include_types')
@@ -189,3 +189,50 @@ class GetImageStorageStatusResponse(BaseModel):
     message: str = Field(..., description="Response message")
     storage_status: Optional[Dict[str, Any]] = Field(default=None, description="Image storage status for the document")
     doc_id: Optional[str] = Field(default=None, description="Document ID that was requested")
+
+
+# --- Vector-related Models ---
+
+class SaveVectorsRequest(BaseModel):
+    docsets: DocSetList = Field(..., description="List of DocSet objects containing papers")
+    indexing_status: Optional[Dict[str, Dict[str, bool]]] = Field(
+        default=None, 
+        description="Optional dictionary to track indexing status for each paper"
+    )
+
+class SaveVectorsResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    indexing_status: Optional[Dict[str, Dict[str, bool]]] = Field(
+        default=None, 
+        description="Updated indexing status for each paper"
+    )
+    papers_processed: int = Field(..., description="Number of papers processed")
+
+
+# --- Document ID retrieval Models ---
+
+class GetAllDocIdsResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    doc_ids: List[str] = Field(..., description="List of all document IDs")
+    count: int = Field(..., description="Total number of document IDs")
+    database_type: str = Field(..., description="Database type: 'metadata' or 'vector'")
+
+
+# --- Vector Document Deletion Models ---
+
+class DeleteVectorDocumentRequest(BaseModel):
+    doc_id: str = Field(..., description="Document ID to delete from vector database")
+    
+    @validator('doc_id')
+    def doc_id_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Document ID cannot be empty')
+        return v.strip()
+
+class DeleteVectorDocumentResponse(BaseModel):
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    doc_id: str = Field(..., description="Document ID that was deleted")
+    vectors_deleted: bool = Field(..., description="Whether vectors were actually deleted")

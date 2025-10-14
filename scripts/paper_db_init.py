@@ -123,7 +123,7 @@ def init_databases(
 if __name__ == "__main__":
     # When running this script directly, initialize the databases
     #try:
-    config_path = 'backend/configs/test_config.yaml'
+    config_path = 'backend/configs/test_config_gf.yaml'
     config = load_config(config_path)
     print(config)
     vector_db, metadata_db, image_db = init_databases(config)

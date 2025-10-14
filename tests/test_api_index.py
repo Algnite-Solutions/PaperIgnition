@@ -62,7 +62,7 @@ from backend.index_service.models import IndexPapersRequest
 import sqlalchemy
 
 # 使用测试专用配置文件
-config = load_config("backend/configs/test_config.yaml")
+config = load_config("backend/configs/test_config_gf.yaml")
 
 BASE_URL = config['host']
 
@@ -374,12 +374,13 @@ async def test_find_similar_2():
         no_result_query = {
             "query": "quantum entanglement", 
             "top_k": 5, 
-            "search_strategies": [("vector", 0.8)],
-            "result_include_types": ["metadata"]
+            "search_strategies": [("vector", 1.5)],
+            "result_include_types": ["metadata","search_parameters"]
         }
         response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
         assert response.status_code == 200, "No-result search failed"
         results = response.json()
+        print(results)
         assert len(results) == 0, f"Expected 0 results, got {len(results)} for no-result search"
         print(f"✅ [2 papers] No-result search: Found {len(results)} results for query '{no_result_query['query']}'")
 
@@ -389,7 +390,7 @@ async def test_find_similar_all():
         vector_query = {
             "query": "deep learning", 
             "top_k": 5, 
-            "search_strategies": [("vector", 0.8)],
+            "search_strategies": [("vector", 1.5)],
             "result_include_types": ["metadata", "search_parameters"]
         }
         response = await client.post(f"{BASE_URL}/find_similar/", json=vector_query, timeout=10.0)
@@ -434,8 +435,8 @@ async def test_find_similar_all():
         no_result_query = {
             "query": "quantum entanglement", 
             "top_k": 5, 
-            "search_strategies": [("vector", 0.8)],
-            "result_include_types": ["metadata"]
+            "search_strategies": [("vector", 1.5)],
+            "result_include_types": ["metadata","search_parameters"]
         }
         response = await client.post(f"{BASE_URL}/find_similar/", json=no_result_query, timeout=10.0)
         assert response.status_code == 200, "No-result search failed"
