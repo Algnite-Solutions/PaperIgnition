@@ -53,10 +53,22 @@ def get_user_interest(username: str):
 
 # Use this
 def run_Gemini_blog_generation(papers, output_path="./blogByGemini"):
+    """
+    Generate blogs using Gemini API.
+    Note: Free tier has 250 requests/day limit.
+    """
+    print(f"⚠️  Gemini API free tier: 250 requests/day limit")
+    print(f"📝 Generating {len(papers)} blogs...")
     generator = GeminiBlogGenerator(
-        data_path="./imgs/", 
+        data_path="./imgs/",
         output_path=output_path)
-    blog = generator.generate_digest(papers)
+    try:
+        blog = generator.generate_digest(papers)
+        return blog
+    except Exception as e:
+        print(f"❌ Gemini blog generation failed: {e}")
+        print(f"💡 Suggestion: Wait 24 hours for quota reset, or upgrade Gemini API plan")
+        raise
 
 
 
