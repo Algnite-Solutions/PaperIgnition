@@ -15,6 +15,7 @@ class PaperBase(BaseModel):
     submitted: Optional[str] = None
     recommendation_date: Optional[str] = None
     viewed: bool = False
+    blog_liked: int = 0  # 1=liked, -1=disliked, 0=no feedback
 
     @classmethod
     def from_docset(cls, docset: DocSet):
@@ -49,8 +50,13 @@ class PaperRecommendation(BaseModel):
     submitted: Optional[str] = None
     comment: Optional[str] = None
     is_saved: bool = False
-    blog_liked: bool = False
+    blog_liked: int = 0
     blog_feedback_date: Optional[str] = None
+
+# Request model for feedback
+class FeedbackRequest(BaseModel):
+    username: str
+    blog_liked: int = 0  # 1=liked, -1=disliked, 0=no feedback
 
 # 模拟论文数据
 MOCK_PAPERS = [

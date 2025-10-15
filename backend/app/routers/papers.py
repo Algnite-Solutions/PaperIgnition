@@ -1,21 +1,20 @@
-from typing import List
+from typing import List, Optional
 import re
 import logging
 from sqlalchemy.future import select
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
+from pydantic import BaseModel
+from datetime import datetime, timezone
 
 from ..models.users import User, UserPaperRecommendation
-from ..models.papers import PaperBase, PaperRecommendation
+from ..models.papers import PaperBase, PaperRecommendation, FeedbackRequest
 from ..db_utils import get_db, get_index_service_url
 from ..auth.utils import get_current_user
 from minio import Minio
 from minio.error import S3Error
 from fastapi.responses import Response
-from ..models.users import User, UserPaperRecommendation
-from ..models.papers import PaperBase, PaperRecommendation
-from ..db_utils import get_db
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -57,13 +56,14 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
             UserPaperRecommendation.url,
             UserPaperRecommendation.submitted,
             UserPaperRecommendation.recommendation_date,
-            UserPaperRecommendation.viewed
+            UserPaperRecommendation.viewed,
+            UserPaperRecommendation.blog_liked
         ).where(UserPaperRecommendation.username == username)
         .order_by(UserPaperRecommendation.recommendation_date.desc())
         .limit(limit)
     )
     recommendations = result.all()
-    
+
     papers = []
     for rec in recommendations:
         # 确保所有字段都有值，避免None值导致验证错误
@@ -75,6 +75,7 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
         submitted = rec[5]  # submitted允许为None
         recommendation_date = rec[6]  # recommendation_date允许为None
         viewed = rec[7] or False  # viewed默认为False
+        blog_liked = rec[8] if rec[8] is not None else 0  # blog_liked默认为0
 
         # 构建符合PaperBase模型的数据
         paper_data = {
@@ -84,7 +85,8 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
             "abstract": abstract,
             "submitted": submitted,
             "recommendation_date": recommendation_date.isoformat() if recommendation_date else None,
-            "viewed": viewed
+            "viewed": viewed,
+            "blog_liked": blog_liked
         }
 
         # 只有当url不为None时才添加到字典
@@ -94,6 +96,45 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
         papers.append(PaperBase(**paper_data))
     
     return papers
+
+@router.put("/recommendations/{paper_id}/feedback", status_code=status.HTTP_200_OK)
+async def update_paper_feedback(
+    paper_id: str,
+    feedback: FeedbackRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update blog feedback (like/dislike) for a paper recommendation"""
+    try:
+        # Find all recommendation records (there might be duplicates)
+        result = await db.execute(
+            select(UserPaperRecommendation)
+            .where(UserPaperRecommendation.username == feedback.username)
+            .where(UserPaperRecommendation.paper_id == paper_id)
+            .order_by(UserPaperRecommendation.recommendation_date.desc())
+        )
+        recommendations = result.scalars().all()
+
+        if not recommendations:
+            raise HTTPException(status_code=404, detail=f"Recommendation not found for paper {paper_id}")
+
+        # Update blog_liked field for all matching records
+        updated_count = 0
+        for recommendation in recommendations:
+            recommendation.blog_liked = feedback.blog_liked
+            recommendation.blog_feedback_date = datetime.now(timezone.utc)
+            updated_count += 1
+
+        await db.commit()
+
+        logger.info(f"Updated blog feedback for paper {paper_id}, username {feedback.username}: {feedback.blog_liked} ({updated_count} records)")
+        return {"message": "Feedback updated successfully", "blog_liked": feedback.blog_liked, "updated_count": updated_count}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error updating paper feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update feedback")
 
 @router.post("/{paper_id}/mark-viewed", status_code=status.HTTP_200_OK)
 async def mark_paper_as_viewed(

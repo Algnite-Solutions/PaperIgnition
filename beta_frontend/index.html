@@ -143,6 +143,7 @@
             background-color: var(--bg-color);
             transition: all 0.2s ease;
             cursor: pointer;
+            position: relative;
         }
 
         .paper-card:hover {
@@ -258,11 +259,60 @@
         }
 
         .paper-actions {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 8px;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2px 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--hover-bg);
+            transform: scale(1.1);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-btn svg {
             flex-shrink: 0;
+            display: block;
+        }
+
+        .like-btn.active {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .dislike-btn.active {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .favorite-btn.active {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
         }
 
         .bookmark-btn {
