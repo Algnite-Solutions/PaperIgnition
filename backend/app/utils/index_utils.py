@@ -1,6 +1,6 @@
 import requests
 from openai import OpenAI
-import re
+import json
 import logging
 logger = logging.getLogger(__name__)
 
@@ -40,39 +40,38 @@ def get_users_with_empty_rewrite_interest(backend_api="http://localhost:8000/api
     return resp.json()
 
 def translate_text(client, text):
-    """使用Qwen翻译文本，并处理输出以获取纯翻译结果"""
+    system_prompt = """You are an expert in computer science research and academic interest refinement.
+
+Your task is to enrich and expand user interest descriptions to make them more comprehensive and searchable for academic paper recommendations.
+
+Given a brief user interest description (in any language), you should:
+1. Translate to English if needed
+2. Identify core topics and subtopics
+3. Add related technical terms and synonyms
+4. Include relevant methodologies and approaches
+5. Maintain the original intent while expanding coverage
+
+IMPORTANT: ALL output must be in English, including the enriched description.
+
+ONLY return the enriched interest description as a JSON object with the following structure:
+{
+    "enriched": "expanded English description with technical terms"
+}
+"""
+
     try:
         resp = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": "You are a professional translator. Translate the Chinese text to English accurately. ONLY return the translated English text without ANY explanations, thoughts, or additional content. Do not include phrases like 'Translation:', 'Here's the translation:', etc."},
-                {"role": "user", "content": f"Translate this Chinese text to English: {text}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Enrich this computer science interest description: {text}"}
             ],
-            max_tokens=512,
-            temperature=0.3
+            response_format={'type': 'json_object'},
+            max_tokens=512
         )
         raw_result = resp.choices[0].message.content
-
-        # Remove the <think> block using regex and strip surrounding whitespace
-        cleaned_result = re.sub(r'<think>.*?</think>', '', raw_result, flags=re.DOTALL).strip()
-        
-        # 移除常见的前缀
-        prefixes = [
-            "Translation:", "Here's the translation:", "Translated text:", 
-            "English translation:", "The English translation is:", 
-            "Translating to English:"
-        ]
-        
-        for prefix in prefixes:
-            if cleaned_result.startswith(prefix):
-                cleaned_result = cleaned_result[len(prefix):].strip()
-        
-        # 如果有引号包裹，去掉引号
-        if (cleaned_result.startswith('"') and cleaned_result.endswith('"')) or \
-           (cleaned_result.startswith("'") and cleaned_result.endswith("'")):
-            cleaned_result = cleaned_result[1:-1].strip()
-        
-        return cleaned_result
+        output = json.loads(raw_result)
+        return output["enriched"]
     except Exception as e:
         print(f"翻译失败: {e}")
         return None

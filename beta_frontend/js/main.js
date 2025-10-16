@@ -966,11 +966,15 @@ function handleSearch(event) {
 
 function handleScroll() {
     if (isLoading) return;
-    
+
+    // Don't trigger infinite scroll for non-logged-in users (they see default BlogBot papers)
+    if (!window.AuthService || !window.AuthService.isLoggedIn()) {
+        return;
+    }
+
     const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
     if (scrollTop + clientHeight >= scrollHeight - 5) {
-        // Load more papers (in a real app, this would fetch the next page)
-        // For demo purposes, we'll just show the same papers
+        // Load more papers for logged-in users
         if (currentPapers.length > 0 && currentPapers.length < 20) {
             loadPapers(true);
         }
