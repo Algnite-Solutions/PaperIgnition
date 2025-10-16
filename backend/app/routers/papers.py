@@ -75,7 +75,7 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
         submitted = rec[5]  # submitted允许为None
         recommendation_date = rec[6]  # recommendation_date允许为None
         viewed = rec[7] or False  # viewed默认为False
-        blog_liked = rec[8] if rec[8] is not None else 0  # blog_liked默认为0
+        blog_liked = rec[8]  # blog_liked可以为None
 
         # 构建符合PaperBase模型的数据
         paper_data = {

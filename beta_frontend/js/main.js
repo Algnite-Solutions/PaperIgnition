@@ -112,7 +112,7 @@ async function loadUserRecommendations() {
             thumbnail: 'Paper',
             viewed: paper.viewed || false,
             recommendationDate: paper.recommendation_date,
-            blog_liked: paper.blog_liked || 0, // 1 = liked, -1 = disliked, 0 = no feedback
+            blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
 
         // Deduplicate papers by ID (keep the most recent recommendation)
@@ -175,7 +175,7 @@ async function loadDefaultUserRecommendations() {
             thumbnail: 'Paper',
             viewed: paper.viewed || false,
             recommendationDate: paper.recommendation_date,
-            blog_liked: paper.blog_liked || 0, // 1 = liked, -1 = disliked, 0 = no feedback
+            blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
 
         // Deduplicate papers by ID (keep the most recent recommendation)
@@ -358,12 +358,12 @@ function createPaperCard(paper) {
     let isLiked, isDisliked;
 
     if (!isLoggedIn) {
-        const likeState = parseInt(localStorage.getItem(`paper_${paper.id}_liked`) || '0');
-        isLiked = likeState === 1;
-        isDisliked = likeState === -1;
+        const likeState = localStorage.getItem(`paper_${paper.id}_liked`);
+        isLiked = likeState === 'true';
+        isDisliked = likeState === 'false';
     } else {
-        isLiked = paper.blog_liked === 1;
-        isDisliked = paper.blog_liked === -1;
+        isLiked = paper.blog_liked === true;
+        isDisliked = paper.blog_liked === false;
     }
 
     const isFavorited = bookmarkedPapers.has(paper.id);
@@ -442,15 +442,15 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
 
     if (!isLoggedIn) {
         // For non-logged in users, use localStorage
-        const currentLikeState = parseInt(localStorage.getItem(`paper_${paperId}_liked`) || '0');
-        const actionValue = action === 'like' ? 1 : -1;
-        const newState = (currentLikeState === actionValue) ? 0 : actionValue;
+        const currentLikeState = localStorage.getItem(`paper_${paperId}_liked`);
+        const actionValue = action === 'like' ? 'true' : 'false';
+        const newState = (currentLikeState === actionValue) ? null : actionValue;
 
-        localStorage.setItem(`paper_${paperId}_liked`, newState.toString());
-
-        if (newState === 0) {
+        if (newState === null) {
+            localStorage.removeItem(`paper_${paperId}_liked`);
             activeBtn.classList.remove('active');
         } else {
+            localStorage.setItem(`paper_${paperId}_liked`, newState);
             activeBtn.classList.add('active');
             oppositeBtn.classList.remove('active');
         }
@@ -470,10 +470,10 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
         }
         const username = currentUser.username;
 
-        // Determine new blog_liked value: 1=like, -1=dislike, 0=neutral
+        // Determine new blog_liked value: true=like, false=dislike, null=neutral
         const currentState = activeBtn.classList.contains('active');
-        const actionValue = action === 'like' ? 1 : -1;
-        const blogLiked = currentState ? 0 : actionValue;
+        const actionValue = action === 'like' ? true : false;
+        const blogLiked = currentState ? null : actionValue;
 
         const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(paperId)}/feedback`, {
             method: 'PUT',
@@ -493,7 +493,7 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
         }
 
         // Update UI
-        if (blogLiked === 0) {
+        if (blogLiked === null) {
             activeBtn.classList.remove('active');
         } else {
             activeBtn.classList.add('active');
