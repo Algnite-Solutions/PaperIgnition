@@ -85,6 +85,16 @@ async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
     try:
         docsets = []
         for paper in request.docsets.docsets:
+            # 修改figure_chunks的id格式为Figure{number}.png
+            modified_figure_chunks = []
+            figure_counter = 1
+            for chunk in paper.figure_chunks:
+                # 创建新的FigureChunk，使用Figure{number}.png格式的id
+                new_chunk_data = chunk.dict()
+                new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                modified_figure_chunks.append(FigureChunk(**new_chunk_data))
+                figure_counter += 1
+            
             docsets.append(DocSet(
                 doc_id=paper.doc_id,
                 title=paper.title,
@@ -95,7 +105,7 @@ async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
                 pdf_path=paper.pdf_path,
                 HTML_path=paper.HTML_path,
                 text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
-                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                figure_chunks=modified_figure_chunks,
                 table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
                 metadata=paper.metadata or {},
                 comments=paper.comments
@@ -324,6 +334,16 @@ async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse
         # Convert DocSetList to List[DocSet]
         docsets = []
         for paper in request.docsets.docsets:
+            # 修改figure_chunks的id格式为Figure{number}.png
+            modified_figure_chunks = []
+            figure_counter = 1
+            for chunk in paper.figure_chunks:
+                # 创建新的FigureChunk，使用Figure{number}.png格式的id
+                new_chunk_data = chunk.dict()
+                new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                modified_figure_chunks.append(FigureChunk(**new_chunk_data))
+                figure_counter += 1
+            
             docsets.append(DocSet(
                 doc_id=paper.doc_id,
                 title=paper.title,
@@ -334,7 +354,7 @@ async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse
                 pdf_path=paper.pdf_path,
                 HTML_path=paper.HTML_path,
                 text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
-                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                figure_chunks=modified_figure_chunks,
                 table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
                 metadata=paper.metadata or {},
                 comments=paper.comments
