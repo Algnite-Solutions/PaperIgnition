@@ -85,13 +85,19 @@ async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
     try:
         docsets = []
         for paper in request.docsets.docsets:
-            # 修改figure_chunks的id格式为Figure{number}.png
+            # 修改figure_chunks的id格式，从title中提取下划线之后的部分
             modified_figure_chunks = []
             figure_counter = 1
             for chunk in paper.figure_chunks:
-                # 创建新的FigureChunk，使用Figure{number}.png格式的id
+                # 从title中提取下划线之后的部分作为图片名称
                 new_chunk_data = chunk.dict()
-                new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                if '_' in chunk.title:
+                    # 提取下划线之后的部分，并添加.png扩展名
+                    figure_name = chunk.title.split('_', 1)[1] + '.png'
+                    new_chunk_data['id'] = figure_name
+                else:
+                    # 如果没有下划线，使用计数器
+                    new_chunk_data['id'] = f"Figure{figure_counter}.png"
                 modified_figure_chunks.append(FigureChunk(**new_chunk_data))
                 figure_counter += 1
             
@@ -334,13 +340,19 @@ async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse
         # Convert DocSetList to List[DocSet]
         docsets = []
         for paper in request.docsets.docsets:
-            # 修改figure_chunks的id格式为Figure{number}.png
+            # 修改figure_chunks的id格式，从title中提取下划线之后的部分
             modified_figure_chunks = []
             figure_counter = 1
             for chunk in paper.figure_chunks:
-                # 创建新的FigureChunk，使用Figure{number}.png格式的id
+                # 从title中提取下划线之后的部分作为图片名称
                 new_chunk_data = chunk.dict()
-                new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                if '_' in chunk.title:
+                    # 提取下划线之后的部分，并添加.png扩展名
+                    figure_name = chunk.title.split('_', 1)[1] + '.png'
+                    new_chunk_data['id'] = figure_name
+                else:
+                    # 如果没有下划线，使用计数器
+                    new_chunk_data['id'] = f"Figure{figure_counter}.png"
                 modified_figure_chunks.append(FigureChunk(**new_chunk_data))
                 figure_counter += 1
             
