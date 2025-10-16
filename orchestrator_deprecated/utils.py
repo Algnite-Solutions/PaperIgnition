@@ -41,9 +41,9 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     # 根据新的API结构构建payload
     payload = {
         "query": query,
-        "top_k": 2,
+        "top_k": 1,
         "similarity_cutoff": similarity_cutoff,
-        "search_strategies": [(search_strategy, 0.0)],  # 新API使用元组格式 (strategy, threshold)
+        "search_strategies": [(search_strategy, 1.5)],  # 新API使用元组格式 (strategy, threshold)
         "filters": filters,
         "result_include_types": ["metadata", "text_chunks"]  # 使用正确的结果类型
     }

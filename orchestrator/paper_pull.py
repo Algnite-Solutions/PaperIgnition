@@ -22,7 +22,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 3)
+    time_slots = divide_a_day_into(time, 1)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
@@ -74,9 +74,6 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
-                    i += 1
-                    if i > 3:
-                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")
@@ -127,7 +124,7 @@ def run_extractor_for_timeslot(start_str, end_str):
 
 
 
-def get_time_str(location = "Asia/Shanghai", count_delay = 1):
+def get_time_str(location = "Asia/Shanghai", count_delay = 2):
     # 设定本地时区（可根据需要修改）
     local_tz = ZoneInfo(location)  # 例如上海
     # 获取本地当前时间，精确到分钟
