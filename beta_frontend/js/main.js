@@ -102,7 +102,7 @@ async function loadUserRecommendations() {
         const papers = await response.json();
 
         // Transform backend data to match frontend format
-        currentPapers = papers.map(paper => ({
+        const transformedPapers = papers.map(paper => ({
             id: paper.id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
@@ -112,7 +112,18 @@ async function loadUserRecommendations() {
             thumbnail: 'Paper',
             viewed: paper.viewed || false,
             recommendationDate: paper.recommendation_date,
+            blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
+
+        // Deduplicate papers by ID (keep the most recent recommendation)
+        const paperMap = new Map();
+        transformedPapers.forEach(paper => {
+            if (!paperMap.has(paper.id) ||
+                new Date(paper.recommendationDate) > new Date(paperMap.get(paper.id).recommendationDate)) {
+                paperMap.set(paper.id, paper);
+            }
+        });
+        currentPapers = Array.from(paperMap.values());
         
         renderPapers();
         
@@ -154,7 +165,7 @@ async function loadDefaultUserRecommendations() {
 
         const papers = await response.json();
 
-        currentPapers = papers.map(paper => ({
+        const transformedPapers = papers.map(paper => ({
             id: paper.id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
@@ -164,7 +175,18 @@ async function loadDefaultUserRecommendations() {
             thumbnail: 'Paper',
             viewed: paper.viewed || false,
             recommendationDate: paper.recommendation_date,
+            blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
+
+        // Deduplicate papers by ID (keep the most recent recommendation)
+        const paperMap = new Map();
+        transformedPapers.forEach(paper => {
+            if (!paperMap.has(paper.id) ||
+                new Date(paper.recommendationDate) > new Date(paperMap.get(paper.id).recommendationDate)) {
+                paperMap.set(paper.id, paper);
+            }
+        });
+        currentPapers = Array.from(paperMap.values());
 
         renderPapers();
 
@@ -327,16 +349,32 @@ function createPaperCard(paper) {
     const card = document.createElement('article');
     card.className = 'paper-card';
     card.dataset.paperId = paper.id;
-    
-    // 移除了收藏状态检查，因为不再显示Save按钮
-    
+
     const viewedIndicator = paper.viewed ? '<span class="viewed-indicator">👁️ Viewed</span>' : '<span class="unviewed-indicator">📄 New</span>';
+
+    // Check if paper is liked/disliked/favorited (from paper data or localStorage)
+    // For non-logged-in users, check localStorage first
+    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
+    let isLiked, isDisliked;
+
+    if (!isLoggedIn) {
+        const likeState = localStorage.getItem(`paper_${paper.id}_liked`);
+        isLiked = likeState === 'true';
+        isDisliked = likeState === 'false';
+    } else {
+        isLiked = paper.blog_liked === true;
+        isDisliked = paper.blog_liked === false;
+    }
+
+    const isFavorited = bookmarkedPapers.has(paper.id);
 
     card.innerHTML = `
         <div class="paper-content">
             <div class="paper-header">
                 <h2 class="paper-title">${paper.title}</h2>
-                ${viewedIndicator}
+                <div class="paper-header-actions">
+                    ${viewedIndicator}
+                </div>
             </div>
             <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
             <p class="paper-abstract">${paper.abstract}</p>
@@ -347,14 +385,264 @@ function createPaperCard(paper) {
                 ${paper.url ? `<span>•</span><a href="${paper.url}" target="_blank" class="paper-link" onclick="event.stopPropagation()">Paper Link</a>` : ''}
             </div>
         </div>
+        <div class="paper-actions">
+            <button class="action-btn like-btn ${isLiked ? 'active' : ''}" data-action="like" title="Like this paper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                </svg>
+            </button>
+            <button class="action-btn dislike-btn ${isDisliked ? 'active' : ''}" data-action="dislike" title="Dislike this paper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                </svg>
+            </button>
+            <button class="action-btn favorite-btn ${isFavorited ? 'active' : ''}" data-action="favorite" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+            </button>
+        </div>
     `;
-    
+
     // Add click handler for paper details
     card.addEventListener('click', (e) => {
+        // Don't open details if clicking on action buttons
+        if (e.target.closest('.action-btn') || e.target.closest('.paper-link')) {
+            return;
+        }
         showPaperDetail(paper);
     });
-    
+
+    // Add handlers for action buttons
+    const likeBtn = card.querySelector('.like-btn');
+    const dislikeBtn = card.querySelector('.dislike-btn');
+    const favoriteBtn = card.querySelector('.favorite-btn');
+
+    likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlePaperAction(paper.id, 'like', likeBtn, dislikeBtn);
+    });
+
+    dislikeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlePaperAction(paper.id, 'dislike', dislikeBtn, likeBtn);
+    });
+
+    favoriteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleFavoriteAction(paper.id, favoriteBtn);
+    });
+
     return card;
+}
+
+// Handle like/dislike actions
+async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
+    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
+
+    if (!isLoggedIn) {
+        // For non-logged in users, use localStorage
+        const currentLikeState = localStorage.getItem(`paper_${paperId}_liked`);
+        const actionValue = action === 'like' ? 'true' : 'false';
+        const newState = (currentLikeState === actionValue) ? null : actionValue;
+
+        if (newState === null) {
+            localStorage.removeItem(`paper_${paperId}_liked`);
+            activeBtn.classList.remove('active');
+        } else {
+            localStorage.setItem(`paper_${paperId}_liked`, newState);
+            activeBtn.classList.add('active');
+            oppositeBtn.classList.remove('active');
+        }
+        return;
+    }
+
+    // For logged in users, call backend API
+    try {
+        const token = window.AuthService.getToken();
+        if (!token) {
+            throw new Error('No authentication token available');
+        }
+
+        const currentUser = window.AuthService.getCurrentUser();
+        if (!currentUser || !currentUser.username) {
+            throw new Error('Username not available');
+        }
+        const username = currentUser.username;
+
+        // Determine new blog_liked value: true=like, false=dislike, null=neutral
+        const currentState = activeBtn.classList.contains('active');
+        const actionValue = action === 'like' ? true : false;
+        const blogLiked = currentState ? null : actionValue;
+
+        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(paperId)}/feedback`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                blog_liked: blogLiked
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        // Update UI
+        if (blogLiked === null) {
+            activeBtn.classList.remove('active');
+        } else {
+            activeBtn.classList.add('active');
+            oppositeBtn.classList.remove('active');
+        }
+
+        // Update paper data in currentPapers
+        const paper = currentPapers.find(p => p.id === paperId);
+        if (paper) {
+            paper.blog_liked = blogLiked;
+        }
+
+    } catch (error) {
+        console.error('Error updating paper feedback:', error);
+        showErrorMessage('Failed to update feedback: ' + error.message);
+    }
+}
+
+// Handle favorite action
+async function handleFavoriteAction(paperId, btn) {
+    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
+
+    if (!isLoggedIn) {
+        // For non-logged in users, use localStorage
+        if (bookmarkedPapers.has(paperId)) {
+            bookmarkedPapers.delete(paperId);
+            btn.classList.remove('active');
+            btn.querySelector('svg').setAttribute('fill', 'none');
+            btn.setAttribute('title', 'Add to favorites');
+        } else {
+            bookmarkedPapers.add(paperId);
+            btn.classList.add('active');
+            btn.querySelector('svg').setAttribute('fill', 'currentColor');
+            btn.setAttribute('title', 'Remove from favorites');
+        }
+
+        // Save to localStorage
+        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+        return;
+    }
+
+    // For logged in users, use toggleBookmark functionality
+    // Find the paper data
+    const paper = currentPapers.find(p => p.id === paperId);
+    if (!paper) {
+        console.error('Paper not found:', paperId);
+        return;
+    }
+
+    const isCurrentlyFavorited = userFavorites.has(paperId);
+
+    // Show loading state
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.innerHTML = isCurrentlyFavorited ? 'Removing...' : 'Adding...';
+
+    try {
+        const token = window.AuthService.getToken();
+        if (!token) {
+            throw new Error('No authentication token available');
+        }
+
+        if (isCurrentlyFavorited) {
+            // Remove from favorites
+            const response = await fetch(`/api/favorites/remove/${encodeURIComponent(paperId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+
+            // Update local state
+            userFavorites.delete(paperId);
+            bookmarkedPapers.delete(paperId);
+
+            // Restore original HTML first, then update UI
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('active');
+            const svg = btn.querySelector('svg');
+            if (svg) svg.setAttribute('fill', 'none');
+            btn.setAttribute('title', 'Add to favorites');
+
+            showSuccessMessage('Removed from favorites');
+
+        } else {
+            // Add to favorites
+            const authorsStr = Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors;
+
+            const cleanAbstract = (paper.abstract || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/[""]/g, '"')
+                .replace(/['']/g, "'")
+                .replace(/…/g, '...')
+                .trim();
+
+            const favoriteData = {
+                paper_id: String(paper.id).substring(0, 50),
+                title: String(paper.title).substring(0, 255),
+                authors: String(authorsStr).substring(0, 255),
+                abstract: cleanAbstract
+            };
+
+            if (paper.url && /^https?:\/\//i.test(String(paper.url))) {
+                favoriteData.url = String(paper.url).substring(0, 255);
+            }
+
+            const response = await fetch('/api/favorites/add', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(favoriteData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+
+            // Update local state
+            userFavorites.add(paperId);
+            bookmarkedPapers.add(paperId);
+
+            // Restore original HTML first, then update UI
+            btn.innerHTML = originalHtml;
+            btn.classList.add('active');
+            const svg = btn.querySelector('svg');
+            if (svg) svg.setAttribute('fill', 'currentColor');
+            btn.setAttribute('title', 'Remove from favorites');
+
+            showSuccessMessage('Added to favorites');
+        }
+
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        showErrorMessage('Failed to update favorites: ' + error.message);
+        // Restore original state
+        btn.innerHTML = originalHtml;
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
 }
 
 async function toggleBookmark(paperId, event) {
