@@ -1027,8 +1027,8 @@ async function showPaperDetail(paper) {
     // Store paper information in sessionStorage for the detail page
     sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
 
-    // Navigate to paper detail page
-    window.location.href = `paper.html?id=${paper.id}`;
+    // Open paper detail page in new tab
+    window.open(`paper.html?id=${paper.id}`, '_blank');
 }
 
 function showLoading() {
