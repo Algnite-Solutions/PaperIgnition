@@ -334,14 +334,37 @@ async function loadPapers(append = false) {
 
 function renderPapers() {
     papersContainer.innerHTML = '';
-    
+
+    // Add search results header if there's an active search query
+    if (searchQuery && searchQuery.trim().length > 0) {
+        const resultsHeader = document.createElement('div');
+        resultsHeader.className = 'search-results-header';
+        resultsHeader.innerHTML = `
+            <p>Showing <strong>${currentPapers.length}</strong> results for: "<strong>${searchQuery}</strong>"</p>
+        `;
+        papersContainer.appendChild(resultsHeader);
+    }
+
     currentPapers.forEach(paper => {
         const paperElement = createPaperCard(paper);
         papersContainer.appendChild(paperElement);
     });
-    
-    if (currentPapers.length === 0) {
-        papersContainer.innerHTML = '<div class="loading"><p>No papers found matching your search.</p></div>';
+
+    if (currentPapers.length === 0 && searchQuery && searchQuery.trim().length > 0) {
+        // Show no results message for search (header already shown above)
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'loading';
+        noResultsDiv.innerHTML = '<p>No papers found matching your search.</p>';
+        papersContainer.appendChild(noResultsDiv);
+    } else if (currentPapers.length === 0) {
+        // No search query and no papers
+        papersContainer.innerHTML = '<div class="loading"><p>No papers found.</p></div>';
+    } else if (!hasMorePapers && currentPapers.length > 0) {
+        // Show "No more papers" message at the end
+        const noMoreDiv = document.createElement('div');
+        noMoreDiv.className = 'no-more-papers';
+        noMoreDiv.innerHTML = '<p>No more papers</p>';
+        papersContainer.appendChild(noMoreDiv);
     }
 }
 
