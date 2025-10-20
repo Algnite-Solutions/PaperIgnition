@@ -294,18 +294,41 @@
             .profile-header {
                 padding: 24px;
             }
-            
+
             .profile-name {
                 font-size: 24px;
             }
-            
+
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
             }
-            
+
             .nav {
                 gap: 16px;
             }
+        }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border-color);
+            padding: 24px 0;
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .footer-content {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .footer-content a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-content a:hover {
+            color: var(--text-primary);
         }
     </style>
 </head>
@@ -443,6 +466,14 @@
             </div>
         </div>
     </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>© 2025 PaperIgnition | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2025200330号</a></p>
+            </div>
+        </div>
+    </footer>
 
     <script type="module">
         import './js/auth.js';
