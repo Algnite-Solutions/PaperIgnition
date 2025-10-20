@@ -805,19 +805,64 @@
             }, 3000);
         }
 
-        function sharePaper() {
-            if (navigator.share) {
-                navigator.share({
-                    title: currentPaper.title,
-                    text: currentPaper.abstract,
-                    url: window.location.href
-                });
-            } else {
-                // Fallback: copy URL to clipboard
-                navigator.clipboard.writeText(window.location.href).then(() => {
-                    alert('Paper URL copied to clipboard!');
-                });
+        async function sharePaper() {
+            const pageUrl = window.location.href;
+
+            try {
+                // Copy the current page URL to clipboard
+                await navigator.clipboard.writeText(pageUrl);
+
+                // Show success message popup with the link
+                showShareSuccessMessage(pageUrl);
+            } catch (error) {
+                console.error('Error copying to clipboard:', error);
+
+                // Fallback: try using older method
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = pageUrl;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+
+                    showShareSuccessMessage(pageUrl);
+                } catch (fallbackError) {
+                    console.error('Fallback copy failed:', fallbackError);
+                    showErrorMessage('Failed to copy link to clipboard');
+                }
             }
+        }
+
+        function showShareSuccessMessage(url) {
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #10b981;
+                color: white;
+                padding: 16px 20px;
+                border-radius: 8px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                max-width: 400px;
+                word-wrap: break-word;
+            `;
+            successDiv.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px;">✓ Paper link copied to clipboard!</div>
+                <div style="font-size: 12px; opacity: 0.9; font-family: monospace;">${url}</div>
+            `;
+
+            document.body.appendChild(successDiv);
+
+            setTimeout(() => {
+                if (document.body.contains(successDiv)) {
+                    document.body.removeChild(successDiv);
+                }
+            }, 3000);
         }
 
         function showError(message) {
