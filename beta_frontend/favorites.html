@@ -367,6 +367,29 @@
                 align-items: center;
             }
         }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border-color);
+            padding: 24px 0;
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .footer-content {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .footer-content a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-content a:hover {
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
@@ -411,6 +434,14 @@
             </div>
         </div>
     </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>© 2025 PaperIgnition | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2025200330号</a></p>
+            </div>
+        </div>
+    </footer>
 
     <script type="module" src="./js/auth.js"></script>
     <script>
@@ -517,11 +548,11 @@
                     authors: fav.authors || 'Unknown Authors',
                     abstract: fav.abstract || 'No abstract available',
                     url: fav.url || null,
-                    tags: ['Favorited'], // Default tags
+                    tags: [], // Default tags
                     submittedDate: 'Saved',
-                    publishDate: 'Favorite',
-                    comments: 'In your collection',
-                    thumbnail: 'Favorite'
+                    publishDate: '',
+                    comments: '',
+                    thumbnail: '📄'
                 }));
                 
                 console.log('Transformed papers:', favoritePapers);
@@ -642,12 +673,12 @@
 
         function showPaperDetail(paper) {
             if (!paper) return;
-            
+
             // Store paper information in sessionStorage for the detail page
             sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
-            
-            // Navigate to paper detail page
-            window.location.href = `paper.html?id=${paper.id}`;
+
+            // Open paper detail page in new tab
+            window.open(`paper.html?id=${paper.id}`, '_blank');
         }
 
         function handleSearch(event) {
