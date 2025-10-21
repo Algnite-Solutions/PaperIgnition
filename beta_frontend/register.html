@@ -33,9 +33,16 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
+        }
+
+        .main-content {
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            padding-bottom: 80px;
         }
 
         .register-container {
@@ -45,7 +52,6 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
-            margin: 20px;
         }
 
         .header {
@@ -258,7 +264,8 @@
     </style>
 </head>
 <body>
-    <div class="register-container">
+    <div class="main-content">
+        <div class="register-container">
         <div class="header">
             <h1 class="logo">Paper<span class="highlight">Ignition</span></h1>
             <p class="subtitle">Create Your Account</p>
@@ -331,6 +338,7 @@
 
         <div class="back-link">
             <a href="index.html">← Back to Papers</a>
+        </div>
         </div>
     </div>
 

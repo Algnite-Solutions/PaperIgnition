@@ -33,9 +33,16 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
+        }
+
+        .main-content {
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            padding-bottom: 80px;
         }
 
         .login-container {
@@ -45,7 +52,6 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
-            margin: 20px;
         }
 
         .header {
@@ -242,30 +248,33 @@
 
         /* Footer */
         .footer {
-            border-top: 1px solid var(--border-color);
             padding: 24px 0;
-            margin-top: 60px;
+            margin-top: auto;
             text-align: center;
+            width: 100%;
+            position: absolute;
+            bottom: 0;
         }
 
         .footer-content {
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.8);
             font-size: 14px;
         }
 
         .footer-content a {
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             transition: color 0.2s ease;
         }
 
         .footer-content a:hover {
-            color: var(--text-primary);
+            color: white;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="main-content">
+        <div class="login-container">
         <div class="header">
             <h1 class="logo">Paper<span class="highlight">Ignition</span></h1>
             <p class="subtitle">AI-Powered Paper Discovery</p>
@@ -317,6 +326,7 @@
 
         <div class="back-link">
             <a href="index.html">← Back to Papers</a>
+        </div>
         </div>
     </div>
 
