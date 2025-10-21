@@ -1,5 +1,5 @@
 import requests
-from AIgnite.generation.generator import GeminiBlogGenerator, AsyncvLLMGenerator
+from AIgnite.generation.generator import GeminiBlogGenerator_default, GeminiBlogGenerator_recommend, AsyncvLLMGenerator
 from AIgnite.data.docset import DocSet
 import os
 import json
@@ -60,12 +60,17 @@ def get_user_interest(username: str):
     return user_data.get("interests_description", [])
 
 # Use this
-def run_Gemini_blog_generation(papers, output_path="./blogByGemini"):
-    generator = GeminiBlogGenerator(
+def run_Gemini_blog_generation_default(papers, output_path="./blogByGemini"):
+    generator = GeminiBlogGenerator_default(
         data_path="./imgs/", 
         output_path=output_path)
     blog = generator.generate_digest(papers)
 
+def run_Gemini_blog_generation_recommend(papers, output_path="./blogByGemini"):
+    generator = GeminiBlogGenerator_recommend(
+        data_path="./imgs/", 
+        output_path=output_path)
+    blog = generator.generate_digest(papers)
 
 
 async def run_batch_generation(papers, output_path="./blogs"):

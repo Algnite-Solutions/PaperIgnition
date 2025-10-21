@@ -22,7 +22,7 @@ def fetch_daily_papers(time=None) -> list[DocSet]:
     json_output_path = os.path.join(base_dir, "jsons")
     arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 1)
+    time_slots = divide_a_day_into(time, 3)
     # time_slots = divide_a_day_into('202405300000', 3)
     
     #make sure the folders exist
@@ -111,9 +111,9 @@ def run_extractor_for_timeslot(start_str, end_str):
 
     # TODO: rongcan: a separater pdf_extractor instead of this fall back logic below
     
-    #extractor.pdf_parser_helper.docs = extractor.docs
-    #extractor.pdf_parser_helper.remain_docparser()
-    #extractor.docs = extractor.pdf_parser_helper.docs
+    extractor.pdf_parser_helper.docs = extractor.docs
+    extractor.pdf_parser_helper.remain_docparser()
+    extractor.docs = extractor.pdf_parser_helper.docs
     
     # 记录新抓取的论文ID
     newly_fetched_ids = [doc.doc_id for doc in extractor.docs]

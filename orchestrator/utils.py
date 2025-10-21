@@ -41,10 +41,11 @@ def index_papers_via_api(papers, api_url, store_images=False, keep_temp_image=Fa
     """
     docset_list = DocSetList(docsets=papers)
 
-    # Wrap in the expected format: {"docsets": DocSetList, "store_images": bool}
+    # Wrap in the expected format: {"docsets": DocSetList, "store_images": bool, "keep_temp_image": bool}
     data = {
         "docsets": docset_list.model_dump(),  # This creates {"docsets": [...]}
-        "store_images": False
+        "store_images": store_images,
+        "keep_temp_image": keep_temp_image
     }
 
     print(f"📤 Sending {len(papers)} papers to index...")
@@ -71,7 +72,7 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
     # 根据新的API结构构建payload
     payload = {
         "query": query,
-        "top_k": 2,
+        "top_k": 5,
         "similarity_cutoff": similarity_cutoff,
         "search_strategies": [(search_strategy, 1.5)],  # 新API使用元组格式 (strategy, threshold)
         "filters": filters,
@@ -204,6 +205,8 @@ def fetch_daily_papers(index_api_url: str, config, job_logger):
     papers = paper_pull.fetch_daily_papers()
     #papers=paper_pull.dummy_paper_fetch("./orchestrator/jsons")
     print(f"Fetched {len(papers)} papers.")
+
+    print(papers)
 
     # 2. Index papers
     index_papers_via_api(papers, index_api_url, store_images=True, keep_temp_image=True)

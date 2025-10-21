@@ -40,23 +40,16 @@ def get_users_with_empty_rewrite_interest(backend_api="http://localhost:8000/api
     return resp.json()
 
 def translate_text(client, text):
-    system_prompt = """You are an expert in computer science research and academic interest refinement.
+    system_prompt = """You are an expert bilingual rewriter specializing in English and Chinese. 
+Your job is to produce a clear, information-rich English query for semantic search or dense retrieval.
 
-Your task is to enrich and expand user interest descriptions to make them more comprehensive and searchable for academic paper recommendations.
-
-Given a brief user interest description (in any language), you should:
-1. Translate to English if needed
-2. Identify core topics and subtopics
-3. Add related technical terms and synonyms
-4. Include relevant methodologies and approaches
-5. Maintain the original intent while expanding coverage
-
-IMPORTANT: ALL output must be in English, including the enriched description.
-
-ONLY return the enriched interest description as a JSON object with the following structure:
-{
-    "enriched": "expanded English description with technical terms"
-}
+When given an input in either Chinese or English:
+- If it's in Chinese, translate it into fluent, natural English.
+- If it's already in English, keep it in English.
+- In both cases, rewrite or expand it slightly to make the user’s intent explicit and unambiguous.
+- Focus on preserving the meaning, not literal translation.
+- Do NOT add explanations, metadata, or prefixes like "Translation:".
+- Output only the final English text.
 """
 
     try:
@@ -64,14 +57,12 @@ ONLY return the enriched interest description as a JSON object with the followin
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Enrich this computer science interest description: {text}"}
+                {"role": "user", "content": f"{text}"}
             ],
-            response_format={'type': 'json_object'},
             max_tokens=512
         )
-        raw_result = resp.choices[0].message.content
-        output = json.loads(raw_result)
-        return output["enriched"]
+        output = resp.choices[0].message.content
+        return output
     except Exception as e:
         print(f"翻译失败: {e}")
         return None

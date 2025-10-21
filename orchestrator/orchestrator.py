@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
 import requests
-from generate_blog import run_batch_generation, run_Gemini_blog_generation, run_batch_generation_abs, run_batch_generation_title
+from generate_blog import run_batch_generation, run_Gemini_blog_generation_default, run_Gemini_blog_generation_recommend, run_batch_generation_abs, run_batch_generation_title
 
 # Add backend to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -21,6 +21,10 @@ from job_util import JobLogger
 from backend.app.db_utils import load_config
 from AIgnite.data.docset import DocSetList, DocSet
 
+
+ALL = 1
+FETCH_ONLY = 2
+RECOMMENDATION_ONLY = 3
 
 def get_user_interest(username: str, backend_api_url: str) -> List[str]:
     """
@@ -161,13 +165,15 @@ class PaperIgnitionOrchestrator:
                 output_path = ""
                 if self.local_mode:
                     output_path = "./blogsByGemini"
-                    run_Gemini_blog_generation(batch_papers, output_path=output_path)   
+                    run_Gemini_blog_generation_default(batch_papers, output_path=output_path)   
                 else:
                     output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
-                    run_Gemini_blog_generation(batch_papers, output_path=output_path)
+                    run_Gemini_blog_generation_default(batch_papers, output_path=output_path)
             
                 logging.info(f"✅ Blog generation completed for batch {batch_start//batch_size + 1}")
                 
+                # 立即处理并保存当前批次的论文
+                paper_infos = []
                 for paper in batch_papers:
                     try:
                         # 使用绝对路径，基于当前脚本所在目录
@@ -177,14 +183,12 @@ class PaperIgnitionOrchestrator:
                     except FileNotFoundError:
                         blog = None
 
-                    # 立即处理并保存当前批次的论文
-                    paper_infos = []
                     paper_infos.append({
                         "paper_id": paper.doc_id,
                         "title": paper.title,
                         "authors": ", ".join(paper.authors),
                         "abstract": paper.abstract,
-                        "url": paper.HTML_path,
+                        "url": "https://arxiv.org/pdf/"+ paper.doc_id,
                         "content": paper.abstract,
                         "blog": blog,
                         "recommendation_reason": f"This is a dummy recommendation reason for paper {paper.title}",
@@ -258,7 +262,7 @@ class PaperIgnitionOrchestrator:
                 
                 # 计算最近3天的日期范围
                 end_date = datetime.now().strftime('%Y-%m-%d')
-                start_date = (datetime.now() - timedelta(days=4)).strftime('%Y-%m-%d')
+                start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
                 
                 filter_params = {
                     "include": {
@@ -296,10 +300,10 @@ class PaperIgnitionOrchestrator:
                 output_path = ""
                 if self.local_mode:
                     output_path = "./blogsByGemini"
-                    blog = run_Gemini_blog_generation(all_papers, output_path=output_path)
+                    blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
                 else:
                     output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
-                    blog = run_Gemini_blog_generation(all_papers, output_path=output_path)
+                    blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
                 logging.info("Digest generation complete.")
 
                 #blog_abs = await run_batch_generation_abs(all_papers)
@@ -352,7 +356,7 @@ class PaperIgnitionOrchestrator:
         await self.blog_generation_for_all_users()
         logging.info("Blog generation for existing users complete.")
 
-    async def run_all_tasks(self):
+    async def run_all_tasks(self, option = ALL):
         """Run all daily tasks and return results"""
         start_time = datetime.now()
         logging.info(f"Starting all daily tasks at {start_time}")
@@ -369,45 +373,55 @@ class PaperIgnitionOrchestrator:
 
         try:
             # === Step 1: Fetching daily papers ===
-            logging.info("=== Step 1: Fetching daily papers ===")
-            await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "paper_fetch"})
+            if option == ALL or option == FETCH_ONLY:
+                logging.info("=== Step 1: Fetching daily papers ===")
+                await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "paper_fetch"})
 
-            papers = await self.run_fetch_daily_papers()
-            results["papers_fetched"] = len(papers)
-            results["paper_fetch"] = len(papers) > 0
+                papers = await self.run_fetch_daily_papers()
+                results["papers_fetched"] = len(papers)
+                results["paper_fetch"] = len(papers) > 0
 
-            if len(papers) == 0:
-                logging.warning("No papers fetched, skipping blog generation tasks")
-                await self.job_logger.complete_job_log(
-                    overall_job_id,
-                    status="partial",
-                    details={"reason": "No papers were fetched"}
-                )
-                #return results
+                if len(papers) == 0:
+                    logging.warning("No papers fetched, skipping blog generation tasks")
+                    await self.job_logger.complete_job_log(
+                        overall_job_id,
+                        status="partial",
+                        details={"reason": "No papers were fetched"}
+                    )
+                    #return results
 
             # === Step 2: Blog generation for all papers ===
             logging.info("=== Step 2: Blog generation for all papers ===")
             await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "all_papers_blog_gen"})
 
             try:
-                all_papers_task = self.run_all_papers_blog_generation(papers)
-                per_user_task = self.run_per_user_blog_generation()
+                if option == ALL or option == FETCH_ONLY:
+                    all_papers_task = self.run_all_papers_blog_generation(papers)
+                if option == ALL:
+                    per_user_task = self.run_per_user_blog_generation()
 
-                # Run both tasks in parallel
-                blog_gen_results = await asyncio.gather(all_papers_task, per_user_task, return_exceptions=True)
+                    # Run both tasks in parallel
+                    blog_gen_results = await asyncio.gather(all_papers_task, per_user_task, return_exceptions=True)
 
-                all_papers_result = blog_gen_results[0]
-                per_user_result = blog_gen_results[1]
+                    all_papers_result = blog_gen_results[0]
+                    per_user_result = blog_gen_results[1]
 
-                # Check results
-                results["all_papers_blog_generation"] = not isinstance(all_papers_result, Exception)
-                results["per_user_blog_generation"] = not isinstance(per_user_result, Exception)
+                    # Check results
+                    results["all_papers_blog_generation"] = not isinstance(all_papers_result, Exception)
+                    results["per_user_blog_generation"] = not isinstance(per_user_result, Exception)
 
-                if isinstance(all_papers_result, Exception):
-                    logging.error(f"All papers blog generation failed: {all_papers_result}")
+                    if isinstance(all_papers_result, Exception):
+                        logging.error(f"All papers blog generation failed: {all_papers_result}")
 
-                if isinstance(per_user_result, Exception):
-                    logging.error(f"Per user blog generation failed: {per_user_result}")
+                    if isinstance(per_user_result, Exception):
+                        logging.error(f"Per user blog generation failed: {per_user_result}")
+                if option == RECOMMENDATION_ONLY:
+                    per_user_task = self.run_per_user_blog_generation()
+                    blog_gen_results = await asyncio.gather(per_user_task, return_exceptions=True)
+                    per_user_result = blog_gen_results[0]
+                    results["per_user_blog_generation"] = not isinstance(per_user_result, Exception)
+                    if isinstance(per_user_result, Exception):
+                        logging.error(f"Per user blog generation failed: {per_user_result}")
 
             except Exception as e:
                 logging.error(f"Blog generation tasks failed: {e}")
@@ -451,7 +465,7 @@ async def main():
     orchestrator = PaperIgnitionOrchestrator(local_mode=local_mode)
 
     try:
-        results = await orchestrator.run_all_tasks()
+        results = await orchestrator.run_all_tasks(option = ALL)
         return results
     except Exception as e:
         logging.error(f"Orchestration failed: {e}")
