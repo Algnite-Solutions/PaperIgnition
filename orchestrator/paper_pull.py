@@ -74,9 +74,6 @@ def dummy_paper_fetch(file_path: str) -> list[DocSet]:
         for json_file in path_obj.glob("*.json"):
             with open(json_file, "r", encoding="utf-8") as f:
                 try:
-                    i += 1
-                    if i > 3:
-                        break
                     data = json.load(f)
                     docset = DocSet(**data)
                     print(f"Parsed {json_file.name}")
@@ -114,9 +111,9 @@ def run_extractor_for_timeslot(start_str, end_str):
 
     # TODO: rongcan: a separater pdf_extractor instead of this fall back logic below
     
-    #extractor.pdf_parser_helper.docs = extractor.docs
-    #extractor.pdf_parser_helper.remain_docparser()
-    #extractor.docs = extractor.pdf_parser_helper.docs
+    extractor.pdf_parser_helper.docs = extractor.docs
+    extractor.pdf_parser_helper.remain_docparser()
+    extractor.docs = extractor.pdf_parser_helper.docs
     
     # 记录新抓取的论文ID
     newly_fetched_ids = [doc.doc_id for doc in extractor.docs]
@@ -127,7 +124,7 @@ def run_extractor_for_timeslot(start_str, end_str):
 
 
 
-def get_time_str(location = "Asia/Shanghai", count_delay = 1):
+def get_time_str(location = "Asia/Shanghai", count_delay = 2):
     # 设定本地时区（可根据需要修改）
     local_tz = ZoneInfo(location)  # 例如上海
     # 获取本地当前时间，精确到分钟

@@ -1,0 +1,70 @@
+# PaperIgnition Orchestrator Configuration
+
+# API Configuration
+api:
+  # Backend API endpoints
+  backend:
+    base_url: "http://localhost:8000"
+    endpoints:
+      users_all: "/api/users/all"
+      users_by_email: "/api/users/by_email"
+      papers_recommend: "/api/papers/recommend"
+  
+  # Index service API
+  index:
+    base_url: "http://localhost:5666"
+    endpoints:
+      health: "/health"
+      index_papers: "/index_papers/"
+      find_similar: "/find_similar/"
+  
+  # LLM API
+  llm:
+    base_url: "http://localhost:5666/v1"
+    model_name: "Qwen/Qwen3-32B"
+
+# Timeout Configuration (in seconds)
+timeouts:
+  health_check: 5.0
+  index_papers: 6000.0
+  search_query: 30.0
+  save_recommendation: 100.0
+
+# Path Configuration
+paths:
+  # Base project path
+  project_root: "/data3/guofang/peirongcan/PaperIgnition"
+  
+  # Data paths
+  orchestrator:
+    imgs: "../orchestrator/imgs/"
+    jsons: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"
+    blogs: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
+    config: "./config"
+  
+  # Output paths
+  output:
+    gemini_blogs: "/data3/guofang/peirongcan/PaperIgnition/blogByGemini"
+    generated_blogs: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
+
+# Generation Configuration
+generation:
+  max_tokens: 2048
+  text_chunk_limit: 10000
+  
+  # Search configuration
+  search:
+    default_strategy: "tf-idf"
+    default_similarity_cutoff: 0.1
+    default_top_k: 1
+    default_threshold: 0.99
+    result_include_types: ["metadata", "text_chunks"]
+
+# Index Configuration
+index:
+  store_images: true
+  keep_temp_image: true
+
+# Development Configuration
+development:
+  max_papers_for_testing: 2

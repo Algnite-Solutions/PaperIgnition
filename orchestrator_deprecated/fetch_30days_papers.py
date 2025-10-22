@@ -37,11 +37,27 @@ def check_connection_health(api_url, timeout=5.0):
         print(f"Error details: {str(e)}")
     return False
 
-def index_papers_via_api(papers, api_url):
+def index_papers_via_api(papers, api_url, store_images=False, keep_temp_image=False):
+    """
+    Index papers using the /index_papers/ endpoint.
+    
+    Args:
+        papers: List of DocSet objects
+        api_url: API base URL
+        store_images: Whether to store images to MinIO (default: False)
+        keep_temp_image: If False, delete temporary image files after successful storage (default: False)
+    """
     docset_list = DocSetList(docsets=papers)
-    data = docset_list.dict()
+    
+    # 按照IndexPapersRequest模型构建请求体
+    request_data = {
+        "docsets": docset_list.dict(),
+        "store_images": store_images,
+        "keep_temp_image": keep_temp_image
+    }
+    
     try:
-        response = httpx.post(f"{api_url}/index_papers/", json=data, timeout=3000.0)
+        response = httpx.post(f"{api_url}/index_papers/", json=request_data, timeout=3000.0)
         response.raise_for_status()
         print("Indexing response:", response.json())
     except Exception as e:
@@ -138,7 +154,7 @@ def fetch_past_n_days_papers(n_days: int, index_api_url: str, config):
         if not papers:
             continue
         # 索引当天paper
-        index_papers_via_api(papers, index_api_url)
+        index_papers_via_api(papers, index_api_url, store_images=False, keep_temp_image=False)
         log_print(f"索引完成: {day_time_str}")
 
     print(f"过去{n_days}天抓取并索引完成。")
