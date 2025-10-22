@@ -157,7 +157,6 @@ def search_papers_via_api(api_url, query, search_strategy='tf-idf', similarity_c
 
 def save_recommendations(username, papers, api_url):
     for paper in papers:
-        print(paper)
         data = {
             "username": username,
             "paper_id": paper.get("paper_id"),
