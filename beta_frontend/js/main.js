@@ -14,11 +14,15 @@ const samplePapers = [
 ];
 
 // State management
-let currentPapers = [];
+let allPapers = []; // Store all fetched papers
+let currentPapers = []; // Currently displayed papers
+let displayedPapersCount = 0; // Track how many papers are currently displayed
+const PAPERS_PER_PAGE = 10; // K papers to load at a time (configurable)
 let bookmarkedPapers = new Set();
 let userFavorites = new Set(); // 新增：存储用户真实的收藏状态
 let isLoading = false;
 let searchQuery = '';
+let hasMorePapers = true; // Track if there are more papers to load
 
 // DOM elements
 const papersContainer = document.getElementById('papersContainer');
@@ -123,10 +127,13 @@ async function loadUserRecommendations() {
                 paperMap.set(paper.id, paper);
             }
         });
-        currentPapers = Array.from(paperMap.values());
-        
+        allPapers = Array.from(paperMap.values());
+        currentPapers = []; // Clear displayed papers
+        displayedPapersCount = 0;
+        hasMorePapers = allPapers.length > 0;
+
         renderPapers();
-        
+
         // 批量检查并同步当前论文的收藏状态
         await syncCurrentPapersFavoriteStatus();
         
@@ -186,7 +193,10 @@ async function loadDefaultUserRecommendations() {
                 paperMap.set(paper.id, paper);
             }
         });
-        currentPapers = Array.from(paperMap.values());
+        allPapers = Array.from(paperMap.values());
+        currentPapers = []; // Clear displayed papers
+        displayedPapersCount = 0;
+        hasMorePapers = allPapers.length > 0;
 
         renderPapers();
 
@@ -309,9 +319,12 @@ async function loadPapers(append = false) {
         if (searchQuery && searchQuery.trim().length > 0) {
             // Call backend search API
             const searchResults = await searchPapersAPI(searchQuery);
-            currentPapers = searchResults;
-            console.log(`Search query: "${searchQuery}", Papers found: ${currentPapers.length}`);
-            if (!currentPapers || currentPapers.length === 0) {
+            allPapers = searchResults;
+            currentPapers = []; // Clear displayed papers
+            displayedPapersCount = 0;
+            hasMorePapers = allPapers.length > 0;
+            console.log(`Search query: "${searchQuery}", Papers found: ${allPapers.length}`);
+            if (!allPapers || allPapers.length === 0) {
                 console.log('No paper to display');
             }
         } else {
@@ -319,6 +332,7 @@ async function loadPapers(append = false) {
             console.log('No search query, reloading user recommendations');
             isLoading = false; // Reset loading to allow loadUserRecommendations to proceed
             await loadUserRecommendations();
+            return; // loadUserRecommendations handles rendering and hasMorePapers
         }
 
         renderPapers();
@@ -332,16 +346,60 @@ async function loadPapers(append = false) {
     }
 }
 
-function renderPapers() {
-    papersContainer.innerHTML = '';
-    
-    currentPapers.forEach(paper => {
+function loadMorePapers() {
+    const startIdx = displayedPapersCount;
+    const endIdx = Math.min(startIdx + PAPERS_PER_PAGE, allPapers.length);
+
+    // Get next batch of papers
+    const newPapers = allPapers.slice(startIdx, endIdx);
+    currentPapers = [...currentPapers, ...newPapers];
+    displayedPapersCount = endIdx;
+
+    // Check if there are more papers to load
+    hasMorePapers = displayedPapersCount < allPapers.length;
+
+    return newPapers;
+}
+
+function renderPapers(append = false) {
+    if (!append) {
+        papersContainer.innerHTML = '';
+        currentPapers = [];
+        displayedPapersCount = 0;
+    }
+
+    // Load next batch of papers
+    const newPapers = loadMorePapers();
+
+    // Add search results header (only on initial render)
+    if (!append && searchQuery && searchQuery.trim().length > 0) {
+        const resultsHeader = document.createElement('div');
+        resultsHeader.className = 'search-results-header';
+        resultsHeader.innerHTML = `
+            <p>Showing <strong>${allPapers.length}</strong> results for: "<strong>${searchQuery}</strong>"</p>
+        `;
+        papersContainer.appendChild(resultsHeader);
+    }
+
+    // Render new papers
+    newPapers.forEach(paper => {
         const paperElement = createPaperCard(paper);
         papersContainer.appendChild(paperElement);
     });
-    
-    if (currentPapers.length === 0) {
-        papersContainer.innerHTML = '<div class="loading"><p>No papers found matching your search.</p></div>';
+
+    // Handle empty states
+    if (allPapers.length === 0 && searchQuery && searchQuery.trim().length > 0) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'loading';
+        noResultsDiv.innerHTML = '<p>No papers found matching your search.</p>';
+        papersContainer.appendChild(noResultsDiv);
+    } else if (allPapers.length === 0) {
+        papersContainer.innerHTML = '<div class="loading"><p>No papers found.</p></div>';
+    } else if (!hasMorePapers && currentPapers.length > 0) {
+        const noMoreDiv = document.createElement('div');
+        noMoreDiv.className = 'no-more-papers';
+        noMoreDiv.innerHTML = '<p>No more papers</p>';
+        papersContainer.appendChild(noMoreDiv);
     }
 }
 
@@ -368,6 +426,37 @@ function createPaperCard(paper) {
 
     const isFavorited = bookmarkedPapers.has(paper.id);
 
+    // Check if we're in search mode (only show favorite button in search)
+    const isSearchMode = searchQuery && searchQuery.trim().length > 0;
+
+    // Helper function to create button HTML
+    const createButton = (className, isActive, title, svgPath, fillColor = 'none') => `
+        <button class="action-btn ${className} ${isActive ? 'active' : ''}" data-action="${className.replace('-btn', '')}" title="${title}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="${fillColor}" stroke="currentColor" stroke-width="2">
+                <path d="${svgPath}"/>
+            </svg>
+        </button>
+    `;
+
+    // SVG paths for buttons
+    const likePath = "M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3";
+    const dislikePath = "M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17";
+    const favoritePath = "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z";
+
+    // Build action buttons based on mode
+    const favoriteBtnHTML = createButton('favorite-btn', isFavorited, isFavorited ? 'Remove from favorites' : 'Add to favorites', favoritePath, isFavorited ? 'currentColor' : 'none');
+
+    let actionButtons = '';
+    if (isSearchMode) {
+        // Search mode: only show favorite button
+        actionButtons = favoriteBtnHTML;
+    } else {
+        // Explore mode: show all buttons (like, dislike, favorite)
+        const likeBtnHTML = createButton('like-btn', isLiked, 'Like this paper', likePath);
+        const dislikeBtnHTML = createButton('dislike-btn', isDisliked, 'Dislike this paper', dislikePath);
+        actionButtons = likeBtnHTML + dislikeBtnHTML + favoriteBtnHTML;
+    }
+
     card.innerHTML = `
         <div class="paper-content">
             <div class="paper-header">
@@ -386,21 +475,7 @@ function createPaperCard(paper) {
             </div>
         </div>
         <div class="paper-actions">
-            <button class="action-btn like-btn ${isLiked ? 'active' : ''}" data-action="like" title="Like this paper">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-                </svg>
-            </button>
-            <button class="action-btn dislike-btn ${isDisliked ? 'active' : ''}" data-action="dislike" title="Dislike this paper">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
-                </svg>
-            </button>
-            <button class="action-btn favorite-btn ${isFavorited ? 'active' : ''}" data-action="favorite" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                </svg>
-            </button>
+            ${actionButtons}
         </div>
     `;
 
@@ -418,20 +493,26 @@ function createPaperCard(paper) {
     const dislikeBtn = card.querySelector('.dislike-btn');
     const favoriteBtn = card.querySelector('.favorite-btn');
 
-    likeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handlePaperAction(paper.id, 'like', likeBtn, dislikeBtn);
-    });
+    if (likeBtn) {
+        likeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handlePaperAction(paper.id, 'like', likeBtn, dislikeBtn);
+        });
+    }
 
-    dislikeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handlePaperAction(paper.id, 'dislike', dislikeBtn, likeBtn);
-    });
+    if (dislikeBtn) {
+        dislikeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handlePaperAction(paper.id, 'dislike', dislikeBtn, likeBtn);
+        });
+    }
 
-    favoriteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handleFavoriteAction(paper.id, favoriteBtn);
-    });
+    if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleFavoriteAction(paper.id, favoriteBtn);
+        });
+    }
 
     return card;
 }
@@ -972,11 +1053,16 @@ function handleScroll() {
         return;
     }
 
+    // Don't load more if we've reached the end
+    if (!hasMorePapers) {
+        return;
+    }
+
     const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
     if (scrollTop + clientHeight >= scrollHeight - 5) {
-        // Load more papers for logged-in users
-        if (currentPapers.length > 0 && currentPapers.length < 20) {
-            loadPapers(true);
+        // Load next K papers
+        if (hasMorePapers) {
+            renderPapers(true);
         }
     }
 }
@@ -1004,8 +1090,8 @@ async function showPaperDetail(paper) {
     // Store paper information in sessionStorage for the detail page
     sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
 
-    // Navigate to paper detail page
-    window.location.href = `paper.html?id=${paper.id}`;
+    // Open paper detail page in new tab
+    window.open(`paper.html?id=${paper.id}`, '_blank');
 }
 
 function showLoading() {
