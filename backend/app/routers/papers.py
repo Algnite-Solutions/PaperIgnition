@@ -180,9 +180,34 @@ async def mark_paper_as_viewed(
 
 def extract_image_filename(image_path: str) -> str:
     """从图片路径中提取文件名"""
-    # 处理各种路径格式，提取最后一个文件名
     import os
-    return os.path.basename(image_path.strip())
+    import re
+    
+    # 先清理路径
+    path = image_path.strip()
+    
+    # 如果路径包含括号，需要特殊处理
+    # 查找最后一个斜杠后的文件名部分
+    if '/' in path:
+        filename_part = path.split('/')[-1]
+    else:
+        filename_part = path
+    
+    # 如果文件名包含括号，确保括号是配对的
+    # 检查是否有未闭合的括号
+    if '(' in filename_part and ')' in filename_part:
+        # 找到最后一个右括号的位置
+        last_paren_pos = filename_part.rfind(')')
+        if last_paren_pos != -1:
+            # 确保右括号后面还有内容（文件扩展名）
+            if last_paren_pos < len(filename_part) - 1:
+                return filename_part
+            else:
+                # 如果右括号是最后一个字符，可能需要添加扩展名
+                # 这种情况下，我们假设原始路径是正确的
+                return filename_part
+    
+    return os.path.basename(path)
 
 async def ping_url(url: str, timeout: int = 10) -> bool:
     """
@@ -223,20 +248,57 @@ async def process_markdown_images(markdown_content: str) -> str:
     """处理markdown中的图片路径，替换为预签名URL"""
     import re
     
-    # 匹配markdown图片格式: ![alt](path)
-    pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
-    
-    async def replace_image(match):
-        alt_text = match.group(1)
-        image_path = match.group(2)
+    def find_image_links(text):
+        """手动解析markdown图片链接，正确处理嵌套括号"""
+        links = []
+        i = 0
+        while i < len(text):
+            # 查找 ![ 开始
+            if text[i:i+2] == '![':
+                start = i
+                i += 2
+                
+                # 查找 alt 文本的结束 ]
+                alt_end = text.find(']', i)
+                if alt_end == -1:
+                    i += 1
+                    continue
+                
+                alt_text = text[i:alt_end]
+                i = alt_end + 1
+                
+                # 查找 ( 开始
+                if i < len(text) and text[i] == '(':
+                    i += 1
+                    path_start = i
+                    
+                    # 手动查找路径的结束 )
+                    paren_count = 0
+                    while i < len(text):
+                        if text[i] == '(':
+                            paren_count += 1
+                        elif text[i] == ')':
+                            if paren_count == 0:
+                                # 找到匹配的右括号
+                                path = text[path_start:i]
+                                links.append((start, i+1, alt_text, path))
+                                break
+                            else:
+                                paren_count -= 1
+                        i += 1
+                else:
+                    i += 1
+            else:
+                i += 1
         
+        return links
+    
+    async def replace_image(alt_text, image_path):
         # 提取文件名
         filename = extract_image_filename(image_path)
         
         # 生成预签名URL
         try:
-            #filename = "test.png"
-            #await serve_file(bucket="aignite-papers-new", key=filename)
             # 生成完整的URL，类似 http://www.paperignition.com/files/aignite-papers-new/filename
             presigned_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
             
@@ -253,24 +315,24 @@ async def process_markdown_images(markdown_content: str) -> str:
                     return alt_text if alt_text else ""
             else:
                 # 如果生成失败，保持原路径
-                return match.group(0)
+                return f'![{alt_text}]({image_path})'
         except Exception as e:
             logger.error(f"Error processing image {filename}: {str(e)}")
-            return match.group(0)
+            return f'![{alt_text}]({image_path})'
     
-    # 找到所有匹配的图片
-    matches = list(re.finditer(pattern, markdown_content))
+    # 找到所有图片链接
+    links = find_image_links(markdown_content)
     
     # 异步处理所有图片
     replacements = []
-    for match in matches:
-        replacement = await replace_image(match)
-        replacements.append((match, replacement))
+    for start, end, alt_text, image_path in links:
+        replacement = await replace_image(alt_text, image_path)
+        replacements.append((start, end, replacement))
     
     # 从后往前替换，避免位置偏移
     result = markdown_content
-    for match, replacement in reversed(replacements):
-        result = result[:match.start()] + replacement + result[match.end():]
+    for start, end, replacement in reversed(replacements):
+        result = result[:start] + replacement + result[end:]
     
     return result
 
