@@ -1,158 +1,301 @@
 from AIgnite.data.docset import *
 from AIgnite.data.htmlparser import *
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor, as_completed  
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
 from pathlib import Path
 import os
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from typing import List, Optional, Literal
+from enum import Enum
 
-def fetch_daily_papers(time=None) -> list[DocSet]:
-    # Replace this with your actual fetcher
-    if time is None:
-        time = get_time_str()
-    print(f"fetching papers for {time}")
-    docs = []
-    # set up
-    base_dir = os.path.dirname(__file__)
-    html_text_folder = os.path.join(base_dir, "htmls")
-    pdf_folder_path = os.path.join(base_dir, "pdfs")
-    image_folder_path = os.path.join(base_dir, "imgs")
-    json_output_path = os.path.join(base_dir, "jsons")
-    arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
 
-    time_slots = divide_a_day_into(time, 3)
-    # time_slots = divide_a_day_into('202405300000', 3)
-    
-    #make sure the folders exist
-    os.makedirs(os.path.dirname(arxiv_pool_path), exist_ok=True)
-    Path(arxiv_pool_path).touch(exist_ok=True)
-    for path in [html_text_folder, pdf_folder_path, image_folder_path, json_output_path]:
-        os.makedirs(path, exist_ok=True)
+class ExtractorType(Enum):
+    """Enum for extractor types"""
+    HTML = "html"
+    PDF = "pdf"
 
-    #fetch daily papers in parallel
-    newly_fetched_ids = set()
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = []
-        for i in range(len(time_slots) - 1):
-            start_str = time_slots[i]
-            end_str = time_slots[i + 1]
-            futures.append(executor.submit(run_extractor_for_timeslot, start_str, end_str))
 
-        for f in futures:
-            result = f.result()
-            if result:  # 如果返回了新抓取的ID列表
-                newly_fetched_ids.update(result)
-    
-    print(f"📊 新抓取论文ID数量: {len(newly_fetched_ids)}")
-    #summary docs from json - only return newly fetched papers
-    new_docs = []
-    for json_file in Path(json_output_path).glob("*.json"):
-        # 检查文件名是否包含新抓取的arxiv ID
-        file_name = json_file.stem  # 去掉.json扩展名
-        if file_name in newly_fetched_ids:
-            with open(json_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+class PaperPullService:
+    """
+    Service for pulling and extracting papers from arXiv
+
+    Supports both HTML and PDF extraction methods (PDF is TODO)
+    """
+
+    def __init__(
+        self,
+        base_dir: Optional[str] = None,
+        extractor_type: ExtractorType = ExtractorType.HTML,
+        max_workers: int = 3,
+        time_slots_count: int = 3,
+        location: str = "Asia/Shanghai",
+        count_delay: int = 1
+    ):
+        """
+        Initialize PaperPullService
+
+        Args:
+            base_dir: Base directory for storing papers (defaults to orchestrator dir)
+            extractor_type: Type of extractor to use (HTML or PDF)
+            max_workers: Number of parallel workers for fetching
+            time_slots_count: Number of time slots to divide the day into
+            location: Timezone location for time calculations
+            count_delay: Days to delay from current date
+        """
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.extractor_type = extractor_type
+        self.max_workers = max_workers
+        self.time_slots_count = time_slots_count
+        self.location = location
+        self.count_delay = count_delay
+
+        # Setup directories
+        if base_dir is None:
+            base_dir = os.path.dirname(__file__)
+        self.base_dir = Path(base_dir)
+
+        self.html_text_folder = self.base_dir / "htmls"
+        self.pdf_folder_path = self.base_dir / "pdfs"
+        self.image_folder_path = self.base_dir / "imgs"
+        self.json_output_path = self.base_dir / "jsons"
+        self.arxiv_pool_path = self.base_dir / "html_url_storage" / "html_urls.txt"
+
+        # Get credentials from environment
+        self.volcengine_ak = os.getenv("VOLCENGINE_AK", "")
+        self.volcengine_sk = os.getenv("VOLCENGINE_SK", "")
+
+        # Initialize directories
+        self._setup_directories()
+
+    def _setup_directories(self):
+        """Create necessary directories if they don't exist"""
+        self.arxiv_pool_path.parent.mkdir(parents=True, exist_ok=True)
+        self.arxiv_pool_path.touch(exist_ok=True)
+
+        for path in [self.html_text_folder, self.pdf_folder_path,
+                     self.image_folder_path, self.json_output_path]:
+            path.mkdir(parents=True, exist_ok=True)
+
+    def _get_time_str(self) -> str:
+        """
+        Get UTC time string for the fetch window
+
+        Returns:
+            Time string in format YYYYMMDDHHMM
+        """
+        local_tz = ZoneInfo(self.location)
+        local_now = (datetime.now(local_tz) - timedelta(days=self.count_delay)).replace(
+            second=0, microsecond=0
+        )
+        utc_now = local_now.astimezone(ZoneInfo("UTC"))
+        return utc_now.strftime("%Y%m%d%H%M")
+
+    def _divide_time_into_slots(self, time: str) -> List[str]:
+        """
+        Divide a 24-hour period into time slots
+
+        Args:
+            time: End time in format YYYYMMDDHHMM
+
+        Returns:
+            List of time slot boundaries
+        """
+        fmt = "%Y%m%d%H%M"
+        end_time = datetime.strptime(time, fmt)
+        start_time = end_time - timedelta(days=1)
+        total_minutes = int((end_time - start_time).total_seconds() // 60)
+        step = total_minutes / self.time_slots_count
+
+        result = []
+        for i in range(self.time_slots_count + 1):
+            t = start_time + timedelta(minutes=round(i * step))
+            result.append(t.strftime(fmt))
+        return result
+
+    def _run_html_extractor(self, start_str: str, end_str: str) -> List[str]:
+        """
+        Run HTML extractor for a time slot
+
+        Args:
+            start_str: Start time string
+            end_str: End time string
+
+        Returns:
+            List of newly fetched paper IDs
+        """
+        extractor = ArxivHTMLExtractor(
+            html_text_folder=str(self.html_text_folder),
+            pdf_folder_path=str(self.pdf_folder_path),
+            arxiv_pool=str(self.arxiv_pool_path),
+            image_folder_path=str(self.image_folder_path),
+            json_path=str(self.json_output_path),
+            volcengine_ak=self.volcengine_ak,
+            volcengine_sk=self.volcengine_sk,
+            start_time=start_str,
+            end_time=end_str
+        )
+
+        extractor.extract_all_htmls()
+        newly_fetched_ids = [doc.doc_id for doc in extractor.docs]
+        extractor.serialize_docs()
+
+        return newly_fetched_ids
+
+    def _run_pdf_extractor(self, start_str: str, end_str: str) -> List[str]:
+        """
+        Run PDF extractor for a time slot
+
+        TODO: Implement PDF extraction as a separate extractor
+
+        Args:
+            start_str: Start time string
+            end_str: End time string
+
+        Returns:
+            List of newly fetched paper IDs
+        """
+        # TODO: Implement PDF extractor
+        # For now, fall back to HTML extractor
+        self.logger.warning("PDF extractor not yet implemented, using HTML extractor")
+        return self._run_html_extractor(start_str, end_str)
+
+    def _run_extractor_for_timeslot(self, start_str: str, end_str: str) -> List[str]:
+        """
+        Run the appropriate extractor for a time slot
+
+        Args:
+            start_str: Start time string
+            end_str: End time string
+
+        Returns:
+            List of newly fetched paper IDs
+        """
+        if self.extractor_type == ExtractorType.HTML:
+            return self._run_html_extractor(start_str, end_str)
+        elif self.extractor_type == ExtractorType.PDF:
+            return self._run_pdf_extractor(start_str, end_str)
+        else:
+            raise ValueError(f"Unknown extractor type: {self.extractor_type}")
+
+    def fetch_daily_papers(self, time: Optional[str] = None) -> List[DocSet]:
+        """
+        Fetch daily papers from arXiv
+
+        Args:
+            time: End time for fetch window (defaults to current time)
+
+        Returns:
+            List of newly fetched DocSet objects
+        """
+        if time is None:
+            time = self._get_time_str()
+
+        self.logger.info(f"Fetching papers for {time} using {self.extractor_type.value} extractor")
+
+        time_slots = self._divide_time_into_slots(time)
+
+        # Fetch papers in parallel using thread pool
+        newly_fetched_ids = set()
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = []
+            for i in range(len(time_slots) - 1):
+                start_str = time_slots[i]
+                end_str = time_slots[i + 1]
+                futures.append(
+                    executor.submit(self._run_extractor_for_timeslot, start_str, end_str)
+                )
+
+            for f in futures:
+                result = f.result()
+                if result:
+                    newly_fetched_ids.update(result)
+
+        self.logger.info(f"📊 Newly fetched paper IDs: {len(newly_fetched_ids)}")
+
+        # Load newly fetched papers from JSON
+        new_docs = []
+        for json_file in self.json_output_path.glob("*.json"):
+            file_name = json_file.stem
+            if file_name in newly_fetched_ids:
                 try:
-                    docset = DocSet(**data)
-                    new_docs.append(docset)
-                    print(f"✅ 新抓取论文: {docset.doc_id} - {docset.title}")
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        docset = DocSet(**data)
+                        new_docs.append(docset)
+                        self.logger.info(f"✅ Loaded: {docset.doc_id} - {docset.title}")
                 except Exception as e:
-                    print(f"Failed to parse {json_file.name}: {e}")
-    
-    print(f"📊 新抓取论文数量: {len(new_docs)}")
-    
-    return new_docs
+                    self.logger.error(f"Failed to parse {json_file.name}: {e}")
 
-def dummy_paper_fetch(file_path: str) -> list[DocSet]:
-    docs = []
-    path_obj = Path(file_path)
-    
-    if path_obj.is_dir():
-        i = 0
-        for json_file in path_obj.glob("*.json"):
-            with open(json_file, "r", encoding="utf-8") as f:
-                try:
-                    i += 1
-                    if i > 3:
-                        break
+        self.logger.info(f"📊 Total newly fetched papers: {len(new_docs)}")
+        return new_docs
+
+    def load_papers_from_json(self, json_dir: Optional[str] = None, limit: Optional[int] = None) -> List[DocSet]:
+        """
+        Load papers from JSON files (for testing/development)
+
+        Args:
+            json_dir: Directory containing JSON files (defaults to self.json_output_path)
+            limit: Maximum number of papers to load
+
+        Returns:
+            List of DocSet objects
+        """
+        if json_dir is None:
+            json_dir = self.json_output_path
+        else:
+            json_dir = Path(json_dir)
+
+        if not json_dir.is_dir():
+            self.logger.error(f"Path {json_dir} is not a directory")
+            return []
+
+        docs = []
+        for i, json_file in enumerate(json_dir.glob("*.json")):
+            if limit and i >= limit:
+                break
+
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     docset = DocSet(**data)
-                    print(f"Parsed {json_file.name}")
                     docs.append(docset)
-                except Exception as e:
-                    print(f"Failed to parse {json_file.name}: {e}")
-    else:
-        print(f"The path {file_path} is not a directory")
-    return docs
+                    self.logger.debug(f"Loaded {json_file.name}")
+            except Exception as e:
+                self.logger.error(f"Failed to parse {json_file.name}: {e}")
 
-def run_extractor_for_timeslot(start_str, end_str):
-    base_dir = os.path.dirname(__file__)
-    html_text_folder = os.path.join(base_dir, "htmls")
-    pdf_folder_path = os.path.join(base_dir, "pdfs")
-    image_folder_path = os.path.join(base_dir, "imgs")
-    json_output_path = os.path.join(base_dir, "jsons")
-    arxiv_pool_path = os.path.join(base_dir, "html_url_storage/html_urls.txt")
-    # 从环境变量或配置文件获取密钥，避免硬编码
-    ak = os.getenv("VOLCENGINE_AK", "")
-    sk = os.getenv("VOLCENGINE_SK", "")
-
-    extractor = ArxivHTMLExtractor(
-        html_text_folder=html_text_folder,
-        pdf_folder_path=pdf_folder_path,
-        arxiv_pool=arxiv_pool_path,
-        image_folder_path=image_folder_path,
-        json_path=json_output_path,
-        volcengine_ak=ak,
-        volcengine_sk=sk,
-        start_time=start_str,
-        end_time=end_str
-    )
-
-    extractor.extract_all_htmls()
-
-    # TODO: rongcan: a separater pdf_extractor instead of this fall back logic below
-    
-    #extractor.pdf_parser_helper.docs = extractor.docs
-    #extractor.pdf_parser_helper.remain_docparser()
-    #extractor.docs = extractor.pdf_parser_helper.docs
-    
-    # 记录新抓取的论文ID
-    newly_fetched_ids = [doc.doc_id for doc in extractor.docs]
-    
-    extractor.serialize_docs()
-    
-    return newly_fetched_ids
+        self.logger.info(f"Loaded {len(docs)} papers from {json_dir}")
+        return docs
 
 
-
-def get_time_str(location = "Asia/Shanghai", count_delay = 1):
-    # 设定本地时区（可根据需要修改）
-    local_tz = ZoneInfo(location)  # 例如上海
-    # 获取本地当前时间，精确到分钟
-    local_now = (datetime.now(local_tz)-timedelta(days=count_delay)).replace(second=0, microsecond=0)
-    # 转换为UTC时间
-    utc_now = local_now.astimezone(ZoneInfo("UTC"))
-    # 转为指定格式字符串
-    utc_str = utc_now.strftime("%Y%m%d%H%M")
-    return utc_str
-
-
-# 新增函数
-def divide_a_day_into(time: str, count: int):
+# Backward compatibility: keep old function-based API
+def fetch_daily_papers(time=None) -> List[DocSet]:
     """
-    输入: time (如202507150856), count (如3)
-    输出: 将[前一天同一时刻, 输入时刻]分成count份，返回每个分段的时间点字符串数组（精确到分钟，格式为%Y%m%d%H%M），包含头尾。
+    Legacy function for backward compatibility
+
+    Creates a PaperPullService instance and fetches papers
     """
-    from datetime import datetime, timedelta
-    fmt = "%Y%m%d%H%M"
-    end_time = datetime.strptime(time, fmt)
-    start_time = end_time - timedelta(days=1)
-    total_minutes = int((end_time - start_time).total_seconds() // 60)
-    step = total_minutes / count
-    result = []
-    for i in range(count + 1):
-        t = start_time + timedelta(minutes=round(i * step))
-        result.append(t.strftime(fmt))
-    return result
+    service = PaperPullService()
+    return service.fetch_daily_papers(time)
+
+
+def get_time_str(location="Asia/Shanghai", count_delay=1) -> str:
+    """
+    Legacy function for backward compatibility
+
+    Get UTC time string for the fetch window
+    """
+    service = PaperPullService(location=location, count_delay=count_delay)
+    return service._get_time_str()
+
+
+def divide_a_day_into(time: str, count: int) -> List[str]:
+    """
+    Legacy function for backward compatibility
+
+    Divide a 24-hour period into time slots
+    """
+    service = PaperPullService(time_slots_count=count)
+    return service._divide_time_into_slots(time)

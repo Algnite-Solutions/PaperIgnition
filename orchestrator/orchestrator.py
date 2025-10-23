@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from job_util import JobLogger
 from api_clients import IndexAPIClient, BackendAPIClient
+from paper_pull import PaperPullService, ExtractorType
 from backend.app.db_utils import load_config
 from AIgnite.data.docset import DocSetList, DocSet
 
@@ -42,6 +43,13 @@ class PaperIgnitionOrchestrator:
         # Initialize API clients
         self.index_client = IndexAPIClient(self.index_api_url)
         self.backend_client = BackendAPIClient(self.backend_api_url)
+
+        # Initialize paper pull service
+        base_dir = os.path.join(self.project_root, "orchestrator")
+        self.paper_service = PaperPullService(
+            base_dir=base_dir,
+            extractor_type=ExtractorType.HTML
+        )
 
         # Initialize job logger
         self.job_logger = JobLogger(config_path=config_path)
@@ -94,9 +102,8 @@ class PaperIgnitionOrchestrator:
                 await self.job_logger.complete_job_log(job_id, status="failed", details={"message": "Index service not healthy"})
                 return papers
 
-            # 2. Fetch daily papers
-            import paper_pull
-            papers = paper_pull.fetch_daily_papers()
+            # 2. Fetch daily papers using PaperPullService
+            papers = self.paper_service.fetch_daily_papers()
             logging.info(f"Fetched {len(papers)} papers from arXiv")
 
             # 3. Index papers
