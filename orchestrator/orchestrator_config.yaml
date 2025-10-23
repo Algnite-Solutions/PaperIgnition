@@ -1,0 +1,71 @@
+# Orchestrator Configuration
+# This file contains all configurable parameters for the PaperIgnition orchestrator
+
+# Environment mode
+environment:
+  local_mode: true  # true for local/development, false for production
+
+# Pipeline Stages - Enable/disable each stage
+stages:
+  fetch_daily_papers: true  # Fetch new papers from arXiv
+  index_papers: true  # Index fetched papers in the index service
+  generate_all_papers_blog: true  # Generate blogs for all fetched papers
+  generate_per_user_blogs: true  # Generate personalized blogs for each user
+
+# Paper Pull Service Configuration
+paper_pull:
+  extractor_type: "html"  # Options: "html", "pdf"
+  max_workers: 3  # Number of parallel workers for fetching papers
+  time_slots_count: 3  # Number of time slots to divide the day into
+  location: "Asia/Shanghai"  # Timezone for time calculations
+  count_delay: 1  # Days to delay from current date
+
+# Blog Generation Configuration
+blog_generation:
+  batch_size: 50  # Number of papers to process in each batch
+  local_output_path: "./blogsByGemini"  # Local mode blog output path
+  production_output_path: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"  # Production blog output path
+  use_gemini_local: true  # Use Gemini for local mode (true) or vLLM (false)
+
+  # Blog generation model settings (for production/vLLM)
+  model:
+    name: "Qwen/Qwen3-32B"
+    api_base: "http://localhost:5666/v1"
+    max_tokens: 2048
+    data_path: "../imgs/"
+
+# User Recommendation Configuration
+user_recommendation:
+  skip_blogbot: true  # Skip "BlogBot@gmail.com" user in recommendations
+  top_k: 5  # Number of top results to return from similarity search
+  similarity_cutoff: 0.1  # Minimum similarity score threshold
+  search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
+  enable_deduplication: true  # Remove duplicate papers before processing
+  enable_existing_paper_filter: true  # Filter out papers user already has
+
+# Logging Configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_to_file: true
+  log_dir: "logs"
+  log_file: "paperignition_execution.log"
+  log_format: "%(asctime)s - %(levelname)s - %(message)s"
+
+# Job Execution Configuration
+job_execution:
+  enable_parallel_blog_generation: true  # Run all_papers and per_user blog gen in parallel
+  fail_fast: false  # Stop execution on first error if true
+
+# Performance Configuration
+performance:
+  timeout_seconds:
+    paper_fetch: 3600  # 1 hour timeout for paper fetching
+    blog_generation: 7200  # 2 hours timeout for blog generation
+    api_request: 100  # Default API request timeout in seconds
+
+# Constants
+constants:
+  blogbot_email: "BlogBot@gmail.com"  # Special user for all papers blog generation
+  default_recommendation_reason: "Recommended based on your interests"
+  default_relevance_score: 0.5
+  store_images_on_index: false  # Store images when indexing papers

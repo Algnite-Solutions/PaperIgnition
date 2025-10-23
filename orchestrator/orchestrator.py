@@ -7,9 +7,10 @@ import asyncio
 import os
 import sys
 import logging
+import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from generate_blog import run_batch_generation, run_Gemini_blog_generation, run_batch_generation_abs, run_batch_generation_title
 
 # Add backend to Python path
@@ -22,33 +23,72 @@ from backend.app.db_utils import load_config
 from AIgnite.data.docset import DocSetList, DocSet
 
 
+def load_orchestrator_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Load orchestrator configuration from YAML file
+
+    Args:
+        config_path: Path to config file (defaults to orchestrator_config.yaml)
+
+    Returns:
+        Configuration dictionary
+    """
+    if config_path is None:
+        config_path = os.path.join(os.path.dirname(__file__), "orchestrator_config.yaml")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    return config
+
+
 class PaperIgnitionOrchestrator:
     """Orchestrator for daily PaperIgnition tasks"""
 
-    def __init__(self, local_mode: bool = True):
-        self.local_mode = local_mode
-        self.setup_logging()
+    def __init__(
+        self,
+        local_mode: Optional[bool] = None,
+        orchestrator_config_path: Optional[str] = None
+    ):
         self.setup_environment()
+
+        # Load orchestrator configuration
+        self.orch_config = load_orchestrator_config(orchestrator_config_path)
+
+        # Override local_mode from config if not specified
+        if local_mode is None:
+            local_mode = self.orch_config["environment"]["local_mode"]
+        self.local_mode = local_mode
+
+        self.setup_logging()
         logging.info(f"PaperIgnitionOrchestrator: local mode: {local_mode}")
 
-        # Load configuration
+        # Load backend configuration
         config_file = "test_config.yaml" if local_mode else "app_config.yaml"
         config_path = os.path.join(self.project_root, "backend", "configs", config_file)
-        self.config = load_config(config_path=config_path)
-        self.index_api_url = str(self.config["INDEX_SERVICE"]["host"])
-        self.backend_api_url = str(self.config["APP_SERVICE"]["host"])
+        self.backend_config = load_config(config_path=config_path)
+        self.index_api_url = str(self.backend_config["INDEX_SERVICE"]["host"])
+        self.backend_api_url = str(self.backend_config["APP_SERVICE"]["host"])
 
-        logging.info(f"Configuration loaded from {config_path}, config: {self.config}")
+        logging.info(f"Backend configuration loaded from {config_path}")
+        logging.info(f"Orchestrator configuration: {self.orch_config}")
 
         # Initialize API clients
         self.index_client = IndexAPIClient(self.index_api_url)
         self.backend_client = BackendAPIClient(self.backend_api_url)
 
-        # Initialize paper pull service
+        # Initialize paper pull service with config
         base_dir = os.path.join(self.project_root, "orchestrator")
+        paper_config = self.orch_config["paper_pull"]
+        extractor_type = ExtractorType.HTML if paper_config["extractor_type"] == "html" else ExtractorType.PDF
+
         self.paper_service = PaperPullService(
             base_dir=base_dir,
-            extractor_type=ExtractorType.HTML
+            extractor_type=extractor_type,
+            max_workers=paper_config["max_workers"],
+            time_slots_count=paper_config["time_slots_count"],
+            location=paper_config["location"],
+            count_delay=paper_config["count_delay"]
         )
 
         # Initialize job logger
@@ -258,10 +298,12 @@ class PaperIgnitionOrchestrator:
                     logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
 
                 # Search for papers matching the query
+                user_rec_config = self.orch_config["user_recommendation"]
                 papers = self.index_client.find_similar(
                     query=query,
-                    search_strategy='vector',
-                    similarity_cutoff=0.1,
+                    top_k=user_rec_config["top_k"],
+                    search_strategy=user_rec_config["search_strategy"],
+                    similarity_cutoff=user_rec_config["similarity_cutoff"],
                     filters=filter_params
                 )
 
@@ -334,9 +376,13 @@ class PaperIgnitionOrchestrator:
         logging.info("Blog generation for existing users complete.")
 
     async def run_all_tasks(self):
-        """Run all daily tasks and return results"""
+        """Run all daily tasks based on configuration and return results"""
         start_time = datetime.now()
         logging.info(f"Starting all daily tasks at {start_time}")
+
+        # Get stage configuration
+        stages = self.orch_config["stages"]
+        parallel_execution = self.orch_config["job_execution"]["enable_parallel_blog_generation"]
 
         overall_job_id = await self.job_logger.start_job_log(job_type="daily_tasks_orchestrator", username="system")
 
@@ -345,57 +391,93 @@ class PaperIgnitionOrchestrator:
             "paper_fetch": False,
             "all_papers_blog_generation": False,
             "per_user_blog_generation": False,
-            "papers_count": 0
+            "papers_count": 0,
+            "stages_run": []
         }
 
         try:
-            # === Step 1: Fetching daily papers ===
-            logging.info("=== Step 1: Fetching daily papers ===")
-            await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "paper_fetch"})
+            papers = []
 
-            papers = await self.run_fetch_daily_papers()
-            results["papers_fetched"] = len(papers)
-            results["paper_fetch"] = len(papers) > 0
+            # === Step 1: Fetch and Index Papers ===
+            if stages["fetch_daily_papers"]:
+                logging.info("=== Step 1: Fetching daily papers ===")
+                results["stages_run"].append("fetch_daily_papers")
+                await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "paper_fetch"})
 
-            if len(papers) == 0:
-                logging.warning("No papers fetched, skipping blog generation tasks")
-                await self.job_logger.complete_job_log(
-                    overall_job_id,
-                    status="partial",
-                    details={"reason": "No papers were fetched"}
-                )
-                return results
+                papers = await self.run_fetch_daily_papers()
+                results["papers_fetched"] = len(papers)
+                results["paper_fetch"] = len(papers) > 0
 
-            # === Step 2: Blog generation for all papers ===
-            logging.info("=== Step 2: Blog generation for all papers ===")
-            await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "all_papers_blog_gen"})
+                if len(papers) == 0:
+                    logging.warning("No papers fetched, skipping downstream tasks")
+                    await self.job_logger.complete_job_log(
+                        overall_job_id,
+                        status="partial",
+                        details={"reason": "No papers were fetched", "stages_run": results["stages_run"]}
+                    )
+                    return results
+            else:
+                logging.info("Skipping paper fetch stage (disabled in config)")
 
-            try:
-                all_papers_task = self.run_all_papers_blog_generation(papers)
-                per_user_task = self.run_per_user_blog_generation()
+            # === Step 2: Blog Generation ===
+            if stages["generate_all_papers_blog"] or stages["generate_per_user_blogs"]:
+                if len(papers) == 0:
+                    logging.warning("No papers available for blog generation")
+                else:
+                    logging.info("=== Step 2: Blog generation ===")
+                    await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "blog_generation"})
 
-                # Run both tasks in parallel
-                blog_gen_results = await asyncio.gather(all_papers_task, per_user_task, return_exceptions=True)
+                    try:
+                        tasks = []
 
-                all_papers_result = blog_gen_results[0]
-                per_user_result = blog_gen_results[1]
+                        if stages["generate_all_papers_blog"]:
+                            results["stages_run"].append("generate_all_papers_blog")
+                            tasks.append(("all_papers", self.run_all_papers_blog_generation(papers)))
 
-                # Check results
-                results["all_papers_blog_generation"] = not isinstance(all_papers_result, Exception)
-                results["per_user_blog_generation"] = not isinstance(per_user_result, Exception)
+                        if stages["generate_per_user_blogs"]:
+                            results["stages_run"].append("generate_per_user_blogs")
+                            tasks.append(("per_user", self.run_per_user_blog_generation()))
 
-                if isinstance(all_papers_result, Exception):
-                    logging.error(f"All papers blog generation failed: {all_papers_result}")
+                        # Run tasks based on configuration
+                        if parallel_execution and len(tasks) > 1:
+                            logging.info("Running blog generation tasks in parallel")
+                            blog_gen_results = await asyncio.gather(
+                                *[task[1] for task in tasks],
+                                return_exceptions=True
+                            )
+                            for i, (task_name, _) in enumerate(tasks):
+                                result = blog_gen_results[i]
+                                if isinstance(result, Exception):
+                                    logging.error(f"{task_name} blog generation failed: {result}")
+                                    results[f"{task_name}_blog_generation"] = False
+                                else:
+                                    results[f"{task_name}_blog_generation"] = True
+                        else:
+                            logging.info("Running blog generation tasks sequentially")
+                            for task_name, task_coro in tasks:
+                                try:
+                                    await task_coro
+                                    results[f"{task_name}_blog_generation"] = True
+                                except Exception as e:
+                                    logging.error(f"{task_name} blog generation failed: {e}")
+                                    results[f"{task_name}_blog_generation"] = False
 
-                if isinstance(per_user_result, Exception):
-                    logging.error(f"Per user blog generation failed: {per_user_result}")
-
-            except Exception as e:
-                logging.error(f"Blog generation tasks failed: {e}")
-                results["error"] = str(e)
+                    except Exception as e:
+                        logging.error(f"Blog generation tasks failed: {e}")
+                        results["error"] = str(e)
+            else:
+                logging.info("Skipping all blog generation stages (disabled in config)")
 
             # Complete overall job
-            final_status = "success" if results["paper_fetch"] and results["all_papers_blog_generation"] and results["per_user_blog_generation"] else "partial"
+            success_conditions = []
+            if stages["fetch_daily_papers"]:
+                success_conditions.append(results["paper_fetch"])
+            if stages["generate_all_papers_blog"]:
+                success_conditions.append(results.get("all_papers_blog_generation", True))
+            if stages["generate_per_user_blogs"]:
+                success_conditions.append(results.get("per_user_blog_generation", True))
+
+            final_status = "success" if all(success_conditions) else "partial"
 
             await self.job_logger.complete_job_log(
                 overall_job_id,
