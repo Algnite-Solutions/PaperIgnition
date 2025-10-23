@@ -694,4 +694,69 @@ async def delete_vector_document_route(request: DeleteVectorDocumentRequest) -> 
         logger.error(f"Error deleting vectors for document {request.doc_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete vectors: {str(e)}")
 
+@router.put("/update_papers_blog/")
+async def update_papers_blog_route(request: Dict[str, Any]) -> Dict[str, Any]:
+    """Update blog field in papers table for multiple papers"""
+    if paper_indexer is None:
+        raise HTTPException(status_code=503, detail="Indexer not initialized")
+
+    try:
+        from sqlalchemy import text
+
+        papers_data = request.get("papers", [])
+        if not papers_data:
+            return {
+                "message": "No papers provided",
+                "updated_count": 0,
+                "total_requested": 0
+            }
+
+        updated_count = 0
+
+        # Get database connection from indexer
+        if paper_indexer.metadata_db is None:
+            raise HTTPException(status_code=503, detail="Metadata database not initialized")
+
+        # Use the metadata_db connection
+        session = paper_indexer.metadata_db.Session()
+        try:
+            for paper in papers_data:
+                paper_id = paper.get("paper_id")
+                blog_content = paper.get("blog_content")
+
+                if paper_id and blog_content:
+                    # Update the blog field in papers table
+                    update_query = text("""
+                        UPDATE papers 
+                        SET blog = :blog_content 
+                        WHERE doc_id = :paper_id
+                    """)
+
+                    result = session.execute(update_query, {
+                        "blog_content": blog_content,
+                        "paper_id": paper_id
+                    })
+
+                    if result.rowcount > 0:
+                        updated_count += 1
+                        logger.info(f"Updated blog field for paper {paper_id}")
+                    else:
+                        logger.warning(f"No paper found with doc_id: {paper_id}")
+                else:
+                    logger.warning(f"Skipping paper {paper_id} - missing paper_id or blog content")
+
+            session.commit()
+            logger.info(f"Successfully updated blog fields for {updated_count} papers")
+
+            return {
+                "message": f"Successfully updated blog fields for {updated_count} papers",
+                "updated_count": updated_count,
+                "total_requested": len(papers_data)
+            }
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Failed to update papers blog field: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update papers blog field: {str(e)}")
 

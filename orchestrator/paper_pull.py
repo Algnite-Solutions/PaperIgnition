@@ -1,5 +1,5 @@
 from AIgnite.data.docset import *
-from AIgnite.data.htmlparser import *
+from AIgnite.data.htmlparser import ArxivHTMLExtractor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
@@ -12,12 +12,6 @@ from typing import List, Optional, Literal
 from enum import Enum
 
 
-class ExtractorType(Enum):
-    """Enum for extractor types"""
-    HTML = "html"
-    PDF = "pdf"
-
-
 class PaperPullService:
     """
     Service for pulling and extracting papers from arXiv
@@ -28,29 +22,29 @@ class PaperPullService:
     def __init__(
         self,
         base_dir: Optional[str] = None,
-        extractor_type: ExtractorType = ExtractorType.HTML,
         max_workers: int = 3,
         time_slots_count: int = 3,
         location: str = "Asia/Shanghai",
-        count_delay: int = 1
+        count_delay: int = 1,
+        max_papers: Optional[int] = None
     ):
         """
         Initialize PaperPullService
 
         Args:
             base_dir: Base directory for storing papers (defaults to orchestrator dir)
-            extractor_type: Type of extractor to use (HTML or PDF)
             max_workers: Number of parallel workers for fetching
             time_slots_count: Number of time slots to divide the day into
             location: Timezone location for time calculations
             count_delay: Days to delay from current date
+            max_papers: Maximum number of papers to fetch (None for unlimited)
         """
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.extractor_type = extractor_type
         self.max_workers = max_workers
         self.time_slots_count = time_slots_count
         self.location = location
         self.count_delay = count_delay
+        self.max_papers = max_papers
 
         # Setup directories
         if base_dir is None:
@@ -115,13 +109,18 @@ class PaperPullService:
             result.append(t.strftime(fmt))
         return result
 
-    def _run_html_extractor(self, start_str: str, end_str: str) -> List[str]:
+    def _run_html_with_pdf_fallback(self, start_str: str, end_str: str, max_papers_per_slot: Optional[int] = None) -> List[str]:
         """
-        Run HTML extractor for a time slot
+        Run HTML extractor first, then use PDF parser for papers that failed HTML extraction
+
+        This is the default and recommended approach:
+        1. Try HTML extraction for all papers
+        2. For papers that failed HTML extraction, use PDF parser as fallback
 
         Args:
             start_str: Start time string
             end_str: End time string
+            max_papers_per_slot: Maximum papers to fetch in this time slot
 
         Returns:
             List of newly fetched paper IDs
@@ -135,37 +134,32 @@ class PaperPullService:
             volcengine_ak=self.volcengine_ak,
             volcengine_sk=self.volcengine_sk,
             start_time=start_str,
-            end_time=end_str
+            end_time=end_str,
+            max_results=max_papers_per_slot
         )
 
+        # Step 1: Extract HTML papers
         extractor.extract_all_htmls()
+
+        # Step 2: Use PDF parser for remaining docs (fallback for failed HTML extraction)
+        extractor.pdf_parser_helper.docs = extractor.docs
+        extractor.pdf_parser_helper.remain_docparser()
+        extractor.docs = extractor.pdf_parser_helper.docs
+
+        # Collect newly fetched paper IDs
         newly_fetched_ids = [doc.doc_id for doc in extractor.docs]
+
+        # Serialize all docs to JSON
         extractor.serialize_docs()
 
         return newly_fetched_ids
 
-    def _run_pdf_extractor(self, start_str: str, end_str: str) -> List[str]:
-        """
-        Run PDF extractor for a time slot
-
-        TODO: Implement PDF extraction as a separate extractor
-
-        Args:
-            start_str: Start time string
-            end_str: End time string
-
-        Returns:
-            List of newly fetched paper IDs
-        """
-        # TODO: Implement PDF extractor
-        # For now, fall back to HTML extractor
-        self.logger.warning("PDF extractor not yet implemented, using HTML extractor")
-        return self._run_html_extractor(start_str, end_str)
-
-    def _run_extractor_for_timeslot(self, start_str: str, end_str: str) -> List[str]:
+    def _run_extractor_for_timeslot(self, start_str: str, end_str: str, max_papers_per_slot: int) -> List[str]:
         """
         Run the appropriate extractor for a time slot
 
+        By default (HTML type), uses HTML extraction with PDF fallback for failed papers
+
         Args:
             start_str: Start time string
             end_str: End time string
@@ -173,12 +167,8 @@ class PaperPullService:
         Returns:
             List of newly fetched paper IDs
         """
-        if self.extractor_type == ExtractorType.HTML:
-            return self._run_html_extractor(start_str, end_str)
-        elif self.extractor_type == ExtractorType.PDF:
-            return self._run_pdf_extractor(start_str, end_str)
-        else:
-            raise ValueError(f"Unknown extractor type: {self.extractor_type}")
+        # Default: HTML first, PDF fallback for failures
+        return self._run_html_with_pdf_fallback(start_str, end_str, max_papers_per_slot)
 
     def fetch_daily_papers(self, time: Optional[str] = None) -> List[DocSet]:
         """
@@ -193,19 +183,30 @@ class PaperPullService:
         if time is None:
             time = self._get_time_str()
 
-        self.logger.info(f"Fetching papers for {time} using {self.extractor_type.value} extractor")
+        self.logger.info(f"Fetching papers for {time}")
+        if self.max_papers:
+            self.logger.info(f"Max papers limit: {self.max_papers}")
 
         time_slots = self._divide_time_into_slots(time)
+        num_slots = len(time_slots) - 1
+
+        # Calculate max papers per slot if max_papers is set
+        max_papers_per_slot = None
+        if self.max_papers:
+            max_papers_per_slot = self.max_papers // num_slots
+            if self.max_papers % num_slots != 0:
+                max_papers_per_slot += 1  # Round up to cover all papers
+            self.logger.info(f"Max papers per time slot: {max_papers_per_slot} (across {num_slots} slots)")
 
         # Fetch papers in parallel using thread pool
         newly_fetched_ids = set()
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = []
-            for i in range(len(time_slots) - 1):
+            for i in range(num_slots):
                 start_str = time_slots[i]
                 end_str = time_slots[i + 1]
                 futures.append(
-                    executor.submit(self._run_extractor_for_timeslot, start_str, end_str)
+                    executor.submit(self._run_extractor_for_timeslot, start_str, end_str, max_papers_per_slot)
                 )
 
             for f in futures:

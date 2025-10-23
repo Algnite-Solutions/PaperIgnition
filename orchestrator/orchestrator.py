@@ -10,18 +10,16 @@ import logging
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
-import requests
-from generate_blog import run_batch_generation, run_Gemini_blog_generation_default, run_Gemini_blog_generation_recommend, run_batch_generation_abs, run_batch_generation_title
+from typing import List, Dict, Any, Optional
+from generate_blog import run_Gemini_blog_generation_default, run_Gemini_blog_generation_recommend, run_batch_generation_abs, run_batch_generation_title
 
 # Add backend to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from job_util import JobLogger
 from api_clients import IndexAPIClient, BackendAPIClient
-from paper_pull import PaperPullService, ExtractorType
-from backend.app.db_utils import load_config
-from AIgnite.data.docset import DocSetList, DocSet
+from paper_pull import PaperPullService
+from AIgnite.data.docset import DocSet
 
 
 def load_orchestrator_config(config_path: Optional[str] = None) -> Dict[str, Any]:
@@ -29,13 +27,15 @@ def load_orchestrator_config(config_path: Optional[str] = None) -> Dict[str, Any
     Load orchestrator configuration from YAML file
 
     Args:
-        config_path: Path to config file (defaults to orchestrator_config.yaml)
+        config_path: Path to config file. If None, loads development config by default.
 
     Returns:
         Configuration dictionary
     """
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), "orchestrator_config.yaml")
+        # Use path relative to this script's directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(script_dir, "development_config.yaml")
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -48,7 +48,6 @@ class PaperIgnitionOrchestrator:
 
     def __init__(
         self,
-        local_mode: Optional[bool] = None,
         orchestrator_config_path: Optional[str] = None
     ):
         self.setup_environment()
@@ -56,23 +55,16 @@ class PaperIgnitionOrchestrator:
         # Load orchestrator configuration
         self.orch_config = load_orchestrator_config(orchestrator_config_path)
 
-        # Override local_mode from config if not specified
-        if local_mode is None:
-            local_mode = self.orch_config["environment"]["local_mode"]
-        self.local_mode = local_mode
-
         self.setup_logging()
-        logging.info(f"PaperIgnitionOrchestrator: local mode: {local_mode}")
 
-        # Load backend configuration
-        config_file = "test_config.yaml" if local_mode else "app_config.yaml"
-        config_path = os.path.join(self.project_root, "backend", "configs", config_file)
-        self.backend_config = load_config(config_path=config_path)
-        self.index_api_url = str(self.backend_config["INDEX_SERVICE"]["host"])
-        self.backend_api_url = str(self.backend_config["APP_SERVICE"]["host"])
+        # Use configuration from orchestrator config (no need for separate backend config files)
+        self.backend_config = self.orch_config
+        self.index_api_url = str(self.orch_config["index_service"]["host"])
+        self.backend_api_url = str(self.orch_config["backend_service"]["host"])
 
-        logging.info(f"Backend configuration loaded from {config_path}")
-        logging.info(f"Orchestrator configuration: {self.orch_config}")
+        logging.info(f"Using unified configuration")
+        logging.info(f"Index API URL: {self.index_api_url}")
+        logging.info(f"Backend API URL: {self.backend_api_url}")
 
         # Initialize API clients
         self.index_client = IndexAPIClient(self.index_api_url)
@@ -81,19 +73,18 @@ class PaperIgnitionOrchestrator:
         # Initialize paper pull service with config
         base_dir = os.path.join(self.project_root, "orchestrator")
         paper_config = self.orch_config["paper_pull"]
-        extractor_type = ExtractorType.HTML if paper_config["extractor_type"] == "html" else ExtractorType.PDF
 
         self.paper_service = PaperPullService(
             base_dir=base_dir,
-            extractor_type=extractor_type,
             max_workers=paper_config["max_workers"],
             time_slots_count=paper_config["time_slots_count"],
             location=paper_config["location"],
-            count_delay=paper_config["count_delay"]
+            count_delay=paper_config["count_delay"],
+            max_papers=paper_config.get("max_papers")
         )
 
-        # Initialize job logger
-        self.job_logger = JobLogger(config_path=config_path)
+        # Initialize job logger with orchestrator config
+        self.job_logger = JobLogger(config=self.orch_config)
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -204,13 +195,11 @@ class PaperIgnitionOrchestrator:
             
             try:
                 # 生成当前批次的博客
-                output_path = ""
-                if self.local_mode:
-                    output_path = "./blogsByGemini"
-                    run_Gemini_blog_generation_default(batch_papers, output_path=output_path)   
-                else:
-                    output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
-                    run_Gemini_blog_generation_default(batch_papers, output_path=output_path)
+                output_path = self.orch_config["blog_generation"]["output_path"]
+                # Convert to absolute path based on project root
+                if not os.path.isabs(output_path):
+                    output_path = os.path.join(self.project_root, output_path)
+                run_Gemini_blog_generation_default(batch_papers, output_path=output_path)
             
                 logging.info(f"✅ Blog generation completed for batch {batch_start//batch_size + 1}")
                 
@@ -240,8 +229,16 @@ class PaperIgnitionOrchestrator:
                 
                 # 保存当前批次
                 logging.info(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
+                # TODO: Remove after migration
                 self.backend_client.recommend_papers_batch(username, paper_infos)
-                
+
+                # Update papers blog field in index service
+                papers_blog_data = [
+                    {"paper_id": p["paper_id"], "blog_content": p["blog"]}
+                    for p in paper_infos if p.get("paper_id") and p.get("blog")
+                ]
+                if papers_blog_data:
+                    self.index_client.update_papers_blog(papers_blog_data)
                 processed_count += len(batch_papers)
                 logging.info(f"📊 Progress: {processed_count}/{total_papers} papers processed")
                 
@@ -252,7 +249,6 @@ class PaperIgnitionOrchestrator:
         detials = f"Total Papers: {total_papers}, Processed: {processed_count}, Failed Batches: {failed_batches}"
         await self.job_logger.complete_job_log(job_id=job_id, status="success" if failed_batches == 0 else "partial", details=detials) 
         logging.info(f"🎉 All batches completed! Details: {detials}")
-
 
     async def run_all_papers_blog_generation(self, papers: List[DocSet]):
         """Run blog generation task"""
@@ -338,14 +334,11 @@ class PaperIgnitionOrchestrator:
             # 4. Generate blog digests for users
             logging.info("Generating blog digests for users...")
             if all_papers:
-                #run_batch_generation(all_papers)
-                output_path = ""
-                if self.local_mode:
-                    output_path = "./blogsByGemini"
-                    blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
-                else:
-                    output_path="/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"
-                    blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
+                output_path = self.orch_config["blog_generation"]["output_path"]
+                # Convert to absolute path based on project root
+                if not os.path.isabs(output_path):
+                    output_path = os.path.join(self.project_root, output_path)
+                blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
                 logging.info("Digest generation complete.")
 
                 #blog_abs = await run_batch_generation_abs(all_papers)
@@ -357,12 +350,15 @@ class PaperIgnitionOrchestrator:
                 paper_infos = []
                 for i, paper in enumerate(all_papers):
                     try:
-                        # 使用绝对路径，基于当前脚本所在目录
-                        blog_path = os.path.join(os.path.dirname(__file__), "blogs", f"{paper.doc_id}.md")
+                        # Use the configured output_path
+                        output_path = self.orch_config["blog_generation"]["output_path"]
+                        if not os.path.isabs(output_path):
+                            output_path = os.path.join(self.project_root, output_path)
+                        blog_path = os.path.join(output_path, f"{paper.doc_id}.md")
                         with open(blog_path, encoding="utf-8") as file:
                             blog = file.read()
                     except FileNotFoundError:
-                        blog = None  # 或者其他处理方式
+                        blog = None  # Blog file not found, will be skipped by API
                     
                     # 获取对应的博客摘要和标题
                     blog_abs_content = blog_abs[i] if blog_abs and i < len(blog_abs) else None
@@ -445,49 +441,48 @@ class PaperIgnitionOrchestrator:
             # === Step 2: Blog Generation ===
             if stages["generate_all_papers_blog"] or stages["generate_per_user_blogs"]:
                 if len(papers) == 0:
-                    logging.warning("No papers available for blog generation")
-                else:
-                    logging.info("=== Step 2: Blog generation ===")
-                    await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "blog_generation"})
+                    logging.warning("No papers available for default blog generation")
+                logging.info("=== Step 2: Blog generation ===")
+                await self.job_logger.update_job_log(overall_job_id, status="running", details={"step": "blog_generation"})
 
-                    try:
-                        tasks = []
+                try:
+                    tasks = []
 
-                        if stages["generate_all_papers_blog"]:
-                            results["stages_run"].append("generate_all_papers_blog")
-                            tasks.append(("all_papers", self.run_all_papers_blog_generation(papers)))
+                    if stages["generate_all_papers_blog"] and papers:
+                        results["stages_run"].append("generate_all_papers_blog")
+                        tasks.append(("all_papers", self.run_all_papers_blog_generation(papers)))
 
-                        if stages["generate_per_user_blogs"]:
-                            results["stages_run"].append("generate_per_user_blogs")
-                            tasks.append(("per_user", self.run_per_user_blog_generation()))
+                    if stages["generate_per_user_blogs"]:
+                        results["stages_run"].append("generate_per_user_blogs")
+                        tasks.append(("per_user", self.run_per_user_blog_generation()))
 
-                        # Run tasks based on configuration
-                        if parallel_execution and len(tasks) > 1:
-                            logging.info("Running blog generation tasks in parallel")
-                            blog_gen_results = await asyncio.gather(
-                                *[task[1] for task in tasks],
-                                return_exceptions=True
-                            )
-                            for i, (task_name, _) in enumerate(tasks):
-                                result = blog_gen_results[i]
-                                if isinstance(result, Exception):
-                                    logging.error(f"{task_name} blog generation failed: {result}")
-                                    results[f"{task_name}_blog_generation"] = False
-                                else:
-                                    results[f"{task_name}_blog_generation"] = True
-                        else:
-                            logging.info("Running blog generation tasks sequentially")
-                            for task_name, task_coro in tasks:
-                                try:
-                                    await task_coro
-                                    results[f"{task_name}_blog_generation"] = True
-                                except Exception as e:
-                                    logging.error(f"{task_name} blog generation failed: {e}")
-                                    results[f"{task_name}_blog_generation"] = False
+                    # Run tasks based on configuration
+                    if parallel_execution and len(tasks) > 1:
+                        logging.info("Running blog generation tasks in parallel")
+                        blog_gen_results = await asyncio.gather(
+                            *[task[1] for task in tasks],
+                            return_exceptions=True
+                        )
+                        for i, (task_name, _) in enumerate(tasks):
+                            result = blog_gen_results[i]
+                            if isinstance(result, Exception):
+                                logging.error(f"{task_name} blog generation failed: {result}")
+                                results[f"{task_name}_blog_generation"] = False
+                            else:
+                                results[f"{task_name}_blog_generation"] = True
+                    else:
+                        logging.info("Running blog generation tasks sequentially")
+                        for task_name, task_coro in tasks:
+                            try:
+                                await task_coro
+                                results[f"{task_name}_blog_generation"] = True
+                            except Exception as e:
+                                logging.error(f"{task_name} blog generation failed: {e}")
+                                results[f"{task_name}_blog_generation"] = False
 
-                    except Exception as e:
-                        logging.error(f"Blog generation tasks failed: {e}")
-                        results["error"] = str(e)
+                except Exception as e:
+                    logging.error(f"Blog generation tasks failed: {e}")
+                    results["error"] = str(e)
             else:
                 logging.info("Skipping all blog generation stages (disabled in config)")
 
@@ -531,13 +526,10 @@ class PaperIgnitionOrchestrator:
 
 # Main execution
 async def main():
-    """Main function for running daily orchestration"""
-    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "true").lower() == "true"
-    print(f"PAPERIGNITION_LOCAL_MODE: {local_mode}")
-    orchestrator = PaperIgnitionOrchestrator(local_mode=local_mode)
+    orchestrator = PaperIgnitionOrchestrator()
 
     try:
-        results = await orchestrator.run_all_tasks(option = ALL)
+        results = await orchestrator.run_all_tasks()
         return results
     except Exception as e:
         logging.error(f"Orchestration failed: {e}")

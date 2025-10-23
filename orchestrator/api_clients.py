@@ -217,7 +217,7 @@ class IndexAPIClient(BaseAPIClient):
             APIClientError: If search fails
         """
         if result_types is None:
-            result_types = ["metadata", "text_chunks"]
+            result_types = ["metadata"]
 
         payload = {
             "query": query,
@@ -234,24 +234,50 @@ class IndexAPIClient(BaseAPIClient):
 
             docsets = []
             for r in results:
-                score = r.get('score', r.get('similarity_score'))
-                title = r.get('title', r.get('metadata', {}).get('title'))
-
-                self.logger.debug(f"  📄 {r.get('doc_id')}: {title} (score: {score})")
-
                 try:
+                    metadata = r.get('metadata', {})
+
+                    # 处理chunks数据，确保符合DocSet定义
+                    def process_text_chunks(chunks_data):
+                        """处理text_chunks数据，转换为符合DocSet定义的格式"""
+                        if not chunks_data:
+                            return []
+                        
+                        processed_chunks = []
+                        for chunk in chunks_data:
+                            if isinstance(chunk, dict):
+                                # 检查是否已经是正确的格式
+                                if 'id' in chunk and 'type' in chunk and 'text' in chunk:
+                                    processed_chunks.append(chunk)
+                                elif 'chunk_id' in chunk and 'text_content' in chunk:
+                                    # 转换API格式到DocSet格式
+                                    converted_chunk = {
+                                        'id': chunk['chunk_id'],
+                                        'type': 'text',
+                                        'text': chunk['text_content']
+                                    }
+                                    processed_chunks.append(converted_chunk)
+                                else:
+                                    # 跳过无效的chunk
+                                    print(f"Warning: Skipping invalid text chunk: {chunk}")
+                            else:
+                                print(f"Warning: Skipping non-dict text chunk: {chunk}")
+                        return processed_chunks
+                
                     docset_data = {
-                        'doc_id': r.get('doc_id'),
-                        'title': title if title else 'Unknown Title',
-                        'authors': r.get('authors', []),
-                        'categories': r.get('categories', []),
-                        'published_date': r.get('published_date', ''),
-                        'abstract': r.get('abstract', ''),
-                        'pdf_path': r.get('pdf_path', ''),
-                        'HTML_path': r.get('HTML_path', ''),
-                        'comments': r.get('comments', ''),
-                        'text_chunks': r.get('text_chunks', []),
-                        'score': score
+                        'doc_id': metadata.get('doc_id'),
+                        'title': metadata.get('title', 'Unknown Title'),
+                        'authors': metadata.get('authors', []),
+                        'categories': metadata.get('categories', []),
+                        'published_date': metadata.get('published_date', ''),
+                        'abstract': metadata.get('abstract', ''),
+                        'pdf_path': metadata.get('pdf_path', ''),
+                        'HTML_path': metadata.get('HTML_path'),
+                        'text_chunks': process_text_chunks(r.get('text_chunks', [])),
+                        'figure_chunks': [],
+                        'table_chunks': [],
+                        'metadata': metadata,
+                        'comments': metadata.get('comments', '')
                     }
                     docsets.append(DocSet(**docset_data))
                 except Exception as e:
@@ -263,6 +289,46 @@ class IndexAPIClient(BaseAPIClient):
 
         except Exception as e:
             self.logger.error(f"❌ Search failed for query '{query}': {e}")
+            raise
+
+    def update_papers_blog(
+        self,
+        papers_data: List[Dict[str, str]],
+        timeout: float = 30.0
+    ) -> Dict[str, Any]:
+        """
+        Update blog field in papers table for multiple papers
+
+        Args:
+            papers_data: List of dicts with 'paper_id' and 'blog_content' keys
+            timeout: Request timeout in seconds
+
+        Returns:
+            Response from index service
+
+        Raises:
+            APIClientError: If update fails
+        """
+        if not papers_data:
+            self.logger.warning("No papers to update")
+            return {"status": "skipped", "updated": 0}
+
+        request_data = {"papers": papers_data}
+
+        self.logger.info(f"📤 Updating blog field for {len(papers_data)} papers...")
+
+        try:
+            response = self._make_request(
+                method="PUT",
+                endpoint="/update_papers_blog/",
+                json_data=request_data,
+                timeout=timeout
+            )
+            result = response.json()
+            self.logger.info(f"✅ Blog update complete: {result}")
+            return result
+        except Exception as e:
+            self.logger.error(f"❌ Failed to update papers blog: {e}")
             raise
 
 
@@ -408,6 +474,7 @@ class BackendAPIClient(BaseAPIClient):
             True if successful, False otherwise
         """
         data = {
+            "username": username,
             "paper_id": paper_id,
             "title": title,
             "authors": authors,
@@ -425,11 +492,11 @@ class BackendAPIClient(BaseAPIClient):
             self.logger.debug(f"Recommending paper {paper_id} to {username}")
             response = self.post(
                 "/api/papers/recommend",
-                json_data=data,
                 params={"username": username},
+                json_data=data,
                 timeout=timeout
             )
-            self.logger.info(f"✅ Paper {paper_id} recommended to {username}")
+            self.logger.info(f"✅ Paper {paper_id} recommended to {username} (blog: {blog_status})")
             return True
 
         except Exception as e:

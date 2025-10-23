@@ -42,10 +42,19 @@ Base = declarative_base()
 class DatabaseManager:
     """Database manager for handling engine and session lifecycle"""
 
-    def __init__(self, config_path: str = None):
-        """Initialize DatabaseManager with configuration"""
-        self.config_path = config_path
-        self.config = None
+    def __init__(self, db_config: dict = None):
+        """
+        Initialize DatabaseManager with database configuration
+
+        Args:
+            db_config: Database configuration dict with keys:
+                - db_user: Database username
+                - db_password: Database password
+                - db_host: Database host
+                - db_port: Database port
+                - db_name: Database name
+        """
+        self.db_config = db_config
         self._engine = None
         self._session_factory = None
         self._initialized = False
@@ -55,16 +64,12 @@ class DatabaseManager:
         if self._initialized:
             return
 
-        # Load configuration
-        self.config = load_config(self.config_path)
-        user_db_config = self.config.get("USER_DB", {})
-
         # Extract database connection parameters
-        db_user = user_db_config.get("db_user", "postgres")
-        db_password = user_db_config.get("db_password", "11111")
-        db_host = user_db_config.get("db_host", "localhost")
-        db_port = user_db_config.get("db_port", "5432")
-        db_name = user_db_config.get("db_name", "paperignition_user")
+        db_user = self.db_config.get("db_user", "postgres")
+        db_password = self.db_config.get("db_password", "11111")
+        db_host = self.db_config.get("db_host", "localhost")
+        db_port = self.db_config.get("db_port", "5432")
+        db_name = self.db_config.get("db_name", "paperignition_user")
 
         # Build database URL
         database_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
@@ -106,13 +111,6 @@ class DatabaseManager:
             print("✅ DatabaseManager connections closed")
         self._initialized = False
 
-    @property
-    def index_service_url(self) -> str:
-        """Get INDEX_SERVICE URL from config"""
-        if not self.config:
-            return "http://localhost:8002"
-        return self.config.get("INDEX_SERVICE", {}).get("host", "http://localhost:8002")
-
 
 # Global database manager instance (will be set by FastAPI lifespan)
 _db_manager: DatabaseManager = None
@@ -152,10 +150,10 @@ from fastapi import Request, HTTPException
 # Dependency function for getting INDEX_SERVICE_URL
 def get_index_service_url(request: Request) -> str:
     """Get INDEX_SERVICE_URL from app state"""
-    if not hasattr(request.app, 'state') or not hasattr(request.app.state, 'db_manager'):
+    if not hasattr(request.app, 'state') or not hasattr(request.app.state, 'index_service_url'):
         raise HTTPException(
             status_code=500,
-            detail="Application not properly initialized. DatabaseManager not found in app state."
+            detail="Application not properly initialized. index_service_url not found in app state."
         )
 
-    return request.app.state.db_manager.index_service_url
+    return request.app.state.index_service_url

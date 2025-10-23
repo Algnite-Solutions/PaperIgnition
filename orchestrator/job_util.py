@@ -17,11 +17,27 @@ from backend.app.models.users import JobLog
 class JobLogger:
     """Generic job logging utility for tracking job execution"""
 
-    def __init__(self, config_path: str = None):
-        if not config_path:
-            config_path = os.path.join(os.path.dirname(__file__), "../backend/configs/test_config.yaml")
+    def __init__(self, config: dict = None):
+        """
+        Initialize JobLogger
 
-        self.db_manager = DatabaseManager(config_path=config_path)
+        Args:
+            config: Configuration dictionary with backend_service.user_db structure
+        """
+        if config is None:
+            # Default config for local testing
+            db_config = {
+                "db_user": "test_user",
+                "db_password": "11111",
+                "db_host": "localhost",
+                "db_port": "5432",
+                "db_name": "test_user_db"
+            }
+        else:
+            # Extract user_db config from orchestrator config
+            db_config = config.get("backend_service", {}).get("user_db", {})
+
+        self.db_manager = DatabaseManager(db_config=db_config)
         self._table_created = False
 
     async def _ensure_initialized(self):
