@@ -229,7 +229,6 @@ class PaperIgnitionOrchestrator:
                 
                 # 保存当前批次
                 logging.info(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
-<<<<<<< HEAD
                 # TODO: Remove after migration
                 self.backend_client.recommend_papers_batch(username, paper_infos)
 
@@ -240,13 +239,6 @@ class PaperIgnitionOrchestrator:
                 ]
                 if papers_blog_data:
                     self.index_client.update_papers_blog(papers_blog_data)
-=======
-                utils.save_recommendations(username, paper_infos, self.backend_api_url)
-                
-                # 更新papers表中的blog字段
-                await self.update_papers_blog_field(paper_infos)
-                
->>>>>>> c968186976681186507ac92b7ab192cba40390d2
                 processed_count += len(batch_papers)
                 logging.info(f"📊 Progress: {processed_count}/{total_papers} papers processed")
                 
@@ -274,7 +266,6 @@ class PaperIgnitionOrchestrator:
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
-            if username !="rongcan": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)

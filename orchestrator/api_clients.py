@@ -473,18 +473,22 @@ class BackendAPIClient(BaseAPIClient):
         Returns:
             True if successful, False otherwise
         """
+        # Truncate fields to fit database constraints (VARCHAR(255))
+        def truncate(s, max_len=255):
+            return s[:max_len] if s else ""
+
         data = {
             "username": username,
             "paper_id": paper_id,
-            "title": title,
-            "authors": authors,
-            "abstract": abstract,
-            "url": url,
-            "content": content,
-            "blog": blog or "",
-            "blog_abs": blog_abs or "",
-            "blog_title": blog_title or "",
-            "recommendation_reason": recommendation_reason,
+            "title": truncate(title, 255),
+            "authors": truncate(authors, 255),
+            "abstract": abstract,  # Text field, no limit
+            "url": truncate(url, 255),
+            "content": content,  # Text field, no limit
+            "blog": blog or "",  # Text field, no limit
+            "blog_abs": blog_abs or "",  # Text field, no limit
+            "blog_title": blog_title or "",  # Text field, no limit
+            "recommendation_reason": recommendation_reason,  # Text field, no limit
             "relevance_score": relevance_score
         }
 
@@ -496,7 +500,7 @@ class BackendAPIClient(BaseAPIClient):
                 json_data=data,
                 timeout=timeout
             )
-            self.logger.info(f"✅ Paper {paper_id} recommended to {username} (blog: {blog_status})")
+            self.logger.info(f"✅ Paper {paper_id} recommended to {username} ")
             return True
 
         except Exception as e:
