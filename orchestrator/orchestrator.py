@@ -229,6 +229,7 @@ class PaperIgnitionOrchestrator:
                 
                 # 保存当前批次
                 logging.info(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
+<<<<<<< HEAD
                 # TODO: Remove after migration
                 self.backend_client.recommend_papers_batch(username, paper_infos)
 
@@ -239,6 +240,13 @@ class PaperIgnitionOrchestrator:
                 ]
                 if papers_blog_data:
                     self.index_client.update_papers_blog(papers_blog_data)
+=======
+                utils.save_recommendations(username, paper_infos, self.backend_api_url)
+                
+                # 更新papers表中的blog字段
+                await self.update_papers_blog_field(paper_infos)
+                
+>>>>>>> c968186976681186507ac92b7ab192cba40390d2
                 processed_count += len(batch_papers)
                 logging.info(f"📊 Progress: {processed_count}/{total_papers} papers processed")
                 
@@ -266,7 +274,7 @@ class PaperIgnitionOrchestrator:
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
-            #if username !="rongcan": continue
+            if username !="rongcan": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)
@@ -386,6 +394,49 @@ class PaperIgnitionOrchestrator:
                 logging.warning(f"用户 {username} 没有找到相关论文，跳过博客生成和推荐保存")
                 await self.job_logger.complete_job_log(job_id=job_id, status="failed", details="No relevant papers found.")
                 continue
+
+    async def update_papers_blog_field(self, paper_infos: List[Dict[str, Any]]):
+        """Update blog field in papers table for each paper via index service API"""
+        try:
+            import httpx
+            
+            # Prepare the request data
+            papers_data = []
+            for paper_info in paper_infos:
+                paper_id = paper_info.get("paper_id")
+                blog_content = paper_info.get("blog")
+                
+                if paper_id and blog_content:
+                    papers_data.append({
+                        "paper_id": paper_id,
+                        "blog_content": blog_content
+                    })
+                else:
+                    logging.warning(f"Skipping paper {paper_id} - missing paper_id or blog content")
+            
+            if not papers_data:
+                logging.warning("No valid papers to update")
+                return
+            
+            # Call the index service API directly to update papers blog field
+            request_data = {"papers": papers_data}
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.put(
+                    f"{self.index_api_url}/update_papers_blog/",
+                    json=request_data
+                )
+                response.raise_for_status()
+                
+                result = response.json()
+                logging.info(f"✅ Index service API response: {result}")
+                
+        except httpx.HTTPError as e:
+            logging.error(f"❌ HTTP error when updating papers blog field: {str(e)}")
+            raise
+        except Exception as e:
+            logging.error(f"❌ Failed to update papers blog field: {str(e)}")
+            raise
 
     async def run_per_user_blog_generation(self):
         """Run recommendation generation task for each user"""
