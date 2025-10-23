@@ -231,7 +231,7 @@ class PaperIgnitionOrchestrator:
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
-            #if username !="rongcan": continue
+            if username !="rongcan": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = get_user_interest(username, self.backend_api_url)
@@ -353,7 +353,7 @@ class PaperIgnitionOrchestrator:
                 continue
 
     async def update_papers_blog_field(self, paper_infos: List[Dict[str, Any]]):
-        """Update blog field in papers table for each paper via API"""
+        """Update blog field in papers table for each paper via index service API"""
         try:
             import httpx
             
@@ -375,18 +375,18 @@ class PaperIgnitionOrchestrator:
                 logging.warning("No valid papers to update")
                 return
             
-            # Call the API to update papers blog field
+            # Call the index service API directly to update papers blog field
             request_data = {"papers": papers_data}
             
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.put(
-                    f"{self.backend_api_url}/api/papers/update-blog",
+                    f"{self.index_api_url}/update_papers_blog/",
                     json=request_data
                 )
                 response.raise_for_status()
                 
                 result = response.json()
-                logging.info(f"✅ API response: {result}")
+                logging.info(f"✅ Index service API response: {result}")
                 
         except httpx.HTTPError as e:
             logging.error(f"❌ HTTP error when updating papers blog field: {str(e)}")
