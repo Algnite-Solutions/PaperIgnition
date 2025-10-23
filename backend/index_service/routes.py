@@ -85,6 +85,22 @@ async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
     try:
         docsets = []
         for paper in request.docsets.docsets:
+            # 修改figure_chunks的id格式，从title中提取下划线之后的部分
+            modified_figure_chunks = []
+            figure_counter = 1
+            for chunk in paper.figure_chunks:
+                # 从title中提取下划线之后的部分作为图片名称
+                new_chunk_data = chunk.dict()
+                if '_' in chunk.title:
+                    # 提取下划线之后的部分，并添加.png扩展名
+                    figure_name = chunk.title.split('_', 1)[1] + '.png'
+                    new_chunk_data['id'] = figure_name
+                else:
+                    # 如果没有下划线，使用计数器
+                    new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                modified_figure_chunks.append(FigureChunk(**new_chunk_data))
+                figure_counter += 1
+            
             docsets.append(DocSet(
                 doc_id=paper.doc_id,
                 title=paper.title,
@@ -95,7 +111,7 @@ async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
                 pdf_path=paper.pdf_path,
                 HTML_path=paper.HTML_path,
                 text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
-                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                figure_chunks=modified_figure_chunks,
                 table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
                 metadata=paper.metadata or {},
                 comments=paper.comments
@@ -324,6 +340,22 @@ async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse
         # Convert DocSetList to List[DocSet]
         docsets = []
         for paper in request.docsets.docsets:
+            # 修改figure_chunks的id格式，从title中提取下划线之后的部分
+            modified_figure_chunks = []
+            figure_counter = 1
+            for chunk in paper.figure_chunks:
+                # 从title中提取下划线之后的部分作为图片名称
+                new_chunk_data = chunk.dict()
+                if '_' in chunk.title:
+                    # 提取下划线之后的部分，并添加.png扩展名
+                    figure_name = chunk.title.split('_', 1)[1] + '.png'
+                    new_chunk_data['id'] = figure_name
+                else:
+                    # 如果没有下划线，使用计数器
+                    new_chunk_data['id'] = f"Figure{figure_counter}.png"
+                modified_figure_chunks.append(FigureChunk(**new_chunk_data))
+                figure_counter += 1
+            
             docsets.append(DocSet(
                 doc_id=paper.doc_id,
                 title=paper.title,
@@ -334,7 +366,7 @@ async def store_images_route(request: StoreImagesRequest) -> StoreImagesResponse
                 pdf_path=paper.pdf_path,
                 HTML_path=paper.HTML_path,
                 text_chunks=[TextChunk(**chunk.dict()) for chunk in paper.text_chunks],
-                figure_chunks=[FigureChunk(**chunk.dict()) for chunk in paper.figure_chunks],
+                figure_chunks=modified_figure_chunks,
                 table_chunks=[TableChunk(**chunk.dict()) for chunk in paper.table_chunks],
                 metadata=paper.metadata or {},
                 comments=paper.comments

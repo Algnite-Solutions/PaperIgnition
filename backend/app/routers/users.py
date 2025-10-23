@@ -478,16 +478,80 @@ async def get_users_with_empty_rewrite_interest(db: AsyncSession = Depends(get_d
 
 @router.post("/rewrite_interest/batch_update")
 async def batch_update_rewrite_interest(
-    updates: List[RewriteInterestUpdate],
     db: AsyncSession = Depends(get_db)
 ):
-    """批量根据username写入rewrite_interest字段"""
-    updated = []
-    for item in updates:
-        result = await db.execute(select(User).where(User.username == item.username))
-        user = result.scalars().first()
-        if user:
-            user.rewrite_interest = item.rewrite_interest
-            updated.append(user.username)
-    await db.commit()
-    return {"updated": updated} 
+    """批量获取所有用户，翻译research_interests_text并存储到rewrite_interest字段"""
+    try:
+        # 获取所有用户
+        result = await db.execute(select(User))
+        users = result.scalars().all()
+        
+        # 初始化OpenAI客户端
+        from ..db_utils import load_config
+        config = load_config()
+        openai_config = config.get("OPENAI_SERVICE", {})
+        client = get_openai_client(
+            base_url=openai_config.get("base_url", "https://api.deepseek.com"),
+            api_key=openai_config.get("api_key", "EMPTY")
+        )
+        
+        updated = []
+        failed = []
+        
+        for user in users:
+            #if user.username !="rongcan": continue
+            #print(user.username)
+            try:
+                # 检查用户是否有research_interests_text需要翻译
+                if user.research_interests_text and len(user.research_interests_text.strip()) > 0:
+                    # research_interests_text已经是字符串，直接使用
+                    interests_text = user.research_interests_text
+                    logger.info(f"开始翻译用户 {user.username} 的research_interests_text: '{interests_text[:50]}...'")
+                    
+                    # 翻译文本
+                    english_text = translate_text(client, interests_text)
+                    
+                    if english_text:
+                        # 更新rewrite_interest字段
+                        user.rewrite_interest = english_text
+                        user.interests_description = [english_text]
+                        updated.append({
+                            "username": user.username,
+                            "original": interests_text,
+                            "translated": english_text
+                        })
+                        logger.info(f"成功翻译并更新用户 {user.username} 的rewrite_interest")
+                    else:
+                        failed.append({
+                            "username": user.username,
+                            "error": "翻译结果为空"
+                        })
+                        logger.warning(f"用户 {user.username} 的翻译结果为空")
+                else:
+                    logger.info(f"用户 {user.username} 没有research_interests_text，跳过")
+                    
+            except Exception as e:
+                failed.append({
+                    "username": user.username,
+                    "error": str(e)
+                })
+                logger.error(f"翻译用户 {user.username} 时出错: {e}")
+        
+        # 提交所有更改
+        await db.commit()
+        
+        return {
+            "message": "批量翻译完成",
+            "total_users": len(users),
+            "updated": updated,
+            "failed": failed,
+            "success_count": len(updated),
+            "failed_count": len(failed)
+        }
+        
+    except Exception as e:
+        logger.error(f"批量翻译任务失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量翻译失败: {str(e)}"
+        ) 

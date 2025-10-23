@@ -5,6 +5,8 @@ from sqlalchemy.future import select
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
+import asyncio
+import socket
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -58,7 +60,12 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
             UserPaperRecommendation.recommendation_date,
             UserPaperRecommendation.viewed,
             UserPaperRecommendation.blog_liked
-        ).where(UserPaperRecommendation.username == username)
+        )
+        .where(
+            (UserPaperRecommendation.username == username) &
+            (UserPaperRecommendation.blog.isnot(None)) &
+            (UserPaperRecommendation.blog != '')
+        )
         .order_by(UserPaperRecommendation.recommendation_date.desc())
         .limit(limit)
     )
@@ -71,7 +78,7 @@ async def get_recommended_papers_info(username: str, limit: int = 50, db: AsyncS
         title = rec[1] or ""
         authors = rec[2] or ""
         abstract = rec[3] or ""
-        url = rec[4]  # url允许为None
+        url = "https://arxiv.org/pdf/"+ paper_id # url允许为None
         submitted = rec[5]  # submitted允许为None
         recommendation_date = rec[6]  # recommendation_date允许为None
         viewed = rec[7] or False  # viewed默认为False
@@ -177,6 +184,41 @@ def extract_image_filename(image_path: str) -> str:
     import os
     return os.path.basename(image_path.strip())
 
+async def ping_url(url: str, timeout: int = 10) -> bool:
+    """
+    测试URL的连通性
+    
+    Args:
+        url: 要测试的URL
+        timeout: 超时时间（秒）
+    
+    Returns:
+        bool: 如果连通返回True，否则返回False
+    """
+    try:
+        # 如果是相对路径，构建完整URL
+        if url.startswith('/files/'):
+            # 对于内部路径，假设是本地服务
+            full_url = f"http://localhost:8000{url}"
+        elif url.startswith('http://') or url.startswith('https://'):
+            # 对于完整URL，直接使用
+            full_url = url
+        else:
+            # 其他情况，假设是相对路径
+            full_url = f"http://localhost:8000{url}"
+        
+        # 使用httpx进行HTTP HEAD请求测试
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.head(full_url)
+            # 检查状态码，200-299表示成功
+            is_accessible = 200 <= response.status_code < 300
+            logger.info(f"URL {full_url} - Status: {response.status_code}, Accessible: {is_accessible}")
+            return is_accessible
+            
+    except Exception as e:
+        logger.warning(f"Ping failed for {url}: {str(e)}")
+        return False
+
 async def process_markdown_images(markdown_content: str) -> str:
     """处理markdown中的图片路径，替换为预签名URL"""
     import re
@@ -195,10 +237,20 @@ async def process_markdown_images(markdown_content: str) -> str:
         try:
             #filename = "test.png"
             #await serve_file(bucket="aignite-papers-new", key=filename)
-            presigned_url = f" http://10.0.1.226:8888/files/aignite-papers-new/{filename}"
+            # 生成完整的URL，类似 http://www.paperignition.com/files/aignite-papers-new/filename
+            presigned_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
             
             if presigned_url:
-                return f'![{alt_text}]({presigned_url})'
+                # 测试预签名URL的连通性
+                is_accessible = await ping_url(presigned_url)
+                
+                if is_accessible:
+                    logger.info(f"Image {filename} is accessible, keeping reference")
+                    return f'![{alt_text}]({presigned_url})'
+                else:
+                    logger.warning(f"Image {filename} is not accessible, removing reference")
+                    # 如果ping不通，删除图片引用，只保留alt文本
+                    return alt_text if alt_text else ""
             else:
                 # 如果生成失败，保持原路径
                 return match.group(0)
@@ -334,7 +386,8 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         user = user_result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail=f"用户 {username} 不存在")
-
+        if rec.blog is None or rec.blog == '':
+            return {"message": "博客内容为空", "id": None}
         # 创建推荐记录（直接使用传入的数据）
         new_rec = UserPaperRecommendation(
             username=username,
@@ -349,7 +402,7 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
             recommendation_reason=rec.recommendation_reason,
             relevance_score=rec.relevance_score,
             submitted=rec.submitted,  
-            comment=rec.comment
+            comment=rec.comment,
         )
         db.add(new_rec)
         await db.commit()

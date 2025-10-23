@@ -71,12 +71,15 @@ async def blog_generation_for_storage(index_api_url: str, backend_api_url: str, 
                 except FileNotFoundError:
                     blog = None
                 
+
+                paper_url = f"https://arxiv.org/abs/{paper.doc_id}"
+                
                 paper_infos.append({
                     "paper_id": paper.doc_id,
                     "title": paper.title,
                     "authors": ", ".join(paper.authors),
                     "abstract": paper.abstract,
-                    "url": paper.HTML_path,
+                    "url": paper_url,
                     "content": paper.abstract,
                     "blog": blog,
                     "recommendation_reason": f"This is a dummy recommendation reason for paper {paper.title}",

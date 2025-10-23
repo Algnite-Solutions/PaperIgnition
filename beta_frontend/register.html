@@ -33,9 +33,16 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
+        }
+
+        .main-content {
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            padding-bottom: 80px;
         }
 
         .register-container {
@@ -45,7 +52,6 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
-            margin: 20px;
         }
 
         .header {
@@ -227,15 +233,39 @@
                 padding: 32px 24px;
                 margin: 10px;
             }
-            
+
             .logo {
                 font-size: 28px;
             }
         }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border-color);
+            padding: 24px 0;
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .footer-content {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .footer-content a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-content a:hover {
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
-    <div class="register-container">
+    <div class="main-content">
+        <div class="register-container">
         <div class="header">
             <h1 class="logo">Paper<span class="highlight">Ignition</span></h1>
             <p class="subtitle">Create Your Account</p>
@@ -309,7 +339,16 @@
         <div class="back-link">
             <a href="index.html">← Back to Papers</a>
         </div>
+        </div>
     </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>© 2025 PaperIgnition | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2025200330号</a></p>
+            </div>
+        </div>
+    </footer>
 
     <script type="module">
         // Import authentication service
