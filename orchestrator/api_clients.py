@@ -223,7 +223,7 @@ class IndexAPIClient(BaseAPIClient):
             "query": query,
             "top_k": top_k,
             "similarity_cutoff": similarity_cutoff,
-            "search_strategies": [(search_strategy, 0.0)],
+            "search_strategies": [(search_strategy, 1.5)],
             "filters": filters,
             "result_include_types": result_types
         }
@@ -450,6 +450,7 @@ class BackendAPIClient(BaseAPIClient):
         blog_title: Optional[str] = None,
         recommendation_reason: str = "",
         relevance_score: Optional[float] = None,
+        submitted: Optional[str] = None,
         timeout: float = 100.0
     ) -> bool:
         """
@@ -489,7 +490,8 @@ class BackendAPIClient(BaseAPIClient):
             "blog_abs": blog_abs or "",  # Text field, no limit
             "blog_title": blog_title or "",  # Text field, no limit
             "recommendation_reason": recommendation_reason,  # Text field, no limit
-            "relevance_score": relevance_score
+            "relevance_score": relevance_score,
+            "submitted": submitted or ""
         }
 
         try:
@@ -536,7 +538,8 @@ class BackendAPIClient(BaseAPIClient):
                 blog_abs=paper.get("blog_abs"),
                 blog_title=paper.get("blog_title"),
                 recommendation_reason=paper.get("recommendation_reason", ""),
-                relevance_score=paper.get("relevance_score")
+                relevance_score=paper.get("relevance_score"),
+                submitted=paper.get("submitted", ""),
             )
 
             if success:

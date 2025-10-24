@@ -178,161 +178,99 @@ async def mark_paper_as_viewed(
         logger.error(f"Error marking paper as viewed: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to mark paper as viewed")
 
-def extract_image_filename(image_path: str) -> str:
-    """从图片路径中提取文件名"""
-    import os
+def extract_image_urls(markdown_content: str) -> list[str]:
+    """从已处理的markdown内容中提取所有图片URL"""
     import re
     
-    # 先清理路径
-    path = image_path.strip()
+    # 匹配已替换的图片URL
+    url_pattern = r'\(http://www\.paperignition\.com/files/aignite-papers-new/([^)]+\.png)\)'
+    matches = re.findall(url_pattern, markdown_content)
     
-    # 如果路径包含括号，需要特殊处理
-    # 查找最后一个斜杠后的文件名部分
-    if '/' in path:
-        filename_part = path.split('/')[-1]
-    else:
-        filename_part = path
+    # 构建完整的URL列表
+    urls = []
+    for filename in matches:
+        full_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
+        urls.append(full_url)
     
-    # 如果文件名包含括号，确保括号是配对的
-    # 检查是否有未闭合的括号
-    if '(' in filename_part and ')' in filename_part:
-        # 找到最后一个右括号的位置
-        last_paren_pos = filename_part.rfind(')')
-        if last_paren_pos != -1:
-            # 确保右括号后面还有内容（文件扩展名）
-            if last_paren_pos < len(filename_part) - 1:
-                return filename_part
-            else:
-                # 如果右括号是最后一个字符，可能需要添加扩展名
-                # 这种情况下，我们假设原始路径是正确的
-                return filename_part
-    
-    return os.path.basename(path)
+    return urls
 
-async def ping_url(url: str, timeout: int = 10) -> bool:
+async def validate_and_fix_image_urls(markdown_content: str, timeout: int = 10) -> str:
     """
-    测试URL的连通性
+    验证图片URL的连通性，并替换失败的URL为备用路径
     
     Args:
-        url: 要测试的URL
+        markdown_content: 已处理的markdown内容
         timeout: 超时时间（秒）
     
     Returns:
-        bool: 如果连通返回True，否则返回False
+        str: 修复后的markdown内容
     """
-    try:
-        # 如果是相对路径，构建完整URL
-        if url.startswith('/files/'):
-            # 对于内部路径，假设是本地服务
-            full_url = f"http://localhost:8000{url}"
-        elif url.startswith('http://') or url.startswith('https://'):
-            # 对于完整URL，直接使用
-            full_url = url
-        else:
-            # 其他情况，假设是相对路径
-            full_url = f"http://localhost:8000{url}"
+    import re
+    import httpx
+    
+    # 提取所有图片URL
+    urls = extract_image_urls(markdown_content)
+    
+    if not urls:
+        return markdown_content
+    
+    logger.info(f"Found {len(urls)} image URLs to validate")
+    
+    # 测试每个URL的连通性
+    failed_urls = []
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for url in urls:
+            try:
+                response = await client.head(url)
+                is_accessible = 200 <= response.status_code < 300
+                logger.info(f"URL {url} - Status: {response.status_code}, Accessible: {is_accessible}")
+                
+                if not is_accessible:
+                    failed_urls.append(url)
+                    
+            except Exception as e:
+                logger.warning(f"Ping failed for {url}: {str(e)}")
+                failed_urls.append(url)
+    
+    # 如果有失败的URL，直接删除这些图片
+    if failed_urls:
+        logger.warning(f"Found {len(failed_urls)} inaccessible URLs, removing them")
         
-        # 使用httpx进行HTTP HEAD请求测试
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.head(full_url)
-            # 检查状态码，200-299表示成功
-            is_accessible = 200 <= response.status_code < 300
-            logger.info(f"URL {full_url} - Status: {response.status_code}, Accessible: {is_accessible}")
-            return is_accessible
-            
-    except Exception as e:
-        logger.warning(f"Ping failed for {url}: {str(e)}")
-        return False
+        result = markdown_content
+        for failed_url in failed_urls:
+            # 删除整个markdown图片语法，包括![alt text](url)部分
+            # 使用正则表达式匹配并删除整个图片语法
+            pattern = r'!\[[^\]]*\]\(' + re.escape(failed_url) + r'\)'
+            result = re.sub(pattern, '', result)
+            logger.info(f"Removed inaccessible URL: {failed_url}")
+        
+        return result
+    
+    logger.info("All image URLs are accessible")
+    return markdown_content
 
 async def process_markdown_images(markdown_content: str) -> str:
     """处理markdown中的图片路径，替换为预签名URL"""
     import re
     
-    def find_image_links(text):
-        """手动解析markdown图片链接，正确处理嵌套括号"""
-        links = []
-        i = 0
-        while i < len(text):
-            # 查找 ![ 开始
-            if text[i:i+2] == '![':
-                start = i
-                i += 2
-                
-                # 查找 alt 文本的结束 ]
-                alt_end = text.find(']', i)
-                if alt_end == -1:
-                    i += 1
-                    continue
-                
-                alt_text = text[i:alt_end]
-                i = alt_end + 1
-                
-                # 查找 ( 开始
-                if i < len(text) and text[i] == '(':
-                    i += 1
-                    path_start = i
-                    
-                    # 手动查找路径的结束 )
-                    paren_count = 0
-                    while i < len(text):
-                        if text[i] == '(':
-                            paren_count += 1
-                        elif text[i] == ')':
-                            if paren_count == 0:
-                                # 找到匹配的右括号
-                                path = text[path_start:i]
-                                links.append((start, i+1, alt_text, path))
-                                break
-                            else:
-                                paren_count -= 1
-                        i += 1
-                else:
-                    i += 1
-            else:
-                i += 1
-        
-        return links
+    def replace_image_path(match):
+        filename = match.group(1)  # 提取文件名
+        new_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
+        return f"({new_url})"
     
-    async def replace_image(alt_text, image_path):
-        # 提取文件名
-        filename = extract_image_filename(image_path)
-        
-        # 生成预签名URL
-        try:
-            # 生成完整的URL，类似 http://www.paperignition.com/files/aignite-papers-new/filename
-            presigned_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
-            
-            if presigned_url:
-                # 测试预签名URL的连通性
-                is_accessible = await ping_url(presigned_url)
-                
-                if is_accessible:
-                    logger.info(f"Image {filename} is accessible, keeping reference")
-                    return f'![{alt_text}]({presigned_url})'
-                else:
-                    logger.warning(f"Image {filename} is not accessible, removing reference")
-                    # 如果ping不通，删除图片引用，只保留alt文本
-                    return alt_text if alt_text else ""
-            else:
-                # 如果生成失败，保持原路径
-                return f'![{alt_text}]({image_path})'
-        except Exception as e:
-            logger.error(f"Error processing image {filename}: {str(e)}")
-            return f'![{alt_text}]({image_path})'
+    # 处理四种格式的图片路径
+    pattern1 = r'\(\./imgs//([^)]*\.png)\)'  # ./imgs//xxx.png
+    pattern2 = r'\(\.\./imgs//([^)]*\.png)\)'  # ../imgs//xxx.png
+    pattern3 = r'\(\./imgs/([^)]*\.png)\)'  # ./imgs/xxx.png
+    pattern4 = r'\(\.\./imgs/([^)]*\.png)\)'  # ../imgs/xxx.png
     
-    # 找到所有图片链接
-    links = find_image_links(markdown_content)
-    
-    # 异步处理所有图片
-    replacements = []
-    for start, end, alt_text, image_path in links:
-        replacement = await replace_image(alt_text, image_path)
-        replacements.append((start, end, replacement))
-    
-    # 从后往前替换，避免位置偏移
-    result = markdown_content
-    for start, end, replacement in reversed(replacements):
-        result = result[:start] + replacement + result[end:]
+    # 替换所有匹配的图片路径
+    result = re.sub(pattern1, replace_image_path, markdown_content)
+    result = re.sub(pattern2, replace_image_path, result)
+    result = re.sub(pattern3, replace_image_path, result)
+    result = re.sub(pattern4, replace_image_path, result)
+
+    result = await validate_and_fix_image_urls(result)
     
     return result
 

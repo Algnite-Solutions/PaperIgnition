@@ -142,7 +142,7 @@ class PaperIgnitionOrchestrator:
 
             # 3. Index papers
             if papers:
-                self.index_client.index_papers(papers, store_images=self.orch_config["store_images_on_index"])
+                self.index_client.index_papers(papers, store_images=self.orch_config["constants"]["store_images_on_index"])
 
             success = len(papers) > 0
             logging.info(f"Daily paper fetch complete. Fetched {len(papers)} papers.")
