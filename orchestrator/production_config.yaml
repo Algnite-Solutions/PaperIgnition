@@ -1,0 +1,69 @@
+# Production Configuration for PaperIgnition Orchestrator
+# This configuration is used for production deployment
+
+# Backend Service Configuration
+backend_service:
+  host: "http://10.0.1.226:8888"
+
+  user_db:
+    db_user: postgres
+    db_password: "11111"
+    db_host: localhost
+    db_port: "5432"
+    db_name: paperignition_user
+
+
+# Index Service Configuration
+index_service:
+  host: "http://10.0.1.226:8002"
+
+  vector_db:
+    model_name: "GritLM/GritLM-7B"
+    vector_dim: 4096
+    db_path: "/data3/guofang/AIgnite-Solutions/PaperIgnition/vector_db/paperignition_db"
+
+  metadata_db:
+    db_url: "postgresql://postgres:11111@localhost:5432/paperignition"
+
+  minio_db:
+    endpoint: 10.0.1.226:9081
+    access_key: XOrv2wfoWfPypp2zGIae
+    secret_key: k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3
+    bucket_name: aignite-papers-new
+    secure: false
+
+# Pipeline Stages - Enable/disable each stage
+stages:
+  fetch_daily_papers: true  # Fetch new papers from arXiv
+  generate_all_papers_blog: true  # Generate blogs for all fetched papers
+  generate_per_user_blogs: true  # Generate personalized blogs for each user
+
+# Paper Pull Service Configuration
+paper_pull:
+  extractor_type: "html"  # Options: "html", "pdf"
+  max_workers: 3  # Number of parallel workers for fetching papers
+  time_slots_count: 3  # Number of time slots to divide the day into
+  location: "Asia/Shanghai"  # Timezone for time calculations
+  count_delay: 1  # Days to delay from current date
+  max_papers: null  # Maximum number of papers to fetch (null for unlimited)
+
+# Blog Generation Configuration
+blog_generation:
+  batch_size: 50  # Number of papers to process in each batch
+  output_path: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"  # Blog output path for production
+  generation_model: "Gemini"  # Options: "Gemini", "vLLM", "OpenAI"
+
+# User Recommendation Configuration
+user_recommendation:
+  top_k: 5  # Number of top results to return from similarity search
+  similarity_cutoff: 0.1  # Minimum similarity score threshold
+  search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
+
+# Job Execution Configuration
+job_execution:
+  enable_parallel_blog_generation: true  # Run all_papers and per_user blog gen in parallel
+
+# Constants
+constants:
+  blogbot_email: "BlogBot@gmail.com"  # Special user for all papers blog generation
+  store_images_on_index: true  # Store images when indexing papers

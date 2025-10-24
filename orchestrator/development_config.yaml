@@ -1,0 +1,59 @@
+# Development Configuration for PaperIgnition Orchestrator
+# This configuration is used for local development and testing
+
+# Environment
+environment:
+  local_mode: true
+
+# Backend Service Configuration
+backend_service:
+  host: "http://localhost:8000"
+
+  user_db:
+    db_user: test_user
+    db_password: "11111"
+    db_host: localhost
+    db_port: "5432"
+    db_name: test_user_db
+
+# Index Service Configuration
+index_service:
+  host: "http://localhost:8002"
+
+  metadata_db:
+    db_url: "postgresql://test_user:11111@localhost:5432/test_metadata_db"
+
+# Pipeline Stages - Enable/disable each stage
+stages:
+  fetch_daily_papers: false  # Fetch new papers from arXiv
+  generate_all_papers_blog: true  # Generate blogs for all fetched papers
+  generate_per_user_blogs: true  # Generate personalized blogs for each user
+
+# Paper Pull Service Configuration
+paper_pull:
+  max_workers: 3  # Number of parallel workers for fetching papers
+  time_slots_count: 3  # Number of time slots to divide the day into
+  location: "Asia/Shanghai"  # Timezone for time calculations
+  count_delay: 1  # Days to delay from current date
+  max_papers: 6  # Maximum number of papers to fetch
+
+# Blog Generation Configuration
+blog_generation:
+  batch_size: 50  # Number of papers to process in each batch
+  output_path: "orchestrator/blogsByGemini"  # Blog output path for development (relative to project root)
+  generation_model: "Gemini"  # Options: "Gemini", "vLLM", "OpenAI"
+
+# User Recommendation Configuration
+user_recommendation:
+  top_k: 5  # Number of top results to return from similarity search
+  similarity_cutoff: 0  # Minimum similarity score threshold
+  search_strategy: "tf-idf"  # Options: "vector", "tf-idf", "bm25"
+
+# Job Execution Configuration
+job_execution:
+  enable_parallel_blog_generation: true  # Run all_papers and per_user blog gen in parallel
+
+# Constants
+constants:
+  blogbot_email: "BlogBot@gmail.com"  # Special user for all papers blog generation
+  store_images_on_index: false  # Store images when indexing papers

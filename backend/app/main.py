@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.users import ResearchDomain
 
-from backend.app.db_utils import get_db, DatabaseManager, set_database_manager
+from backend.app.db_utils import get_db, DatabaseManager, set_database_manager, load_config
 from backend.app.routers.papers import file_router
 from backend.app.routers import auth, users, papers, static
 from backend.app.routers import favorites
@@ -24,8 +24,12 @@ async def lifespan(app: FastAPI):
 
     print(f"🚀 Starting FastAPI app with config: {config_path} (LOCAL_MODE: {local_mode})")
 
+    # Load configuration
+    config = load_config(config_path)
+    db_config = config.get("USER_DB", {})
+
     # Create and initialize database manager
-    db_manager = DatabaseManager(config_path=config_path)
+    db_manager = DatabaseManager(db_config=db_config)
     await db_manager.initialize()
 
     # Set global database manager
@@ -33,6 +37,7 @@ async def lifespan(app: FastAPI):
 
     # Store in app state for additional access if needed
     app.state.db_manager = db_manager
+    app.state.index_service_url = config.get("INDEX_SERVICE", {}).get("host", "http://localhost:8002")
 
     print("✅ FastAPI app startup complete")
 
