@@ -22,21 +22,23 @@ from paper_pull import PaperPullService
 from AIgnite.data.docset import DocSet
 
 
-def load_orchestrator_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_orchestrator_config(config_file: Optional[str] = None) -> Dict[str, Any]:
     """
     Load orchestrator configuration from YAML file
 
     Args:
-        config_path: Path to config file. If None, loads development config by default.
+        config_file: Path to config file. If None, loads development config by default.
 
     Returns:
         Configuration dictionary
     """
-    if config_path is None:
+    if config_file is None:
         # Use path relative to this script's directory
         script_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(script_dir, "development_config.yaml")
-
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(script_dir, config_file)
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
@@ -48,12 +50,12 @@ class PaperIgnitionOrchestrator:
 
     def __init__(
         self,
-        orchestrator_config_path: Optional[str] = None
+        orchestrator_config_file
     ):
         self.setup_environment()
 
         # Load orchestrator configuration
-        self.orch_config = load_orchestrator_config(orchestrator_config_path)
+        self.orch_config = load_orchestrator_config(orchestrator_config_file)
 
         self.setup_logging()
 
@@ -140,7 +142,7 @@ class PaperIgnitionOrchestrator:
 
             # 3. Index papers
             if papers:
-                self.index_client.index_papers(papers)
+                self.index_client.index_papers(papers, store_images=self.orch_config["store_images_on_index"])
 
             success = len(papers) > 0
             logging.info(f"Daily paper fetch complete. Fetched {len(papers)} papers.")
@@ -567,8 +569,8 @@ class PaperIgnitionOrchestrator:
 
 
 # Main execution
-async def main():
-    orchestrator = PaperIgnitionOrchestrator()
+async def main(config_file: Optional[str] = None):
+    orchestrator = PaperIgnitionOrchestrator(config_file)
 
     try:
         results = await orchestrator.run_all_tasks()
@@ -579,4 +581,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else None))
