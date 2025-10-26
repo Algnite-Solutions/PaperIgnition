@@ -258,11 +258,11 @@ async def process_markdown_images(markdown_content: str) -> str:
         new_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
         return f"({new_url})"
     
-    # 处理四种格式的图片路径
-    pattern1 = r'\(\./imgs//([^)]*\.png)\)'  # ./imgs//xxx.png
-    pattern2 = r'\(\.\./imgs//([^)]*\.png)\)'  # ../imgs//xxx.png
-    pattern3 = r'\(\./imgs/([^)]*\.png)\)'  # ./imgs/xxx.png
-    pattern4 = r'\(\.\./imgs/([^)]*\.png)\)'  # ../imgs/xxx.png
+    # 处理四种格式的图片路径（使用非贪婪匹配来支持包含括号的文件名）
+    pattern1 = r'\(\./imgs//(.*?\.png)\)'  # ./imgs//xxx.png
+    pattern2 = r'\(\.\./imgs//(.*?\.png)\)'  # ../imgs//xxx.png
+    pattern3 = r'\(\./imgs/(.*?\.png)\)'  # ./imgs/xxx.png
+    pattern4 = r'\(\.\./imgs/(.*?\.png)\)'  # ../imgs/xxx.png
     
     # 替换所有匹配的图片路径
     result = re.sub(pattern1, replace_image_path, markdown_content)
