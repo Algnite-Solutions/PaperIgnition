@@ -10,8 +10,8 @@ import socket
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
-from ..models.users import User, UserPaperRecommendation
-from ..models.papers import PaperBase, PaperRecommendation, FeedbackRequest
+from ..models.users import User, UserPaperRecommendation, UserRetrieveResult
+from ..models.papers import PaperBase, PaperRecommendation, FeedbackRequest, RetrieveResultSave
 from ..db_utils import get_db, get_index_service_url
 from ..auth.utils import get_current_user
 from minio import Minio
@@ -413,6 +413,67 @@ async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: A
         print(f"添加推荐记录时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail="添加推荐记录失败")
         
+@router.post("/retrieve_results/save", status_code=status.HTTP_201_CREATED)
+async def save_retrieve_result(
+    data: RetrieveResultSave, 
+    db: AsyncSession = Depends(get_db)
+):
+    """保存用户检索结果用于 reranking 调试
+    
+    Args:
+        data: 包含用户名、查询、检索结果等信息
+        db: 数据库会话
+    
+    Returns:
+        保存成功的响应
+    """
+    try:
+        # 验证用户是否存在
+        user_result = await db.execute(
+            select(User).where(User.username == data.username)
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"用户 {data.username} 不存在")
+        
+        # 解析推荐日期
+        if data.recommendation_date:
+            try:
+                rec_date = datetime.fromisoformat(data.recommendation_date.replace('Z', '+00:00'))
+            except ValueError:
+                rec_date = datetime.now(timezone.utc)
+        else:
+            rec_date = datetime.now(timezone.utc)
+        
+        # 创建检索结果记录
+        new_retrieve_result = UserRetrieveResult(
+            username=data.username,
+            query=data.query,
+            search_strategy=data.search_strategy,
+            recommendation_date=rec_date,
+            retrieve_ids=data.retrieve_ids,  # PostgreSQL JSON 类型
+            top_k_ids=data.top_k_ids
+        )
+        
+        db.add(new_retrieve_result)
+        await db.commit()
+        await db.refresh(new_retrieve_result)
+        
+        logger.info(f"✅ Saved retrieve result for user {data.username}, query: {data.query[:50]}...")
+        return {
+            "success": True,
+            "message": "检索结果保存成功",
+            "id": new_retrieve_result.id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"保存检索结果时发生错误: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"保存检索结果失败: {str(e)}")
+
+
 @router.get("/image/{image_id}")
 async def get_paper_image(
     image_id: str,

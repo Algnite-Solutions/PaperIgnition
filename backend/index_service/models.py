@@ -15,6 +15,15 @@ class IndexPapersRequest(BaseModel):
 class CustomerQuery(BaseModel):
     query: str = Field(..., description="Search query string")
     top_k: Optional[int] = Field(default=5, description="Number of results to return", ge=1)
+    retrieve_k: Optional[int] = Field(
+        default=None,
+        description="Optional number of results for retrieval (for reranking debug). If provided, returns extended format.",
+        ge=1
+    )
+    retrieve_result: Optional[bool] = Field(
+        default=False,
+        description="Whether to save retrieve results to database for reranking debug"
+    )
     similarity_cutoff: Optional[float] = Field(
         default=0.8,
         description="Minimum similarity score (0.0 to 1.0)",
@@ -71,6 +80,15 @@ class CustomerQuery(BaseModel):
         if not v or not v.strip():
             raise ValueError('Query string cannot be empty')
         return v.strip()
+
+    @validator('retrieve_k')
+    def validate_retrieve_k(cls, v, values):
+        """Validate retrieve_k is greater than or equal to top_k if provided"""
+        if v is not None and 'top_k' in values:
+            top_k = values['top_k']
+            if top_k and v < top_k:
+                raise ValueError(f'retrieve_k ({v}) must be >= top_k ({top_k})')
+        return v
 
     @validator('search_strategies')
     def validate_search_strategies(cls, v):

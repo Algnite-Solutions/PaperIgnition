@@ -58,6 +58,21 @@ class FeedbackRequest(BaseModel):
     username: str
     blog_liked: Optional[bool] = None  # True=liked, False=disliked, None=no feedback
 
+# Request model for saving retrieve results (for reranking debug)
+class RetrieveResultSave(BaseModel):
+    username: str
+    query: str
+    search_strategy: str
+    recommendation_date: Optional[str] = None  # ISO format, use current time if not provided
+    retrieve_ids: List[str]
+    top_k_ids: List[str]
+
+# Response model for retrieve result save
+class RetrieveResultResponse(BaseModel):
+    success: bool
+    message: str
+    id: Optional[int] = None
+
 # 模拟论文数据
 MOCK_PAPERS = [
     {
