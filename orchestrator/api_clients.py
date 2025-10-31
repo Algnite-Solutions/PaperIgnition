@@ -263,6 +263,39 @@ class IndexAPIClient(BaseAPIClient):
                             else:
                                 print(f"Warning: Skipping non-dict text chunk: {chunk}")
                         return processed_chunks
+                    
+                    # 处理figure chunks
+                    def process_figure_chunks(figure_ids, doc_id):
+                        """从figure_ids创建figure chunks"""
+                        if not figure_ids:
+                            return []
+                        
+                        figure_chunks = []
+                        for fig_id in figure_ids:
+                            # 提取figure ID（去掉.png后缀）
+                            fig_name = fig_id.replace('.png', '') if fig_id.endswith('.png') else fig_id
+                            figure_chunks.append({
+                                'id': fig_id,
+                                'type': 'figure',
+                                'image_path': None,  # 实际路径需要根据配置添加
+                                'alt_text': None
+                            })
+                        return figure_chunks
+                    
+                    # 处理table chunks
+                    def process_table_chunks(table_ids):
+                        """从table_ids创建table chunks"""
+                        if not table_ids:
+                            return []
+                        
+                        table_chunks = []
+                        for table_id in table_ids:
+                            table_chunks.append({
+                                'id': table_id,
+                                'type': 'table',
+                                'table_html': None
+                            })
+                        return table_chunks
                 
                     docset_data = {
                         'doc_id': metadata.get('doc_id'),
@@ -274,8 +307,8 @@ class IndexAPIClient(BaseAPIClient):
                         'pdf_path': metadata.get('pdf_path', ''),
                         'HTML_path': metadata.get('HTML_path'),
                         'text_chunks': process_text_chunks(r.get('text_chunks', [])),
-                        'figure_chunks': [],
-                        'table_chunks': [],
+                        'figure_chunks': process_figure_chunks(metadata.get('figure_ids', []), metadata.get('doc_id')),
+                        'table_chunks': process_table_chunks(metadata.get('table_ids', [])),
                         'metadata': metadata,
                         'comments': metadata.get('comments', '')
                     }
