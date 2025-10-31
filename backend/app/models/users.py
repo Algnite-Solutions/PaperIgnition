@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text, Float
-from sqlalchemy.dialects.postgresql import ARRAY, TEXT
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text, Float, Index
+from sqlalchemy.dialects.postgresql import ARRAY, TEXT, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -43,6 +43,7 @@ class User(Base):
     research_domains = relationship("ResearchDomain", secondary=user_domain_association, back_populates="users")
     favorite_papers = relationship("FavoritePaper", back_populates="user")
     recommended_papers = relationship("UserPaperRecommendation", back_populates="user")
+    retrieve_results = relationship("UserRetrieveResult", back_populates="user")
 
 
 class ResearchDomain(Base):
@@ -103,6 +104,29 @@ class UserPaperRecommendation(Base):
     blog_feedback_date = Column(DateTime(timezone=True), nullable=True)  # 博客反馈时间
     # 关联关系
     user = relationship("User", back_populates="recommended_papers")
+
+
+class UserRetrieveResult(Base):
+    """用户检索结果记录表 - 用于 reranking 调试"""
+    __tablename__ = "user_retrieve_results"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), ForeignKey("users.username"), index=True)
+    query = Column(Text, nullable=False)  # 搜索关键词
+    search_strategy = Column(String(50), nullable=False)  # vector/tf-idf/bm25
+    recommendation_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    
+    # JSON 数组存储 paper IDs
+    retrieve_ids = Column(JSON, nullable=False)  # Top retrieve_k 的 paper_ids
+    top_k_ids = Column(JSON, nullable=False)     # Top k 的 paper_ids (subset)
+    
+    # 关联关系
+    user = relationship("User", back_populates="retrieve_results")
+    
+    # 索引优化
+    __table_args__ = (
+        Index('idx_username_date', 'username', 'recommendation_date'),
+    )
 
 
 class JobLog(Base):

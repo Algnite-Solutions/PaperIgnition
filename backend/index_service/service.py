@@ -116,10 +116,11 @@ def find_similar(
     indexer: PaperIndexer,
     query: str,
     top_k: int = 5,
+    retrieve_k: Optional[int] = None,
     search_strategies: Optional[List[Tuple[str, float]]] = None,
     filters: Optional[Dict[str, Any]] = None,
     result_include_types: Optional[List[str]] = None
-) -> List[Dict[str, Any]]:
+):
     """Find papers similar to the query using AIgnite's modular search architecture.
     
     This function leverages AIgnite's advanced search capabilities including:
@@ -132,6 +133,7 @@ def find_similar(
         indexer: PaperIndexer instance with configured databases
         query: Search query string
         top_k: Number of results to return
+        retrieve_k: Optional number of results for retrieval (for reranking debug)
         search_strategies: Optional list of search strategies and thresholds:
             - Format: [('vector', 0.5), ('tf-idf', 0.1)]
             - 'vector': Semantic search using embeddings
@@ -149,7 +151,7 @@ def find_similar(
             - 'images': Image data
         
     Returns:
-        List of dictionaries containing paper information, similarity scores, and requested data types
+        List of dictionaries or extended dictionary format (if retrieve_k provided)
         
     Raises:
         ValueError: If input parameters are invalid or search fails
@@ -160,9 +162,12 @@ def find_similar(
             # Set the search strategy using the provided strategies
             indexer.set_search_strategy(search_strategies)
         
+        # 注意：retrieve_k 参数保留在函数签名中（用于 orchestrator 逻辑）
+        # 但不传递给 paper_indexer，因为 paper_indexer.find_similar_papers 不接受此参数
+        # orchestrator 层会使用 retrieve_k 作为 top_k 调用此函数
         return indexer.find_similar_papers(
             query=query,
-            top_k=top_k,
+            top_k=top_k,  # top_k 可能等于 retrieve_k（由 orchestrator 传递）
             filters=filters,
             search_strategies=search_strategies,
             result_include_types=result_include_types
