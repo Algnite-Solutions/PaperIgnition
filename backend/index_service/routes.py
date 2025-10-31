@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Body
-from .models import CustomerQuery, SaveImageRequest, GetImageRequest, ImageResponse, StoreImagesRequest, StoreImagesResponse, IndexPapersRequest, GetImageRequest, GetImageResponse, GetImageStorageStatusRequest, GetImageStorageStatusResponse, SaveVectorsRequest, SaveVectorsResponse, GetAllDocIdsResponse, DeleteVectorDocumentRequest, DeleteVectorDocumentResponse, GetPaperContentRequest, GetPaperContentResponse
+from .models import CustomerQuery, SaveImageRequest, GetImageRequest, ImageResponse, StoreImagesRequest, StoreImagesResponse, IndexPapersRequest, GetImageRequest, GetImageResponse, GetImageStorageStatusRequest, GetImageStorageStatusResponse, SaveVectorsRequest, SaveVectorsResponse, GetAllDocIdsResponse, DeleteVectorDocumentRequest, DeleteVectorDocumentResponse
 from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, ChunkType, DocSetList
 from typing import Dict, Any, List, Optional
 from .service import paper_indexer, index_papers, get_metadata, find_similar, create_indexer, save_image, store_images, get_image, get_image_storage_status, save_vectors, get_all_metadata_doc_ids, get_all_vector_doc_ids, delete_vector_document
@@ -7,8 +7,6 @@ from AIgnite.index.paper_indexer import PaperIndexer
 from pydantic import BaseModel, validator
 import logging
 from .db_utils import init_databases, load_config
-import re
-import httpx
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -761,167 +759,5 @@ async def update_papers_blog_route(request: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to update papers blog field: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update papers blog field: {str(e)}")
-
-
-# --- Helper functions for image processing ---
-
-def extract_image_urls(markdown_content: str) -> list[str]:
-    """从已处理的markdown内容中提取所有图片URL"""
-    
-    # 匹配已替换的图片URL
-    url_pattern = r'\(http://www\.paperignition\.com/files/aignite-papers-new/([^)]+\.png)\)'
-    matches = re.findall(url_pattern, markdown_content)
-    
-    # 构建完整的URL列表
-    urls = []
-    for filename in matches:
-        full_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
-        urls.append(full_url)
-    
-    return urls
-
-async def validate_and_fix_image_urls(markdown_content: str, timeout: int = 10) -> str:
-    """
-    验证图片URL的连通性，并替换失败的URL为备用路径
-    
-    Args:
-        markdown_content: 已处理的markdown内容
-        timeout: 超时时间（秒）
-    
-    Returns:
-        str: 修复后的markdown内容
-    """
-    
-    # 提取所有图片URL
-    urls = extract_image_urls(markdown_content)
-    
-    if not urls:
-        return markdown_content
-    
-    logger.info(f"Found {len(urls)} image URLs to validate")
-    
-    # 测试每个URL的连通性
-    failed_urls = []
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        for url in urls:
-            try:
-                response = await client.head(url)
-                is_accessible = 200 <= response.status_code < 300
-                logger.info(f"URL {url} - Status: {response.status_code}, Accessible: {is_accessible}")
-                
-                if not is_accessible:
-                    failed_urls.append(url)
-                    
-            except Exception as e:
-                logger.warning(f"Ping failed for {url}: {str(e)}")
-                failed_urls.append(url)
-    
-    # 如果有失败的URL，直接删除这些图片
-    if failed_urls:
-        logger.warning(f"Found {len(failed_urls)} inaccessible URLs, removing them")
-        
-        result = markdown_content
-        for failed_url in failed_urls:
-            # 删除整个markdown图片语法，包括![alt text](url)部分
-            # 使用正则表达式匹配并删除整个图片语法
-            pattern = r'!\[[^\]]*\]\(' + re.escape(failed_url) + r'\)'
-            result = re.sub(pattern, '', result)
-            logger.info(f"Removed inaccessible URL: {failed_url}")
-        
-        return result
-    
-    logger.info("All image URLs are accessible")
-    return markdown_content
-
-async def process_markdown_images(markdown_content: str) -> str:
-    """处理markdown中的图片路径，替换为预签名URL"""
-    
-    def replace_image_path(match):
-        filename = match.group(1)  # 提取文件名
-        new_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
-        return f"({new_url})"
-    
-    # 处理四种格式的图片路径
-    pattern1 = r'\(\./imgs//([^)]*\.png)\)'  # ./imgs//xxx.png
-    pattern2 = r'\(\.\./imgs//([^)]*\.png)\)'  # ../imgs//xxx.png
-    pattern3 = r'\(\./imgs/([^)]*\.png)\)'  # ./imgs/xxx.png
-    pattern4 = r'\(\.\./imgs/([^)]*\.png)\)'  # ../imgs/xxx.png
-    
-    # 替换所有匹配的图片路径
-    result = re.sub(pattern1, replace_image_path, markdown_content)
-    result = re.sub(pattern2, replace_image_path, result)
-    result = re.sub(pattern3, replace_image_path, result)
-    result = re.sub(pattern4, replace_image_path, result)
-
-    result = await validate_and_fix_image_urls(result)
-    
-    return result
-
-
-# --- Blog Content Route ---
-
-@router.get("/get_paper_content/{paper_id}")
-async def get_paper_content_route(paper_id: str) -> str:
-    """Get blog content for a paper from the papers table in MetadataDB.
-    
-    This endpoint retrieves the blog content for a paper by its doc_id from
-    the papers table. It processes the markdown content to fix image paths
-    and validate image URLs.
-    
-    Args:
-        paper_id: Document ID (doc_id) of the paper
-        
-    Returns:
-        Processed blog content as a string with fixed image URLs
-        
-    Raises:
-        HTTPException: If indexer not initialized, paper not found, or blog content is empty
-    """
-    if paper_indexer is None:
-        raise HTTPException(status_code=503, detail="Indexer not initialized")
-    
-    try:
-        # Validate request
-        if not paper_id or not paper_id.strip():
-            raise HTTPException(status_code=422, detail="Paper ID cannot be empty")
-        
-        paper_id = paper_id.strip()
-        logger.info(f"Fetching paper content for paper_id: {paper_id}")
-        
-        # Get database connection from indexer
-        if paper_indexer.metadata_db is None:
-            raise HTTPException(status_code=503, detail="Metadata database not initialized")
-        
-        # Use the metadata_db connection
-        session = paper_indexer.metadata_db.Session()
-        try:
-            from sqlalchemy import text
-            
-            # Query blog content from papers table
-            query = text("SELECT blog FROM papers WHERE doc_id = :paper_id")
-            result = session.execute(query, {"paper_id": paper_id})
-            row = result.fetchone()
-            
-            if not row or not row[0]:
-                logger.warning(f"Blog content not found for paper_id: {paper_id}")
-                raise HTTPException(status_code=404, detail="Blog content not found")
-            
-            # 获取原始markdown内容
-            markdown_content = row[0]
-            
-            # 处理图片路径，生成预签名URL
-            processed_content = await process_markdown_images(markdown_content)
-            
-            logger.info(f"Successfully processed paper content for paper_id: {paper_id}")
-            return processed_content
-            
-        finally:
-            session.close()
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting paper content for {paper_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get paper content: {str(e)}")
 
 

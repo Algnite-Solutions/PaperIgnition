@@ -236,21 +236,3 @@ class DeleteVectorDocumentResponse(BaseModel):
     message: str = Field(..., description="Response message")
     doc_id: str = Field(..., description="Document ID that was deleted")
     vectors_deleted: bool = Field(..., description="Whether vectors were actually deleted")
-
-
-# --- Blog Content Models ---
-
-class GetPaperContentRequest(BaseModel):
-    paper_id: str = Field(..., description="Paper ID (doc_id) to get blog content for")
-    
-    @validator('paper_id')
-    def paper_id_not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError('Paper ID cannot be empty')
-        return v.strip()
-
-class GetPaperContentResponse(BaseModel):
-    success: bool = Field(..., description="Whether the operation was successful")
-    message: str = Field(..., description="Response message")
-    content: Optional[str] = Field(default=None, description="Processed blog content with fixed image URLs")
-    paper_id: str = Field(..., description="Paper ID that was requested")
