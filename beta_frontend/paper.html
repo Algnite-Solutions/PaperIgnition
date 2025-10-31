@@ -461,9 +461,10 @@
     <script>
         // API Configuration - use relative URLs to proxy through frontend server
 
-        // Get paper ID from URL parameters
+        // Get paper ID and username from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const paperId = urlParams.get('id');
+        const username = urlParams.get('username');
 
         if (!paperId) {
             document.getElementById('loadingIndicator').innerHTML = '<p>No paper ID provided</p>';
@@ -526,18 +527,28 @@
 
         async function loadPaperContent() {
             try {
-                const response = await fetch(`/api/papers/paper_content/${encodeURIComponent(paperId)}`);
-                
+                // Determine which API to call based on username parameter
+                let response;
+                if (username) {
+                    // Recommended paper - load blog content
+                    console.log(`Loading blog content for paper ${paperId}, user ${username}`);
+                    response = await fetch(`/api/digests/blog_content/${encodeURIComponent(paperId)}/${encodeURIComponent(username)}`);
+                } else {
+                    // Searched paper - load full paper content
+                    console.log(`Loading full paper content for paper ${paperId}`);
+                    response = await fetch(`/api/digests/paper_content/${encodeURIComponent(paperId)}`);
+                }
+
                 if (!response.ok) {
                     if (response.status === 404) {
                         throw new Error('Paper content not found');
                     }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 // The backend returns the content as plain text (markdown string)
                 paperContent = await response.text();
-                
+
                 // If the response is JSON-wrapped, parse it
                 try {
                     const jsonData = JSON.parse(paperContent);
@@ -547,7 +558,7 @@
                 } catch (e) {
                     // Content is already plain text, keep as is
                 }
-                
+
             } catch (error) {
                 console.error('Error loading paper content:', error);
                 paperContent = `## Error Loading Content\n\n${error.message}\n\nPlease try again later.`;

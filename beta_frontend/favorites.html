@@ -677,8 +677,16 @@
             // Store paper information in sessionStorage for the detail page
             sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
 
+            // Get current username for recommended papers
+            const currentUser = window.AuthService?.getCurrentUser();
+            const username = currentUser?.username;
+
             // Open paper detail page in new tab
-            window.open(`paper.html?id=${paper.id}`, '_blank');
+            // Favorited papers are recommended papers, so include username for blog_content
+            const url = username
+                ? `paper.html?id=${paper.id}&username=${encodeURIComponent(username)}`
+                : `paper.html?id=${paper.id}`;
+            window.open(url, '_blank');
         }
 
         function handleSearch(event) {

@@ -268,7 +268,7 @@ class PaperIgnitionOrchestrator:
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
-            if username != "rongcan": continue
+
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)

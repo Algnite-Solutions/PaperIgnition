@@ -21,7 +21,7 @@ from fastapi.responses import Response
 # 设置日志
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/papers", tags=["papers"])
+router = APIRouter(prefix="/digests", tags=["digests"])
 
 def get_minio_client():
     """获取MinIO客户端 - 使用硬编码配置"""

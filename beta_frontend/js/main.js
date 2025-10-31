@@ -91,7 +91,7 @@ async function loadUserRecommendations() {
     try {
         // Call the backend recommendations API
         const username = currentUser.username;
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ async function loadDefaultUserRecommendations() {
     showLoading();
 
     try {
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -556,7 +556,7 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
         const actionValue = action === 'like' ? true : false;
         const blogLiked = currentState ? null : actionValue;
 
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(paperId)}/feedback`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(paperId)}/feedback`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -1075,7 +1075,7 @@ async function showPaperDetail(paper) {
         try {
             const token = window.AuthService.getToken();
             // Call API in background, don't wait for response
-            fetch(`/api/papers/${encodeURIComponent(paper.id)}/mark-viewed`, {
+            fetch(`/api/digests/${encodeURIComponent(paper.id)}/mark-viewed`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
