@@ -1,5 +1,5 @@
 // Paper data (using the same data from the Taro app)
-const samplePapers = [
+const sampledigests = [
     {
         id: '1',
         title: 'TigerVector: Bringing High-Performance Vector Search to Graph Databases for Advanced RAG',
@@ -14,18 +14,18 @@ const samplePapers = [
 ];
 
 // State management
-let allPapers = []; // Store all fetched papers
-let currentPapers = []; // Currently displayed papers
-let displayedPapersCount = 0; // Track how many papers are currently displayed
-const PAPERS_PER_PAGE = 10; // K papers to load at a time (configurable)
-let bookmarkedPapers = new Set();
+let alldigests = []; // Store all fetched digests
+let currentdigests = []; // Currently displayed digests
+let displayeddigestsCount = 0; // Track how many digests are currently displayed
+const digests_PER_PAGE = 10; // K digests to load at a time (configurable)
+let bookmarkeddigests = new Set();
 let userFavorites = new Set(); // 新增：存储用户真实的收藏状态
 let isLoading = false;
 let searchQuery = '';
-let hasMorePapers = true; // Track if there are more papers to load
+let hasMoredigests = true; // Track if there are more digests to load
 
 // DOM elements
-const papersContainer = document.getElementById('papersContainer');
+const digestsContainer = document.getElementById('digestsContainer');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const searchInput = document.getElementById('searchInput');
 
@@ -38,9 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initializeApp() {
     // Load bookmarks from localStorage
-    const savedBookmarks = localStorage.getItem('bookmarkedPapers');
+    const savedBookmarks = localStorage.getItem('bookmarkeddigests');
     if (savedBookmarks) {
-        bookmarkedPapers = new Set(JSON.parse(savedBookmarks));
+        bookmarkeddigests = new Set(JSON.parse(savedBookmarks));
     }
 
     // Check if user is logged in and load their recommendations
@@ -53,7 +53,7 @@ async function initializeApp() {
     } else {
         // Load default user recommendations with login suggestion
         await loadDefaultUserRecommendations();
-        // Show login suggestion banner AFTER papers are rendered
+        // Show login suggestion banner AFTER digests are rendered
         if (!window.AuthService || !window.AuthService.isLoggedIn()) {
             showLoginSuggestion();
         }
@@ -91,7 +91,7 @@ async function loadUserRecommendations() {
     try {
         // Call the backend recommendations API
         const username = currentUser.username;
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(username)}`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -103,10 +103,10 @@ async function loadUserRecommendations() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const papers = await response.json();
+        const digests = await response.json();
 
         // Transform backend data to match frontend format
-        const transformedPapers = papers.map(paper => ({
+        const transformeddigests = digests.map(paper => ({
             id: paper.id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
@@ -119,30 +119,30 @@ async function loadUserRecommendations() {
             blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
 
-        // Deduplicate papers by ID (keep the most recent recommendation)
+        // Deduplicate digests by ID (keep the most recent recommendation)
         const paperMap = new Map();
-        transformedPapers.forEach(paper => {
+        transformeddigests.forEach(paper => {
             if (!paperMap.has(paper.id) ||
                 new Date(paper.recommendationDate) > new Date(paperMap.get(paper.id).recommendationDate)) {
                 paperMap.set(paper.id, paper);
             }
         });
-        allPapers = Array.from(paperMap.values());
-        currentPapers = []; // Clear displayed papers
-        displayedPapersCount = 0;
-        hasMorePapers = allPapers.length > 0;
+        alldigests = Array.from(paperMap.values());
+        currentdigests = []; // Clear displayed digests
+        displayeddigestsCount = 0;
+        hasMoredigests = alldigests.length > 0;
 
-        renderPapers();
+        renderdigests();
 
         // 批量检查并同步当前论文的收藏状态
-        await syncCurrentPapersFavoriteStatus();
+        await syncCurrentdigestsFavoriteStatus();
         
     } catch (error) {
         console.error('Error loading recommendations:', error);
-        // Fallback to demo papers on error
-        showErrorMessage('Failed to load recommendations. Showing sample papers.');
+        // Fallback to demo digests on error
+        showErrorMessage('Failed to load recommendations. Showing sample digests.');
     } finally {
-        if (currentPapers.length === 0) {
+        if (currentdigests.length === 0) {
             console.log('No paper to display, loading default recommendations as fallback');
             await loadDefaultUserRecommendations();
             return; // loadDefaultUserRecommendations handles rendering
@@ -159,7 +159,7 @@ async function loadDefaultUserRecommendations() {
     showLoading();
 
     try {
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(defaultUsername)}?limit=10`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -170,9 +170,9 @@ async function loadDefaultUserRecommendations() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const papers = await response.json();
+        const digests = await response.json();
 
-        const transformedPapers = papers.map(paper => ({
+        const transformeddigests = digests.map(paper => ({
             id: paper.id,
             title: paper.title,
             authors: paper.authors ? paper.authors.split(', ') : [],
@@ -185,25 +185,25 @@ async function loadDefaultUserRecommendations() {
             blog_liked: paper.blog_liked ?? null, // true = liked, false = disliked, null = no feedback
         }));
 
-        // Deduplicate papers by ID (keep the most recent recommendation)
+        // Deduplicate digests by ID (keep the most recent recommendation)
         const paperMap = new Map();
-        transformedPapers.forEach(paper => {
+        transformeddigests.forEach(paper => {
             if (!paperMap.has(paper.id) ||
                 new Date(paper.recommendationDate) > new Date(paperMap.get(paper.id).recommendationDate)) {
                 paperMap.set(paper.id, paper);
             }
         });
-        allPapers = Array.from(paperMap.values());
-        currentPapers = []; // Clear displayed papers
-        displayedPapersCount = 0;
-        hasMorePapers = allPapers.length > 0;
+        alldigests = Array.from(paperMap.values());
+        currentdigests = []; // Clear displayed digests
+        displayeddigestsCount = 0;
+        hasMoredigests = alldigests.length > 0;
 
-        renderPapers();
+        renderdigests();
 
     } catch (error) {
         console.error('Error loading default recommendations:', error);
-        showErrorMessage('Failed to load recommendations. Showing sample papers.');
-        await loadSamplePapers();
+        showErrorMessage('Failed to load recommendations. Showing sample digests.');
+        await loadSampledigests();
     } finally {
         isLoading = false;
         hideLoading();
@@ -216,7 +216,7 @@ function showLoginSuggestion() {
         return;
     }
 
-    // Add a login suggestion banner at the top of papers container
+    // Add a login suggestion banner at the top of digests container
     const banner = document.createElement('div');
     banner.id = 'loginSuggestionBanner';
     banner.style.cssText = `
@@ -236,31 +236,31 @@ function showLoginSuggestion() {
         </p>
     `;
 
-    papersContainer.insertBefore(banner, papersContainer.firstChild);
+    digestsContainer.insertBefore(banner, digestsContainer.firstChild);
 }
 
 function showLoginPrompt() {
-    papersContainer.innerHTML = `
+    digestsContainer.innerHTML = `
         <div class="loading">
             <h2>Welcome to PaperIgnition</h2>
             <p>Please <a href="login.html" style="color: var(--accent-red);">login</a> to see your personalized paper recommendations.</p>
             <br>
-            <p>Or view some <button onclick="loadSamplePapers()" style="color: var(--accent-red); background: none; border: none; text-decoration: underline; cursor: pointer;">sample papers</button></p>
+            <p>Or view some <button onclick="loadSampledigests()" style="color: var(--accent-red); background: none; border: none; text-decoration: underline; cursor: pointer;">sample digests</button></p>
         </div>
     `;
 }
 
-async function loadSamplePapers() {
-    currentPapers = samplePapers;
-    renderPapers();
+async function loadSampledigests() {
+    currentdigests = sampledigests;
+    renderdigests();
 
     // 如果用户已登录，批量检查并同步当前论文的收藏状l态
-    await syncCurrentPapersFavoriteStatus();
+    await syncCurrentdigestsFavoriteStatus();
 }
 
-async function searchPapersAPI(query) {
+async function searchdigestsAPI(query) {
     /**
-     * Call the backend /find_similar/ API to search for papers
+     * Call the backend /find_similar/ API to search for digests
      */
     try {
         const response = await fetch('/api/find_similar/', {
@@ -301,10 +301,10 @@ async function searchPapersAPI(query) {
     }
 }
 
-async function loadPapers(append = false) {
+async function loaddigests(append = false) {
     // This function is now used primarily for search functionality
     if (!window.AuthService || !window.AuthService.isLoggedIn()) {
-        await loadSamplePapers();
+        await loadSampledigests();
         return;
     }
 
@@ -318,13 +318,13 @@ async function loadPapers(append = false) {
     try {
         if (searchQuery && searchQuery.trim().length > 0) {
             // Call backend search API
-            const searchResults = await searchPapersAPI(searchQuery);
-            allPapers = searchResults;
-            currentPapers = []; // Clear displayed papers
-            displayedPapersCount = 0;
-            hasMorePapers = allPapers.length > 0;
-            console.log(`Search query: "${searchQuery}", Papers found: ${allPapers.length}`);
-            if (!allPapers || allPapers.length === 0) {
+            const searchResults = await searchdigestsAPI(searchQuery);
+            alldigests = searchResults;
+            currentdigests = []; // Clear displayed digests
+            displayeddigestsCount = 0;
+            hasMoredigests = alldigests.length > 0;
+            console.log(`Search query: "${searchQuery}", digests found: ${alldigests.length}`);
+            if (!alldigests || alldigests.length === 0) {
                 console.log('No paper to display');
             }
         } else {
@@ -332,13 +332,13 @@ async function loadPapers(append = false) {
             console.log('No search query, reloading user recommendations');
             isLoading = false; // Reset loading to allow loadUserRecommendations to proceed
             await loadUserRecommendations();
-            return; // loadUserRecommendations handles rendering and hasMorePapers
+            return; // loadUserRecommendations handles rendering and hasMoredigests
         }
 
-        renderPapers();
+        renderdigests();
 
     } catch (error) {
-        console.error('Error in loadPapers:', error);
+        console.error('Error in loaddigests:', error);
         showErrorMessage('Search failed');
     } finally {
         isLoading = false;
@@ -346,60 +346,60 @@ async function loadPapers(append = false) {
     }
 }
 
-function loadMorePapers() {
-    const startIdx = displayedPapersCount;
-    const endIdx = Math.min(startIdx + PAPERS_PER_PAGE, allPapers.length);
+function loadMoredigests() {
+    const startIdx = displayeddigestsCount;
+    const endIdx = Math.min(startIdx + digests_PER_PAGE, alldigests.length);
 
-    // Get next batch of papers
-    const newPapers = allPapers.slice(startIdx, endIdx);
-    currentPapers = [...currentPapers, ...newPapers];
-    displayedPapersCount = endIdx;
+    // Get next batch of digests
+    const newdigests = alldigests.slice(startIdx, endIdx);
+    currentdigests = [...currentdigests, ...newdigests];
+    displayeddigestsCount = endIdx;
 
-    // Check if there are more papers to load
-    hasMorePapers = displayedPapersCount < allPapers.length;
+    // Check if there are more digests to load
+    hasMoredigests = displayeddigestsCount < alldigests.length;
 
-    return newPapers;
+    return newdigests;
 }
 
-function renderPapers(append = false) {
+function renderdigests(append = false) {
     if (!append) {
-        papersContainer.innerHTML = '';
-        currentPapers = [];
-        displayedPapersCount = 0;
+        digestsContainer.innerHTML = '';
+        currentdigests = [];
+        displayeddigestsCount = 0;
     }
 
-    // Load next batch of papers
-    const newPapers = loadMorePapers();
+    // Load next batch of digests
+    const newdigests = loadMoredigests();
 
     // Add search results header (only on initial render)
     if (!append && searchQuery && searchQuery.trim().length > 0) {
         const resultsHeader = document.createElement('div');
         resultsHeader.className = 'search-results-header';
         resultsHeader.innerHTML = `
-            <p>Showing <strong>${allPapers.length}</strong> results for: "<strong>${searchQuery}</strong>"</p>
+            <p>Showing <strong>${alldigests.length}</strong> results for: "<strong>${searchQuery}</strong>"</p>
         `;
-        papersContainer.appendChild(resultsHeader);
+        digestsContainer.appendChild(resultsHeader);
     }
 
-    // Render new papers
-    newPapers.forEach(paper => {
+    // Render new digests
+    newdigests.forEach(paper => {
         const paperElement = createPaperCard(paper);
-        papersContainer.appendChild(paperElement);
+        digestsContainer.appendChild(paperElement);
     });
 
     // Handle empty states
-    if (allPapers.length === 0 && searchQuery && searchQuery.trim().length > 0) {
+    if (alldigests.length === 0 && searchQuery && searchQuery.trim().length > 0) {
         const noResultsDiv = document.createElement('div');
         noResultsDiv.className = 'loading';
-        noResultsDiv.innerHTML = '<p>No papers found matching your search.</p>';
-        papersContainer.appendChild(noResultsDiv);
-    } else if (allPapers.length === 0) {
-        papersContainer.innerHTML = '<div class="loading"><p>No papers found.</p></div>';
-    } else if (!hasMorePapers && currentPapers.length > 0) {
+        noResultsDiv.innerHTML = '<p>No digests found matching your search.</p>';
+        digestsContainer.appendChild(noResultsDiv);
+    } else if (alldigests.length === 0) {
+        digestsContainer.innerHTML = '<div class="loading"><p>No digests found.</p></div>';
+    } else if (!hasMoredigests && currentdigests.length > 0) {
         const noMoreDiv = document.createElement('div');
-        noMoreDiv.className = 'no-more-papers';
-        noMoreDiv.innerHTML = '<p>No more papers</p>';
-        papersContainer.appendChild(noMoreDiv);
+        noMoreDiv.className = 'no-more-digests';
+        noMoreDiv.innerHTML = '<p>No more digests</p>';
+        digestsContainer.appendChild(noMoreDiv);
     }
 }
 
@@ -424,7 +424,7 @@ function createPaperCard(paper) {
         isDisliked = paper.blog_liked === false;
     }
 
-    const isFavorited = bookmarkedPapers.has(paper.id);
+    const isFavorited = bookmarkeddigests.has(paper.id);
 
     // Check if we're in search mode (only show favorite button in search)
     const isSearchMode = searchQuery && searchQuery.trim().length > 0;
@@ -556,7 +556,7 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
         const actionValue = action === 'like' ? true : false;
         const blogLiked = currentState ? null : actionValue;
 
-        const response = await fetch(`/api/papers/recommendations/${encodeURIComponent(paperId)}/feedback`, {
+        const response = await fetch(`/api/digests/recommendations/${encodeURIComponent(paperId)}/feedback`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -581,8 +581,8 @@ async function handlePaperAction(paperId, action, activeBtn, oppositeBtn) {
             oppositeBtn.classList.remove('active');
         }
 
-        // Update paper data in currentPapers
-        const paper = currentPapers.find(p => p.id === paperId);
+        // Update paper data in currentdigests
+        const paper = currentdigests.find(p => p.id === paperId);
         if (paper) {
             paper.blog_liked = blogLiked;
         }
@@ -599,26 +599,26 @@ async function handleFavoriteAction(paperId, btn) {
 
     if (!isLoggedIn) {
         // For non-logged in users, use localStorage
-        if (bookmarkedPapers.has(paperId)) {
-            bookmarkedPapers.delete(paperId);
+        if (bookmarkeddigests.has(paperId)) {
+            bookmarkeddigests.delete(paperId);
             btn.classList.remove('active');
             btn.querySelector('svg').setAttribute('fill', 'none');
             btn.setAttribute('title', 'Add to favorites');
         } else {
-            bookmarkedPapers.add(paperId);
+            bookmarkeddigests.add(paperId);
             btn.classList.add('active');
             btn.querySelector('svg').setAttribute('fill', 'currentColor');
             btn.setAttribute('title', 'Remove from favorites');
         }
 
         // Save to localStorage
-        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+        localStorage.setItem('bookmarkeddigests', JSON.stringify([...bookmarkeddigests]));
         return;
     }
 
     // For logged in users, use toggleBookmark functionality
     // Find the paper data
-    const paper = currentPapers.find(p => p.id === paperId);
+    const paper = currentdigests.find(p => p.id === paperId);
     if (!paper) {
         console.error('Paper not found:', paperId);
         return;
@@ -654,7 +654,7 @@ async function handleFavoriteAction(paperId, btn) {
 
             // Update local state
             userFavorites.delete(paperId);
-            bookmarkedPapers.delete(paperId);
+            bookmarkeddigests.delete(paperId);
 
             // Restore original HTML first, then update UI
             btn.innerHTML = originalHtml;
@@ -703,7 +703,7 @@ async function handleFavoriteAction(paperId, btn) {
 
             // Update local state
             userFavorites.add(paperId);
-            bookmarkedPapers.add(paperId);
+            bookmarkeddigests.add(paperId);
 
             // Restore original HTML first, then update UI
             btn.innerHTML = originalHtml;
@@ -734,17 +734,17 @@ async function toggleBookmark(paperId, event) {
     
     if (!isLoggedIn) {
         // 未登录用户使用localStorage
-    if (bookmarkedPapers.has(paperId)) {
-        bookmarkedPapers.delete(paperId);
+    if (bookmarkeddigests.has(paperId)) {
+        bookmarkeddigests.delete(paperId);
     } else {
-        bookmarkedPapers.add(paperId);
+        bookmarkeddigests.add(paperId);
     }
     
     // Save to localStorage
-    localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+    localStorage.setItem('bookmarkeddigests', JSON.stringify([...bookmarkeddigests]));
     
     // Update UI
-    const isBookmarked = bookmarkedPapers.has(paperId);
+    const isBookmarked = bookmarkeddigests.has(paperId);
     button.className = `bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`;
     button.textContent = isBookmarked ? '★ Saved' : '☆ Save';
         
@@ -755,7 +755,7 @@ async function toggleBookmark(paperId, event) {
     const isCurrentlyFavorited = userFavorites.has(paperId);
     
     // Find the paper data
-    const paper = currentPapers.find(p => p.id === paperId);
+    const paper = currentdigests.find(p => p.id === paperId);
     if (!paper) {
         console.error('Paper not found:', paperId);
         return;
@@ -792,7 +792,7 @@ async function toggleBookmark(paperId, event) {
             
             // Update local state
             userFavorites.delete(paperId);
-            bookmarkedPapers.delete(paperId);
+            bookmarkeddigests.delete(paperId);
             
             // Update UI
             button.className = 'bookmark-btn';
@@ -849,7 +849,7 @@ async function toggleBookmark(paperId, event) {
                     if (response.status === 400 && errorData.detail?.includes('已在收藏')) {
                         // Paper already favorited
                         userFavorites.add(paperId);
-                        bookmarkedPapers.add(paperId);
+                        bookmarkeddigests.add(paperId);
                         button.className = 'bookmark-btn bookmarked';
                         button.textContent = '★ Saved';
                         showSuccessMessage('Already in favorites');
@@ -888,7 +888,7 @@ async function toggleBookmark(paperId, event) {
             
             // Update local state
             userFavorites.add(paperId);
-            bookmarkedPapers.add(paperId);
+            bookmarkeddigests.add(paperId);
             
             // Update UI
             button.className = 'bookmark-btn bookmarked';
@@ -898,7 +898,7 @@ async function toggleBookmark(paperId, event) {
         }
         
         // Update localStorage for backward compatibility
-        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+        localStorage.setItem('bookmarkeddigests', JSON.stringify([...bookmarkeddigests]));
         
     } catch (error) {
         console.error('Error toggling favorite:', error);
@@ -950,23 +950,23 @@ async function loadUserFavorites() {
             
             // Update local favorite state
             userFavorites.clear();
-            bookmarkedPapers.clear();
+            bookmarkeddigests.clear();
             
             favorites.forEach(fav => {
                 userFavorites.add(fav.paper_id);
-                bookmarkedPapers.add(fav.paper_id);
+                bookmarkeddigests.add(fav.paper_id);
             });
             
             // Update localStorage
-            localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+            localStorage.setItem('bookmarkeddigests', JSON.stringify([...bookmarkeddigests]));
             
-            console.log('Favorites loaded:', favorites.length, 'papers');
+            console.log('Favorites loaded:', favorites.length, 'digests');
             console.log('User favorites updated:', [...userFavorites]);
             
-            // Re-render papers to update bookmark states
-            if (currentPapers.length > 0) {
-                console.log('Re-rendering papers with updated favorite states');
-                renderPapers();
+            // Re-render digests to update bookmark states
+            if (currentdigests.length > 0) {
+                console.log('Re-rendering digests with updated favorite states');
+                renderdigests();
             }
         } else {
             console.error('Failed to load favorites:', response.status, response.statusText);
@@ -976,7 +976,7 @@ async function loadUserFavorites() {
     }
 }
 
-async function syncCurrentPapersFavoriteStatus() {
+async function syncCurrentdigestsFavoriteStatus() {
     // 由于批量检查接口在服务器上不存在，这里只是一个占位函数
     // 收藏状态同步主要通过loadUserFavorites()函数完成
     console.log('Sync function called, but using loadUserFavorites for actual sync');
@@ -1042,27 +1042,27 @@ function showErrorMessage(message) {
 
 function handleSearch(event) {
     searchQuery = event.target.value.trim();
-    loadPapers(false);
+    loaddigests(false);
 }
 
 function handleScroll() {
     if (isLoading) return;
 
-    // Don't trigger infinite scroll for non-logged-in users (they see default BlogBot papers)
+    // Don't trigger infinite scroll for non-logged-in users (they see default BlogBot digests)
     if (!window.AuthService || !window.AuthService.isLoggedIn()) {
         return;
     }
 
     // Don't load more if we've reached the end
-    if (!hasMorePapers) {
+    if (!hasMoredigests) {
         return;
     }
 
     const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
     if (scrollTop + clientHeight >= scrollHeight - 5) {
-        // Load next K papers
-        if (hasMorePapers) {
-            renderPapers(true);
+        // Load next K digests
+        if (hasMoredigests) {
+            renderdigests(true);
         }
     }
 }
@@ -1075,7 +1075,7 @@ async function showPaperDetail(paper) {
         try {
             const token = window.AuthService.getToken();
             // Call API in background, don't wait for response
-            fetch(`/api/papers/${encodeURIComponent(paper.id)}/mark-viewed`, {
+            fetch(`/api/digests/${encodeURIComponent(paper.id)}/mark-viewed`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -1090,8 +1090,17 @@ async function showPaperDetail(paper) {
     // Store paper information in sessionStorage for the detail page
     sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
 
+    // Get current username for recommended papers
+    const currentUser = window.AuthService?.getCurrentUser();
+    const username = currentUser?.username;
+
     // Open paper detail page in new tab
-    window.open(`paper.html?id=${paper.id}`, '_blank');
+    // If username exists, it's a recommended paper (blog_content)
+    // If no username, it's a searched paper (paper_content)
+    const url = username
+        ? `paper.html?id=${paper.id}&username=${encodeURIComponent(username)}`
+        : `paper.html?id=${paper.id}`;
+    window.open(url, '_blank');
 }
 
 function showLoading() {
@@ -1125,31 +1134,31 @@ function debounce(func, wait) {
 }
 
 // API service functions (similar to the original services)
-class PaperService {
-    static async getPapers(page = 1, search = '') {
+class digestservice {
+    static async getdigests(page = 1, search = '') {
         try {
             // In a real implementation, this would make an HTTP request
-            // const response = await fetch(`${API_BASE_URL}/papers?page=${page}&search=${search}`);
+            // const response = await fetch(`${API_BASE_URL}/digests?page=${page}&search=${search}`);
             // return await response.json();
             
             // For demo, return sample data
             return {
-                papers: samplePapers,
+                digests: sampledigests,
                 hasMore: false,
-                total: samplePapers.length
+                total: sampledigests.length
             };
         } catch (error) {
-            console.error('Error fetching papers:', error);
+            console.error('Error fetching digests:', error);
             throw error;
         }
     }
     
     static async getPaperDetail(paperId) {
         try {
-            // const response = await fetch(`${API_BASE_URL}/papers/${paperId}`);
+            // const response = await fetch(`${API_BASE_URL}/digests/${paperId}`);
             // return await response.json();
             
-            return samplePapers.find(p => p.id === paperId);
+            return sampledigests.find(p => p.id === paperId);
         } catch (error) {
             console.error('Error fetching paper detail:', error);
             throw error;
@@ -1158,7 +1167,7 @@ class PaperService {
     
     static async getPaperContent(paperId) {
         try {
-            // const response = await fetch(`${API_BASE_URL}/papers/${paperId}/content`);
+            // const response = await fetch(`${API_BASE_URL}/digests/${paperId}/content`);
             // return await response.json();
             
             // Return sample content (TigerVector content from the original service)
@@ -1204,7 +1213,7 @@ function setupAuthNavigation() {
     window.addEventListener('authStateChanged', (event) => {
         updateNavigation();
         
-        // Reload papers when auth state changes
+        // Reload digests when auth state changes
         if (event.detail.isLoggedIn) {
             loadUserRecommendations();
             loadUserFavorites(); // 用户登录时加载收藏

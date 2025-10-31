@@ -442,7 +442,7 @@ class BackendAPIClient(BaseAPIClient):
         """
         try:
             self.logger.debug(f"Fetching papers for user: {username}")
-            papers = self.get(f"/api/papers/recommendations/{username}")
+            papers = self.get(f"/api/digests/recommendations/{username}")
             self.logger.info(f"✅ User {username} has {len(papers)} papers")
             return papers
         except APIResponseError as e:
