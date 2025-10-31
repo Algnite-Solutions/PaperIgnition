@@ -193,8 +193,8 @@ async def find_similar_route(query: CustomerQuery):
                     detail=f"retrieve_k ({query.retrieve_k}) must be >= top_k ({query.top_k})"
                 )
             
-        if query.similarity_cutoff is not None and not (0 <= query.similarity_cutoff <= 1):
-            raise HTTPException(status_code=422, detail="similarity_cutoff must be between 0 and 1")
+        if query.similarity_cutoff is not None and not (0 <= query.similarity_cutoff <= 3.0):
+            raise HTTPException(status_code=422, detail="similarity_cutoff must be between 0 and 3.0")
     
         # Validate filter structure if provided
         if query.filters:

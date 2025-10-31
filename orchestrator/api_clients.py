@@ -191,23 +191,20 @@ class IndexAPIClient(BaseAPIClient):
     def find_similar(
         self,
         query: str,
-        top_k: int = 10,
-        retrieve_k: Optional[int] = None,
-        retrieve_result: bool = False,
+        search_k: int = 10,
         similarity_cutoff: float = 0.1,
         search_strategy: str = 'vector',
         filters: Optional[Dict] = None,
         result_types: Optional[List[str]] = None,
         timeout: float = 10.0
-    ):
+    ) -> List[DocSet]:
         """
         Find similar papers using the index service
 
         Args:
             query: Search query
-            top_k: Number of results to return for recommendation
-            retrieve_k: Optional number of results for retrieval (for reranking debug)
-            retrieve_result: Whether to return both top_k and retrieve results
+            search_k: Number of results to return from search
+            retrieve_result: Deprecated parameter (kept for compatibility)
             similarity_cutoff: Minimum similarity score threshold
             search_strategy: Search strategy ('vector', 'tf-idf', 'bm25')
             filters: Optional filters (e.g., exclude doc_ids)
@@ -215,8 +212,7 @@ class IndexAPIClient(BaseAPIClient):
             timeout: Request timeout in seconds
 
         Returns:
-            If retrieve_result is False: List[DocSet] (top_k results)
-            If retrieve_result is True: Tuple[List[DocSet], List[DocSet]] (top_k_results, retrieve_results)
+            List[DocSet]: List of similar papers
 
         Raises:
             APIClientError: If search fails
@@ -226,46 +222,25 @@ class IndexAPIClient(BaseAPIClient):
 
         payload = {
             "query": query,
-            "top_k": top_k,
+            "top_k": search_k,  # 使用 search_k 作为搜索数量
             "similarity_cutoff": similarity_cutoff,
-            "search_strategies": [(search_strategy, 1.5)],
+            "search_strategies": [(search_strategy, similarity_cutoff)],
             "filters": filters,
             "result_include_types": result_types
         }
-        
-        # 添加新参数
-        if retrieve_k is not None:
-            payload["retrieve_k"] = retrieve_k
-            payload["retrieve_result"] = retrieve_result
 
         try:
             self.logger.info(
                 f"🔍 Searching for: '{query}' (strategy: {search_strategy}, "
-                f"top_k: {top_k}, retrieve_k: {retrieve_k}, cutoff: {similarity_cutoff})"
+                f"search_k: {search_k}, cutoff: {similarity_cutoff})"
             )
             
             results = self.post("/find_similar/", json_data=payload, timeout=timeout)
             
-            # 判断返回格式
-            if isinstance(results, dict) and "top_k_results" in results:
-                # 扩展格式：包含 top_k_results 和 retrieve_results
-                top_k_docsets = self._convert_to_docsets(results["top_k_results"])
-                retrieve_docsets = self._convert_to_docsets(results["retrieve_results"])
-                
-                self.logger.info(
-                    f"✅ Found {len(top_k_docsets)} top_k papers, "
-                    f"{len(retrieve_docsets)} retrieve papers"
-                )
-                
-                if retrieve_result:
-                    return top_k_docsets, retrieve_docsets
-                else:
-                    return top_k_docsets
-            else:
-                # 标准格式：列表
-                docsets = self._convert_to_docsets(results)
-                self.logger.info(f"✅ Found {len(docsets)} papers")
-                return docsets
+            # 统一返回列表格式（不再判断扩展格式）
+            docsets = self._convert_to_docsets(results)
+            self.logger.info(f"✅ Found {len(docsets)} papers")
+            return docsets
                 
         except Exception as e:
             self.logger.error(f"❌ Search failed for query '{query}': {e}")

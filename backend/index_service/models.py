@@ -28,7 +28,7 @@ class CustomerQuery(BaseModel):
         default=0.8,
         description="Minimum similarity score (0.0 to 1.0)",
         ge=0.0,
-        le=1.0
+        le=3.0
     )
     search_strategies: Optional[List[Tuple[str, float]]] = Field(
         default=None,

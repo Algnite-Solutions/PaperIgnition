@@ -162,10 +162,12 @@ def find_similar(
             # Set the search strategy using the provided strategies
             indexer.set_search_strategy(search_strategies)
         
+        # 注意：retrieve_k 参数保留在函数签名中（用于 orchestrator 逻辑）
+        # 但不传递给 paper_indexer，因为 paper_indexer.find_similar_papers 不接受此参数
+        # orchestrator 层会使用 retrieve_k 作为 top_k 调用此函数
         return indexer.find_similar_papers(
             query=query,
-            top_k=top_k,
-            retrieve_k=retrieve_k,
+            top_k=top_k,  # top_k 可能等于 retrieve_k（由 orchestrator 传递）
             filters=filters,
             search_strategies=search_strategies,
             result_include_types=result_include_types
