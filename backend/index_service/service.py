@@ -116,7 +116,6 @@ def find_similar(
     indexer: PaperIndexer,
     query: str,
     top_k: int = 5,
-    retrieve_k: Optional[int] = None,
     search_strategies: Optional[List[Tuple[str, float]]] = None,
     filters: Optional[Dict[str, Any]] = None,
     result_include_types: Optional[List[str]] = None
@@ -162,9 +161,6 @@ def find_similar(
             # Set the search strategy using the provided strategies
             indexer.set_search_strategy(search_strategies)
         
-        # 注意：retrieve_k 参数保留在函数签名中（用于 orchestrator 逻辑）
-        # 但不传递给 paper_indexer，因为 paper_indexer.find_similar_papers 不接受此参数
-        # orchestrator 层会使用 retrieve_k 作为 top_k 调用此函数
         return indexer.find_similar_papers(
             query=query,
             top_k=top_k,  # top_k 可能等于 retrieve_k（由 orchestrator 传递）

@@ -237,7 +237,6 @@ async def find_similar_route(query: CustomerQuery):
             paper_indexer,
             query=query.query.strip(),
             top_k=query.top_k,
-            retrieve_k=query.retrieve_k,
             search_strategies=query.search_strategies,
             filters=query.filters,
             result_include_types=query.result_include_types

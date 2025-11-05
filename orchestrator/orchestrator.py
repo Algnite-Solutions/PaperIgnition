@@ -267,8 +267,7 @@ class PaperIgnitionOrchestrator:
         #print(f"✅ 共获取到 {len(all_users)} 个用户")
         for user in all_users:
             username = user.get("username")
-            if username == "BlogBot@gmail.com": continue
-            if username !='Fang Guo': continue
+            #if username == "BlogBot@gmail.com": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)
@@ -309,24 +308,29 @@ class PaperIgnitionOrchestrator:
 
                 # Search for papers matching the query
                 user_rec_config = self.orch_config["user_recommendation"]
+                top_k = user_rec_config["top_k"]
                 retrieve_k = user_rec_config.get("retrieve_k")
                 retrieve_result = user_rec_config.get("retrieve_result", False)
+                print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
                 
-                # 调用 find_similar（支持检索结果）
+                # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
+                #search_k = retrieve_k if retrieve_k else top_k
+                
+                # 调用 find_similar，使用 search_k 作为搜索数量
+                all_search_results = self.index_client.find_similar(
+                    query=query,
+                    search_k=retrieve_k,  # 使用 search_k（retrieve_k 或 top_k）
+                    search_strategy=user_rec_config["search_strategy"],
+                    similarity_cutoff=user_rec_config["similarity_cutoff"],
+                    filters=filter_params
+                )
+                
+                # 从结果中取前 top_k 作为推荐
+                papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
+                
+                # 如果需要保存检索结果
                 if retrieve_result and retrieve_k:
-                    # 返回两组结果
-                    papers, retrieve_papers = self.index_client.find_similar(
-                        query=query,
-                        top_k=user_rec_config["top_k"],
-                        retrieve_k=retrieve_k,
-                        retrieve_result=True,
-                        search_strategy=user_rec_config["search_strategy"],
-                        similarity_cutoff=user_rec_config["similarity_cutoff"],
-                        filters=filter_params
-                    )
-                    
-                    # 保存检索结果到数据库
-                    retrieve_ids = [p.doc_id for p in retrieve_papers]
+                    retrieve_ids = [p.doc_id for p in all_search_results]
                     top_k_ids = [p.doc_id for p in papers]
                     
                     save_success = self.backend_client.save_retrieve_result(
@@ -344,15 +348,6 @@ class PaperIgnitionOrchestrator:
                         )
                     else:
                         logging.warning(f"⚠️ Failed to save retrieve result for query '{query}'")
-                else:
-                    # 标准调用（向后兼容）
-                    papers = self.index_client.find_similar(
-                        query=query,
-                        top_k=user_rec_config["top_k"],
-                        search_strategy=user_rec_config["search_strategy"],
-                        similarity_cutoff=user_rec_config["similarity_cutoff"],
-                        filters=filter_params
-                    )
                 
                 all_papers.extend(papers)
 
