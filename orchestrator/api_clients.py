@@ -530,7 +530,7 @@ class BackendAPIClient(BaseAPIClient):
         try:
             self.logger.debug(f"Recommending paper {paper_id} to {username}")
             response = self.post(
-                "/api/papers/recommend",
+                "/api/digests/recommend",
                 params={"username": username},
                 json_data=data,
                 timeout=timeout
