@@ -21,7 +21,7 @@ from fastapi.responses import Response
 # 设置日志
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/papers", tags=["papers"])
+router = APIRouter(prefix="/digests", tags=["digests"])
 
 def get_minio_client():
     """获取MinIO客户端 - 使用硬编码配置"""
@@ -378,8 +378,7 @@ async def serve_file(bucket: str, key: str):
 
 
 # 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
-# 接口为{backend_url}/api/papers/recommend
-# TODO(@Hui Chen): 需要添加安全验证
+# 接口为{backend_url}/api/digests/recommend
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
 async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
     """根据username和paper详细信息插入推荐记录到UserPaperRecommendation表中"""

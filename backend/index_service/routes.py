@@ -860,7 +860,7 @@ async def process_markdown_images(markdown_content: str) -> str:
 
 # --- Blog Content Route ---
 
-@router.get("/get_paper_content/{paper_id}")
+@router.get("/paper_content/{paper_id}")
 async def get_paper_content_route(paper_id: str) -> str:
     """Get blog content for a paper from the papers table in MetadataDB.
     
