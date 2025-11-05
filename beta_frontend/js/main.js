@@ -1090,8 +1090,21 @@ async function showPaperDetail(paper) {
     // Store paper information in sessionStorage for the detail page
     sessionStorage.setItem(`paper_${paper.id}`, JSON.stringify(paper));
 
+    // Determine if this is from search or recommendations using searchQuery
+    const isFromSearch = searchQuery && searchQuery.trim().length > 0;
+
+    let url = `paper.html?id=${paper.id}`;
+
+    if (!isFromSearch) {
+        // This is a recommendation - pass username to use blog_content API
+        const currentUser = window.AuthService?.getCurrentUser();
+        const username = currentUser?.username || 'BlogBot@gmail.com';
+        url += `&username=${encodeURIComponent(username)}`;
+    }
+    // For search results: don't pass username to use paper_content API
+
     // Open paper detail page in new tab
-    window.open(`paper.html?id=${paper.id}`, '_blank');
+    window.open(url, '_blank');
 }
 
 function showLoading() {

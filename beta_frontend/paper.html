@@ -536,7 +536,7 @@
                 } else {
                     // Searched paper - load full paper content
                     console.log(`Loading full paper content for paper ${paperId}`);
-                    response = await fetch(`/api/digests/paper_content/${encodeURIComponent(paperId)}`);
+                    response = await fetch(`/api/paper_content/${encodeURIComponent(paperId)}`);
                 }
 
                 if (!response.ok) {
