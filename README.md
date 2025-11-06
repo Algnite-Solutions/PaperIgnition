@@ -10,7 +10,7 @@ Before you begin, ensure you have Node.js and npm (or yarn) installed on your sy
 - **python dependencies**: `pip install -r requirements.txt`
 
 ```bash
-export PYTHONPATH=/path/to/your/PaperIgnition
+export PYTHONPATH=/Users/bran/Desktop/AIgnite-Solutions/AIgnite/src:/Users/bran/Desktop/AIgnite-Solutions/PaperIgnition
 $env:PYTHONPATH = "D:\PaperIgnition\PaperIgnition"
 ```
 ## Initialize Databases (DB Backend)

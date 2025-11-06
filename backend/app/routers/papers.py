@@ -21,7 +21,7 @@ from fastapi.responses import Response
 # 设置日志
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/papers", tags=["papers"])
+router = APIRouter(prefix="/digests", tags=["digests"])
 
 def get_minio_client():
     """获取MinIO客户端 - 使用硬编码配置"""
@@ -258,11 +258,11 @@ async def process_markdown_images(markdown_content: str) -> str:
         new_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
         return f"({new_url})"
     
-    # 处理四种格式的图片路径
-    pattern1 = r'\(\./imgs//([^)]*\.png)\)'  # ./imgs//xxx.png
-    pattern2 = r'\(\.\./imgs//([^)]*\.png)\)'  # ../imgs//xxx.png
-    pattern3 = r'\(\./imgs/([^)]*\.png)\)'  # ./imgs/xxx.png
-    pattern4 = r'\(\.\./imgs/([^)]*\.png)\)'  # ../imgs/xxx.png
+    # 处理四种格式的图片路径（使用非贪婪匹配来支持包含括号的文件名）
+    pattern1 = r'\(\./imgs//(.*?\.png)\)'  # ./imgs//xxx.png
+    pattern2 = r'\(\.\./imgs//(.*?\.png)\)'  # ../imgs//xxx.png
+    pattern3 = r'\(\./imgs/(.*?\.png)\)'  # ./imgs/xxx.png
+    pattern4 = r'\(\.\./imgs/(.*?\.png)\)'  # ../imgs/xxx.png
     
     # 替换所有匹配的图片路径
     result = re.sub(pattern1, replace_image_path, markdown_content)
@@ -274,21 +274,26 @@ async def process_markdown_images(markdown_content: str) -> str:
     
     return result
 
-@router.get("/paper_content/{paper_id}")
-async def get_paper_markdown_content(paper_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/blog_content/{paper_id}/{username}")
+async def get_blog_content(paper_id: str, username: str, db: AsyncSession = Depends(get_db)):
     """
-    根据paper_id返回论文的markdown内容，并处理其中的图片路径
+    根据paper_id和username返回推荐博客的markdown内容，并处理其中的图片路径
     为每个图片生成预签名URL并替换原始路径
     """
-    logger.info(f"Fetching paper content for paper_id: {paper_id}")
+    logger.info(f"Fetching blog content for paper_id: {paper_id}, username: {username}")
     
-    # 直接从UserPaperRecommendation表获取blog内容
-    result = await db.execute(select(UserPaperRecommendation.blog).where(UserPaperRecommendation.paper_id == paper_id))
+    # 从UserPaperRecommendation表获取blog内容，同时匹配paper_id和username
+    result = await db.execute(
+        select(UserPaperRecommendation.blog).where(
+            (UserPaperRecommendation.paper_id == paper_id) & 
+            (UserPaperRecommendation.username == username)
+        )
+    )
     paper = result.first()
     
     if not paper or not paper[0]:
-        logger.warning(f"Paper content not found for paper_id: {paper_id}")
-        raise HTTPException(status_code=404, detail="Paper content not found")
+        logger.warning(f"Blog content not found for paper_id: {paper_id}, username: {username}")
+        raise HTTPException(status_code=404, detail="Blog content not found")
     
     # 获取原始markdown内容
     markdown_content = paper[0]
@@ -296,7 +301,7 @@ async def get_paper_markdown_content(paper_id: str, db: AsyncSession = Depends(g
     # 处理图片路径，生成预签名URL
     processed_content = await process_markdown_images(markdown_content)
     
-    logger.info(f"Successfully processed paper content for paper_id: {paper_id}")
+    logger.info(f"Successfully processed blog content for paper_id: {paper_id}, username: {username}")
     return processed_content
 
 # 文件服务路由 - 需要在主应用中注册，不在papers前缀下
@@ -373,8 +378,7 @@ async def serve_file(bucket: str, key: str):
 
 
 # 这个接口应该为后端使用，插入对任意用户的推荐，应当受到保护
-# 接口为{backend_url}/api/papers/recommend
-# TODO(@Hui Chen): 需要添加安全验证
+# 接口为{backend_url}/api/digests/recommend
 @router.post("/recommend", status_code=status.HTTP_201_CREATED)
 async def add_paper_recommendation(username:str, rec: PaperRecommendation, db: AsyncSession = Depends(get_db)):
     """根据username和paper详细信息插入推荐记录到UserPaperRecommendation表中"""
