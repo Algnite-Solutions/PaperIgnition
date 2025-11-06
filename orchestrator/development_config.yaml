@@ -25,17 +25,17 @@ index_service:
 
 # Pipeline Stages - Enable/disable each stage
 stages:
-  fetch_daily_papers: false  # Fetch new papers from arXiv
+  fetch_daily_papers: true  # Fetch new papers from arXiv
   generate_all_papers_blog: true  # Generate blogs for all fetched papers
   generate_per_user_blogs: true  # Generate personalized blogs for each user
 
 # Paper Pull Service Configuration
 paper_pull:
   max_workers: 3  # Number of parallel workers for fetching papers
-  time_slots_count: 3  # Number of time slots to divide the day into
+  time_slots_count: 1  # Number of time slots to divide the day into
   location: "Asia/Shanghai"  # Timezone for time calculations
   count_delay: 1  # Days to delay from current date
-  max_papers: 6  # Maximum number of papers to fetch
+  max_papers: 10  # Maximum number of papers to fetch
 
 # Blog Generation Configuration
 blog_generation:
