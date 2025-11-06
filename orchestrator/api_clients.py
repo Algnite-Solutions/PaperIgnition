@@ -554,7 +554,7 @@ class BackendAPIClient(BaseAPIClient):
         try:
             self.logger.info(f"💾 Saving retrieve result for user {username}, query: '{query[:50]}...'")
             response = self.post(
-                "/api/papers/retrieve_results/save",
+                "/api/digests/retrieve_results/save",
                 json_data=data,
                 timeout=timeout
             )
