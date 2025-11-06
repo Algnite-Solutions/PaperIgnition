@@ -191,7 +191,7 @@ class IndexAPIClient(BaseAPIClient):
     def find_similar(
         self,
         query: str,
-        top_k: int = 10,
+        search_k: int = 10,
         similarity_cutoff: float = 0.1,
         search_strategy: str = 'vector',
         filters: Optional[Dict] = None,
@@ -203,7 +203,8 @@ class IndexAPIClient(BaseAPIClient):
 
         Args:
             query: Search query
-            top_k: Number of results to return
+            search_k: Number of results to return from search
+            retrieve_result: Deprecated parameter (kept for compatibility)
             similarity_cutoff: Minimum similarity score threshold
             search_strategy: Search strategy ('vector', 'tf-idf', 'bm25')
             filters: Optional filters (e.g., exclude doc_ids)
@@ -211,7 +212,7 @@ class IndexAPIClient(BaseAPIClient):
             timeout: Request timeout in seconds
 
         Returns:
-            List of DocSet objects matching the query
+            List[DocSet]: List of similar papers
 
         Raises:
             APIClientError: If search fails
@@ -221,108 +222,80 @@ class IndexAPIClient(BaseAPIClient):
 
         payload = {
             "query": query,
-            "top_k": top_k,
+            "top_k": search_k,  # 使用 search_k 作为搜索数量
             "similarity_cutoff": similarity_cutoff,
-            "search_strategies": [(search_strategy, 1.5)],
+            "search_strategies": [(search_strategy, similarity_cutoff)],
             "filters": filters,
             "result_include_types": result_types
         }
 
         try:
-            self.logger.info(f"🔍 Searching for: '{query}' (strategy: {search_strategy}, cutoff: {similarity_cutoff})")
+            self.logger.info(
+                f"🔍 Searching for: '{query}' (strategy: {search_strategy}, "
+                f"search_k: {search_k}, cutoff: {similarity_cutoff})"
+            )
+            
             results = self.post("/find_similar/", json_data=payload, timeout=timeout)
-
-            docsets = []
-            for r in results:
-                try:
-                    metadata = r.get('metadata', {})
-
-                    # 处理chunks数据，确保符合DocSet定义
-                    def process_text_chunks(chunks_data):
-                        """处理text_chunks数据，转换为符合DocSet定义的格式"""
-                        if not chunks_data:
-                            return []
-                        
-                        processed_chunks = []
-                        for chunk in chunks_data:
-                            if isinstance(chunk, dict):
-                                # 检查是否已经是正确的格式
-                                if 'id' in chunk and 'type' in chunk and 'text' in chunk:
-                                    processed_chunks.append(chunk)
-                                elif 'chunk_id' in chunk and 'text_content' in chunk:
-                                    # 转换API格式到DocSet格式
-                                    converted_chunk = {
-                                        'id': chunk['chunk_id'],
-                                        'type': 'text',
-                                        'text': chunk['text_content']
-                                    }
-                                    processed_chunks.append(converted_chunk)
-                                else:
-                                    # 跳过无效的chunk
-                                    print(f"Warning: Skipping invalid text chunk: {chunk}")
-                            else:
-                                print(f"Warning: Skipping non-dict text chunk: {chunk}")
-                        return processed_chunks
-                    
-                    # 处理figure chunks
-                    def process_figure_chunks(figure_ids, doc_id):
-                        """从figure_ids创建figure chunks"""
-                        if not figure_ids:
-                            return []
-                        
-                        figure_chunks = []
-                        for fig_id in figure_ids:
-                            # 提取figure ID（去掉.png后缀）
-                            fig_name = fig_id.replace('.png', '') if fig_id.endswith('.png') else fig_id
-                            figure_chunks.append({
-                                'id': fig_id,
-                                'type': 'figure',
-                                'image_path': None,  # 实际路径需要根据配置添加
-                                'alt_text': None
-                            })
-                        return figure_chunks
-                    
-                    # 处理table chunks
-                    def process_table_chunks(table_ids):
-                        """从table_ids创建table chunks"""
-                        if not table_ids:
-                            return []
-                        
-                        table_chunks = []
-                        for table_id in table_ids:
-                            table_chunks.append({
-                                'id': table_id,
-                                'type': 'table',
-                                'table_html': None
-                            })
-                        return table_chunks
-                
-                    docset_data = {
-                        'doc_id': metadata.get('doc_id'),
-                        'title': metadata.get('title', 'Unknown Title'),
-                        'authors': metadata.get('authors', []),
-                        'categories': metadata.get('categories', []),
-                        'published_date': metadata.get('published_date', ''),
-                        'abstract': metadata.get('abstract', ''),
-                        'pdf_path': metadata.get('pdf_path', ''),
-                        'HTML_path': metadata.get('HTML_path'),
-                        'text_chunks': process_text_chunks(r.get('text_chunks', [])),
-                        'figure_chunks': process_figure_chunks(metadata.get('figure_ids', []), metadata.get('doc_id')),
-                        'table_chunks': process_table_chunks(metadata.get('table_ids', [])),
-                        'metadata': metadata,
-                        'comments': metadata.get('comments', '')
-                    }
-                    docsets.append(DocSet(**docset_data))
-                except Exception as e:
-                    self.logger.warning(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
-                    continue
-
+            
+            # 统一返回列表格式（不再判断扩展格式）
+            docsets = self._convert_to_docsets(results)
             self.logger.info(f"✅ Found {len(docsets)} papers")
             return docsets
-
+                
         except Exception as e:
             self.logger.error(f"❌ Search failed for query '{query}': {e}")
             raise
+    
+    def _convert_to_docsets(self, results: List[Dict]) -> List[DocSet]:
+        """将 API 结果转换为 DocSet 对象列表"""
+        docsets = []
+        for r in results:
+            try:
+                metadata = r.get('metadata', {})
+                
+                # 处理 text_chunks 数据
+                def process_text_chunks(chunks_data):
+                    if not chunks_data:
+                        return []
+                    processed_chunks = []
+                    for chunk in chunks_data:
+                        if isinstance(chunk, dict):
+                            if 'id' in chunk and 'type' in chunk and 'text' in chunk:
+                                processed_chunks.append(chunk)
+                            elif 'chunk_id' in chunk and 'text_content' in chunk:
+                                converted_chunk = {
+                                    'id': chunk['chunk_id'],
+                                    'type': 'text',
+                                    'text': chunk['text_content']
+                                }
+                                processed_chunks.append(converted_chunk)
+                            else:
+                                self.logger.warning(f"Skipping invalid text chunk: {chunk}")
+                        else:
+                            self.logger.warning(f"Skipping non-dict text chunk: {chunk}")
+                    return processed_chunks
+                
+                docset_data = {
+                    'doc_id': metadata.get('doc_id'),
+                    'title': metadata.get('title', 'Unknown Title'),
+                    'authors': metadata.get('authors', []),
+                    'categories': metadata.get('categories', []),
+                    'published_date': metadata.get('published_date', ''),
+                    'abstract': metadata.get('abstract', ''),
+                    'pdf_path': metadata.get('pdf_path', ''),
+                    'HTML_path': metadata.get('HTML_path'),
+                    'text_chunks': process_text_chunks(r.get('text_chunks', [])),
+                    'figure_chunks': [],
+                    'table_chunks': [],
+                    'metadata': metadata,
+                    'comments': metadata.get('comments', '')
+                }
+                docsets.append(DocSet(**docset_data))
+            except Exception as e:
+                self.logger.warning(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
+                continue
+        
+        return docsets
 
     def update_papers_blog(
         self,
@@ -540,6 +513,55 @@ class BackendAPIClient(BaseAPIClient):
 
         except Exception as e:
             self.logger.error(f"❌ Failed to recommend paper {paper_id} to {username}: {e}")
+            return False
+
+    def save_retrieve_result(
+        self,
+        username: str,
+        query: str,
+        search_strategy: str,
+        retrieve_ids: List[str],
+        top_k_ids: List[str],
+        recommendation_date: Optional[str] = None,
+        timeout: float = 5.0
+    ) -> bool:
+        """
+        保存检索结果到数据库（用于 reranking 调试）
+        
+        Args:
+            username: 用户名
+            query: 搜索关键词
+            search_strategy: 搜索策略
+            retrieve_ids: retrieve_k 结果的 paper IDs
+            top_k_ids: top_k 结果的 paper IDs
+            recommendation_date: 推荐日期（ISO格式）
+            timeout: 请求超时时间
+        
+        Returns:
+            是否保存成功
+        """
+        data = {
+            "username": username,
+            "query": query,
+            "search_strategy": search_strategy,
+            "retrieve_ids": retrieve_ids,
+            "top_k_ids": top_k_ids
+        }
+        
+        if recommendation_date:
+            data["recommendation_date"] = recommendation_date
+        
+        try:
+            self.logger.info(f"💾 Saving retrieve result for user {username}, query: '{query[:50]}...'")
+            response = self.post(
+                "/api/papers/retrieve_results/save",
+                json_data=data,
+                timeout=timeout
+            )
+            self.logger.info(f"✅ Retrieve result saved successfully (ID: {response.get('id')})")
+            return True
+        except Exception as e:
+            self.logger.error(f"❌ Failed to save retrieve result: {e}")
             return False
 
     def recommend_papers_batch(self, username: str, papers: List[Dict[str, Any]]) -> Tuple[int, int]:

@@ -264,7 +264,7 @@ class PaperIgnitionOrchestrator:
         """
         all_users = self.backend_client.get_all_users()
         logging.info(f"✅ 共获取到 {len(all_users)} 个用户")
-
+        #print(f"✅ 共获取到 {len(all_users)} 个用户")
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
@@ -309,14 +309,47 @@ class PaperIgnitionOrchestrator:
 
                 # Search for papers matching the query
                 user_rec_config = self.orch_config["user_recommendation"]
-                papers = self.index_client.find_similar(
+                top_k = user_rec_config["top_k"]
+                retrieve_k = user_rec_config.get("retrieve_k")
+                retrieve_result = user_rec_config.get("retrieve_result", False)
+                print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
+                
+                # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
+                #search_k = retrieve_k if retrieve_k else top_k
+                
+                # 调用 find_similar，使用 search_k 作为搜索数量
+                all_search_results = self.index_client.find_similar(
                     query=query,
-                    top_k=user_rec_config["top_k"],
+                    search_k=retrieve_k,  # 使用 search_k（retrieve_k 或 top_k）
                     search_strategy=user_rec_config["search_strategy"],
                     similarity_cutoff=user_rec_config["similarity_cutoff"],
                     filters=filter_params,
                     result_types=["metadata", "text_chunks"]  # 获取元数据和文本内容
                 )
+                
+                # 从结果中取前 top_k 作为推荐
+                papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
+                
+                # 如果需要保存检索结果
+                if retrieve_result and retrieve_k:
+                    retrieve_ids = [p.doc_id for p in all_search_results]
+                    top_k_ids = [p.doc_id for p in papers]
+                    
+                    save_success = self.backend_client.save_retrieve_result(
+                        username=username,
+                        query=query,
+                        search_strategy=user_rec_config["search_strategy"],
+                        retrieve_ids=retrieve_ids,
+                        top_k_ids=top_k_ids
+                    )
+                    
+                    if save_success:
+                        logging.info(
+                            f"✅ Saved retrieve result: {len(retrieve_ids)} retrieve papers, "
+                            f"{len(top_k_ids)} top_k papers for query '{query}'"
+                        )
+                    else:
+                        logging.warning(f"⚠️ Failed to save retrieve result for query '{query}'")
                 
                 all_papers.extend(papers)
 

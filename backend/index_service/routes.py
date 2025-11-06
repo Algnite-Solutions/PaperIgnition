@@ -151,7 +151,7 @@ async def get_metadata_route(doc_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/find_similar/")
-async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
+async def find_similar_route(query: CustomerQuery):
     """Find papers similar to the query using AIgnite's modular search architecture.
     
     This endpoint leverages AIgnite's advanced search capabilities:
@@ -170,6 +170,9 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
     - "abstract": Search only in paper abstracts (faster, more focused)
     - "chunk": Search only in text chunks (detailed content matching)
     - "combined": Search in title + categories + abstract combination (comprehensive coverage)
+    
+    Supports extended retrieve results for reranking debug:
+    - When retrieve_k is provided, returns extended format with both top_k and retrieve_k results
     """
     if paper_indexer is None:
         raise HTTPException(status_code=503, detail="Indexer not initialized")
@@ -181,9 +184,19 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
         
         if query.top_k is not None and query.top_k <= 0:
             raise HTTPException(status_code=422, detail="top_k must be a positive integer")
+        
+        if query.retrieve_k is not None and query.retrieve_k <= 0:
+            raise HTTPException(status_code=422, detail="retrieve_k must be a positive integer")
+        
+        if query.retrieve_k is not None and query.top_k is not None:
+            if query.retrieve_k < query.top_k:
+                raise HTTPException(
+                    status_code=422, 
+                    detail=f"retrieve_k ({query.retrieve_k}) must be >= top_k ({query.top_k})"
+                )
             
-        if query.similarity_cutoff is not None and not (0 <= query.similarity_cutoff <= 1):
-            raise HTTPException(status_code=422, detail="similarity_cutoff must be between 0 and 1")
+        if query.similarity_cutoff is not None and not (0 <= query.similarity_cutoff <= 3.0):
+            raise HTTPException(status_code=422, detail="similarity_cutoff must be between 0 and 3.0")
     
         # Validate filter structure if provided
         if query.filters:
@@ -230,9 +243,18 @@ async def find_similar_route(query: CustomerQuery) -> List[Dict[str, Any]]:
             filters=query.filters,
             result_include_types=query.result_include_types
         )
-        if not results:
+        
+        # Check for empty results
+        if isinstance(results, dict):
+            # Extended format
+            if not results.get("retrieve_results"):
+                logger.warning(f"No results found for query: {query.query}")
+        elif not results:
+            # Standard format
             logger.warning(f"No results found for query: {query.query}")
             return []  # Return empty list with 200 status for no results
+        
+        logger.info(f"Search completed successfully")
         return results
     except ValueError as e:
         # Handle validation errors from the service layer
