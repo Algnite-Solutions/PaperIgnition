@@ -231,8 +231,8 @@ class PaperIgnitionOrchestrator:
                 
                 # 保存当前批次
                 logging.info(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
-                # TODO: Remove after migration
-                self.backend_client.recommend_papers_batch(username, paper_infos)
+                # Uncomment next line if you want to save all blog to BlogBot
+                # self.backend_client.recommend_papers_batch(username, paper_infos)
 
                 # Update papers blog field in index service
                 papers_blog_data = [

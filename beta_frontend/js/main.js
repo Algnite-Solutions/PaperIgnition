@@ -263,7 +263,7 @@ async function searchPapersAPI(query) {
      * Call the backend /find_similar/ API to search for papers
      */
     try {
-        const response = await fetch('/api/find_similar/', {
+        const response = await fetch('/find_similar/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
