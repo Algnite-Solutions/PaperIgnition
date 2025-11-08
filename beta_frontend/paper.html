@@ -505,24 +505,34 @@
         }
 
         async function loadPaperInfo() {
+            // TODO: Fix this to not use sessionStorage in future
             // Try to get paper info from sessionStorage (passed from main page)
             const storedPaper = sessionStorage.getItem(`paper_${paperId}`);
             if (storedPaper) {
                 currentPaper = JSON.parse(storedPaper);
                 return;
             }
-
-            // If no stored paper info, create a minimal paper object
-            currentPaper = {
-                id: paperId,
-                title: 'Loading...',
-                authors: [],
-                abstract: '',
-                tags: [],
-                publishDate: '',
-                comments: '',
-                submittedDate: ''
-            };
+            response = await fetch(`/get_metadata/${encodeURIComponent(paperId)}`);
+            if (response.ok) {
+                const text = await response.text();
+                const metadata = JSON.parse(text);
+                currentPaper = {
+                    id: paperId,
+                    title: metadata.title || 'Unknown Title',
+                    authors: metadata.authors || [],
+                    publishDate: metadata.published_date || '',
+                    url: metadata.url || ''
+                };
+            } else {
+                // Fallback to minimal paper object
+                currentPaper = {
+                    id: paperId,
+                    title: 'Loading...',
+                    authors: [],
+                    publishDate: '',
+                    url: '',
+                };
+            }
         }
 
         async function loadPaperContent() {
@@ -533,6 +543,11 @@
                     // Recommended paper - load blog content
                     console.log(`Loading blog content for paper ${paperId}, user ${username}`);
                     response = await fetch(`/api/digests/blog_content/${encodeURIComponent(paperId)}/${encodeURIComponent(username)}`);
+                    // If blog not found, fall back to full paper
+                    if (!response.ok && response.status === 404) {
+                        console.log('Blog content not found, falling back to full paper');
+                        response = await fetch(`/paper_content/${encodeURIComponent(paperId)}`);
+                    }
                 } else {
                     // Searched paper - load full paper content
                     console.log(`Loading full paper content for paper ${paperId}`);
