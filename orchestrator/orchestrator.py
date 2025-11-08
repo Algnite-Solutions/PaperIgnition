@@ -267,8 +267,9 @@ class PaperIgnitionOrchestrator:
         #print(f"✅ 共获取到 {len(all_users)} 个用户")
         for user in all_users:
             username = user.get("username")
+            print(username)
             if username == "BlogBot@gmail.com": continue
-
+            if username != "prc@tongji.edu.cn": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)
@@ -311,7 +312,7 @@ class PaperIgnitionOrchestrator:
                 user_rec_config = self.orch_config["user_recommendation"]
                 top_k = user_rec_config["top_k"]
                 retrieve_k = user_rec_config.get("retrieve_k")
-                retrieve_result = user_rec_config.get("retrieve_result", False)
+                retrieve_result = user_rec_config.get("retrieve_result", True)
                 print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
                 
                 # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
