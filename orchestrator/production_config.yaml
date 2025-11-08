@@ -56,7 +56,7 @@ blog_generation:
 # User Recommendation Configuration
 user_recommendation:
   top_k: 5  # Number of top results to return from similarity search
-  retrieve_k: 100  # Number of results to retrieve from the index
+  retrieve_k: 20  # Number of results to retrieve from the index
   
   similarity_cutoff: 0.1  # Minimum similarity score threshold
   search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
