@@ -231,8 +231,8 @@ class PaperIgnitionOrchestrator:
                 
                 # 保存当前批次
                 logging.info(f"💾 Saving batch {batch_start//batch_size + 1} ({len(paper_infos)} papers)...")
-                # TODO: Remove after migration
-                self.backend_client.recommend_papers_batch(username, paper_infos)
+                # Uncomment next line if you want to save all blog to BlogBot
+                # self.backend_client.recommend_papers_batch(username, paper_infos)
 
                 # Update papers blog field in index service
                 papers_blog_data = [
@@ -308,12 +308,11 @@ class PaperIgnitionOrchestrator:
                 # Search for papers matching the query
                 user_rec_config = self.orch_config["user_recommendation"]
                 top_k = user_rec_config["top_k"]
-                retrieve_k = user_rec_config.get("retrieve_k")
-                retrieve_result = user_rec_config.get("retrieve_result", True)
-                print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
-                
                 # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
-                #search_k = retrieve_k if retrieve_k else top_k
+                retrieve_k = user_rec_config.get("retrieve_k", top_k)
+                retrieve_result = user_rec_config.get("retrieve_result", False)
+                print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
+
                 
                 # 调用 find_similar，使用 search_k 作为搜索数量
                 all_search_results = self.index_client.find_similar(
