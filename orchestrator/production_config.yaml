@@ -34,8 +34,8 @@ index_service:
 
 # Pipeline Stages - Enable/disable each stage
 stages:
-  fetch_daily_papers: false  # Fetch new papers from arXiv
-  generate_all_papers_blog: false  # Generate blogs for all fetched papers
+  fetch_daily_papers: true  # Fetch new papers from arXiv
+  generate_all_papers_blog: true  # Generate blogs for all fetched papers
   generate_per_user_blogs: true  # Generate personalized blogs for each user
 
 # Paper Pull Service Configuration
