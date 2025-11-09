@@ -264,11 +264,9 @@ class PaperIgnitionOrchestrator:
         """
         all_users = self.backend_client.get_all_users()
         logging.info(f"✅ 共获取到 {len(all_users)} 个用户")
-        #print(f"✅ 共获取到 {len(all_users)} 个用户")
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
-
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
             interests = self.backend_client.get_user_interests(username)
@@ -373,15 +371,6 @@ class PaperIgnitionOrchestrator:
                 # Convert to absolute path based on project root
                 if not os.path.isabs(output_path):
                     output_path = os.path.join(self.project_root, output_path)
-                # Debug: print paper information including pdf_path
-                for paper in all_papers:
-                    logging.info(f"论文ID: {paper.doc_id}")
-                    logging.info(f"标题: {paper.title}")
-                    logging.info(f"PDF路径: {paper.pdf_path}")
-                    logging.info(f"摘要: {paper.abstract[:200]}...")
-                    logging.info(f"Text chunks数量: {len(paper.text_chunks) if paper.text_chunks else 0}")
-                    logging.info(f"Table chunks数量: {len(paper.table_chunks) if paper.table_chunks else 0}")
-                    logging.info(f"Figure chunks数量: {len(paper.figure_chunks) if paper.figure_chunks else 0}")
                 
                 blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
                 logging.info("Digest generation complete.")
@@ -400,10 +389,8 @@ class PaperIgnitionOrchestrator:
                         if not os.path.isabs(output_path):
                             output_path = os.path.join(self.project_root, output_path)
                         blog_path = os.path.join(output_path, f"{paper.doc_id}.md")
-                        print(blog_path)
                         with open(blog_path, encoding="utf-8") as file:
                             blog = file.read()
-                            print(blog)
                     except FileNotFoundError:
                         blog = None  # Blog file not found, will be skipped by API
                     
