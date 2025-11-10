@@ -25,8 +25,8 @@ index_service:
 
 # Pipeline Stages - Enable/disable each stage
 stages:
-  fetch_daily_papers: true  # Fetch new papers from arXiv
-  generate_all_papers_blog: true  # Generate blogs for all fetched papers
+  fetch_daily_papers: false  # Fetch new papers from arXiv
+  generate_all_papers_blog: false  # Generate blogs for all fetched papers
   generate_per_user_blogs: true  # Generate personalized blogs for each user
 
 # Paper Pull Service Configuration
@@ -46,6 +46,8 @@ blog_generation:
 # User Recommendation Configuration
 user_recommendation:
   top_k: 5  # Number of top results to return from similarity search
+  retrieve_k: 20
+  retrieve_result: true
   similarity_cutoff: 0  # Minimum similarity score threshold
   search_strategy: "tf-idf"  # Options: "vector", "tf-idf", "bm25"
 
