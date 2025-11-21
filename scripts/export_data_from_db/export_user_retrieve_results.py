@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,8 +25,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-
+TOP_RETRIEVE_NUM = 20
 @dataclass
 class DatabaseConfig:
     user_db_url: str
@@ -64,7 +66,7 @@ def build_session_factory(db_url: str) -> sessionmaker:
 
 def fetch_user_retrieve_results(
     session_factory: sessionmaker, limit: int | None
-) -> List[dict]:
+) -> Tuple[List[dict], List[Tuple[str, str]]]:
     with session_factory() as session:  # type: Session
         query = sa.text(
             """
@@ -84,21 +86,25 @@ def fetch_user_retrieve_results(
         result = session.execute(query)
         rows = result.fetchall()
 
-    records = []
+    records: List[dict] = []
+    user_top_pairs: List[Tuple[str, str]] = []
     for row in rows[: limit if limit else None]:
         retrieved_ids = _ensure_list(row.retrieve_ids)
         top_k_ids = _ensure_list(row.top_k_ids)
+        normalized_top_ids = _normalize_ids(top_k_ids)
+        for paper_id in normalized_top_ids:
+            user_top_pairs.append((row.username, paper_id))
         records.append(
             {
                 "user_name": row.username,
                 "query": row.query,
                 "search_strategy": row.search_strategy,
                 "date": _format_datetime(row.recommendation_date),
-                "retrieved_ids": retrieved_ids,
+                "retrieved_ids": retrieved_ids[0:TOP_RETRIEVE_NUM],
                 "top_k_ids": top_k_ids,
             }
         )
-    return records
+    return records, user_top_pairs
 
 
 def _ensure_list(value) -> List[str]:
@@ -160,6 +166,42 @@ def fetch_paper_metadata(
     return list(found), missing_ids
 
 
+def fetch_recommendation_flags(
+    session_factory: sessionmaker, user_paper_pairs: Sequence[Tuple[str, str]]
+) -> dict[Tuple[str, str], Tuple[bool, bool | None]]:
+    flags: dict[Tuple[str, str], Tuple[bool, bool | None]] = {}
+    if not user_paper_pairs:
+        return flags
+
+    pairs_by_user: dict[str, Set[str]] = {}
+    for username, paper_id in user_paper_pairs:
+        if not username or not paper_id:
+            continue
+        pairs_by_user.setdefault(username, set()).add(paper_id)
+
+    with session_factory() as session:  # type: Session
+        for username, paper_ids in pairs_by_user.items():
+            if not paper_ids:
+                continue
+            query = sa.text(
+                """
+                SELECT username, paper_id, viewed, blog_liked
+                FROM paper_recommendations
+                WHERE username = :username
+                  AND paper_id = ANY(:paper_ids)
+                """
+            )
+            rows = session.execute(
+                query, {"username": username, "paper_ids": list(paper_ids)}
+            ).fetchall()
+            for row in rows:
+                flags[(row.username, row.paper_id)] = (
+                    bool(row.viewed),
+                    row.blog_liked,
+                )
+    return flags
+
+
 def write_user_results(path: Path, records: Sequence[dict]) -> None:
     with path.open("w", encoding="utf-8") as fp:
         for record in records:
@@ -169,8 +211,8 @@ def write_user_results(path: Path, records: Sequence[dict]) -> None:
 
 def write_paper_metadata(
     path: Path, metadata_rows: Sequence[Tuple[str, str, str]], missing_ids: Set[str]
-) -> None:
-
+) -> Set[str]:
+    all_docids: Set[str] = set()
     with path.open("w", encoding="utf-8") as fp:
         cnt=0
         for doc_id, title, abstract in sorted(metadata_rows, key=lambda x: x[0]):
@@ -179,6 +221,7 @@ def write_paper_metadata(
             line = f"{doc_id}\t{title.strip()} . {abstract.strip()}"
             fp.write(line)
             fp.write("\n")
+            all_docids.add(doc_id)
             cnt+=1
         print(cnt)
         if missing_ids:
@@ -186,7 +229,31 @@ def write_paper_metadata(
             for doc_id in sorted(missing_ids):
                 fp.write(f"# {doc_id}\n")
 
+    return all_docids
 
+
+def output_pdfs(output_dir: Path, source_dir: Path, doc_ids: Iterable[str]) -> None:
+    print(output_dir)
+    print(source_dir)
+    #print(doc_ids)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    missing: List[str] = []
+    for doc_id in doc_ids:
+        if not doc_id:
+            continue
+        source_file = source_dir / f"{doc_id}.pdf"
+        if not source_file.exists():
+            missing.append(doc_id)
+            LOGGER.info("Missing PDF for %s", doc_id)
+            continue
+        target_file = output_dir / source_file.name
+        shutil.copy2(source_file, target_file)
+        copied += 1
+    LOGGER.info("Copied %s PDFs to %s", copied, output_dir)
+    print(len(missing))
+    if missing:
+        LOGGER.info("Missing PDFs for %s documents", len(missing))
     
 
 if __name__ == "__main__":
@@ -218,7 +285,18 @@ if __name__ == "__main__":
         default=None,
         help="Optional limit of records to export from user_retrieve_results.",
     )
-    
+    parser.add_argument(
+        "--pdf-output",
+        type=Path,
+        default=Path("pdfs/"),
+        help="Whether to output PDFs of the retrieved papers.",
+    )
+    parser.add_argument(
+        "--pdf-source",
+        type=Path,
+        default=Path("/data3/guofang/peirongcan/PaperIgnition/orchestrator/pdfs"),
+        help="Source directory of PDFs.",
+    )
     args = parser.parse_args()
 
     try:
@@ -238,8 +316,26 @@ if __name__ == "__main__":
         sys.exit(1)
 
     LOGGER.info("Fetching user retrieve results...")
-    user_records = fetch_user_retrieve_results(user_session_factory, args.limit)
+    user_records, user_top_pairs = fetch_user_retrieve_results(
+        user_session_factory, args.limit
+    )
     LOGGER.info("Retrieved %s records", len(user_records))
+
+    LOGGER.info("Fetching viewed/liked flags for top_k_ids...")
+    recommendation_flags = fetch_recommendation_flags(
+        user_session_factory, user_top_pairs
+    )
+    for record in user_records:
+        top_ids = record.get("top_k_ids", [])
+        viewed_flags: List[bool] = []
+        liked_flags: List[bool | None] = []
+        for paper_id in top_ids:
+            key = (record["user_name"], str(paper_id).strip())
+            viewed, liked = recommendation_flags.get(key, (False, None))
+            viewed_flags.append(bool(viewed))
+            liked_flags.append(liked)
+        record["viewed"] = viewed_flags
+        record["liked"] = liked_flags
 
     LOGGER.info("Writing user retrieve results to %s", args.user_output)
     write_user_results(args.user_output, user_records)
@@ -252,7 +348,14 @@ if __name__ == "__main__":
     LOGGER.info("Fetched metadata for %s IDs; %s missing", len(metadata_rows), len(missing_ids))
 
     LOGGER.info("Writing paper metadata to %s", args.paper_output)
-    write_paper_metadata(args.paper_output, metadata_rows, missing_ids)
+    corpus_docids = write_paper_metadata(args.paper_output, metadata_rows, missing_ids)
+
+    if args.pdf_output:
+        pdf_output_path = Path(args.pdf_output).expanduser().resolve()
+        pdf_source_path = Path(args.pdf_source).expanduser().resolve()
+
+        LOGGER.info("Outputting PDFs to %s", pdf_output_path)
+        output_pdfs(pdf_output_path, pdf_source_path, corpus_docids)
 
     LOGGER.info("Export completed successfully.")
 
