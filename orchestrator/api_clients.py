@@ -6,6 +6,8 @@ Provides robust HTTP clients with retry logic, timeout handling, and consistent 
 
 import httpx
 import logging
+import re
+import os
 from typing import Dict, Any, List, Optional, Tuple
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from AIgnite.data.docset import DocSetList, DocSet
@@ -77,15 +79,58 @@ class BaseAPIClient:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         timeout_value = timeout or self.timeout
 
+        # 对于内网地址，禁用代理以避免 502 错误
+        # 检查是否是内网地址（10.x.x.x, 172.16-31.x.x, 192.168.x.x, localhost, 127.x.x.x）
+        is_internal = re.match(r'https?://(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|localhost)', url, re.IGNORECASE)
+        
         try:
             self.logger.debug(f"Making {method} request to {url}")
-            response = httpx.request(
-                method=method,
-                url=url,
-                json=json_data,
-                params=params,
-                timeout=timeout_value
-            )
+            # 对于内网地址，通过设置 NO_PROXY 环境变量来禁用代理
+            if is_internal:
+                # 保存原始环境变量
+                original_http_proxy = os.environ.get('http_proxy')
+                original_https_proxy = os.environ.get('https_proxy')
+                original_no_proxy = os.environ.get('NO_PROXY', '')
+                
+                try:
+                    # 临时禁用代理
+                    if 'http_proxy' in os.environ:
+                        del os.environ['http_proxy']
+                    if 'https_proxy' in os.environ:
+                        del os.environ['https_proxy']
+                    # 设置 NO_PROXY 包含内网地址
+                    host = url.split('//')[1].split('/')[0].split(':')[0]
+                    no_proxy_list = original_no_proxy.split(',') if original_no_proxy else []
+                    if host not in no_proxy_list:
+                        no_proxy_list.append(host)
+                    os.environ['NO_PROXY'] = ','.join(filter(None, no_proxy_list))
+                    
+                    response = httpx.request(
+                        method=method,
+                        url=url,
+                        json=json_data,
+                        params=params,
+                        timeout=timeout_value
+                    )
+                finally:
+                    # 恢复原始环境变量
+                    if original_http_proxy is not None:
+                        os.environ['http_proxy'] = original_http_proxy
+                    elif 'http_proxy' in os.environ:
+                        del os.environ['http_proxy']
+                    if original_https_proxy is not None:
+                        os.environ['https_proxy'] = original_https_proxy
+                    elif 'https_proxy' in os.environ:
+                        del os.environ['https_proxy']
+                    os.environ['NO_PROXY'] = original_no_proxy
+            else:
+                response = httpx.request(
+                    method=method,
+                    url=url,
+                    json=json_data,
+                    params=params,
+                    timeout=timeout_value
+                )
             response.raise_for_status()
             return response
 
