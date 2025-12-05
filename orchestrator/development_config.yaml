@@ -50,6 +50,7 @@ user_recommendation:
   retrieve_result: true
   similarity_cutoff: 0  # Minimum similarity score threshold
   search_strategy: "tf-idf"  # Options: "vector", "tf-idf", "bm25"
+  customized_recommendation: false
 
 # Job Execution Configuration
 job_execution:
