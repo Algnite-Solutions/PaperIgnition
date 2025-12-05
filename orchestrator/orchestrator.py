@@ -20,6 +20,7 @@ from job_util import JobLogger
 from api_clients import IndexAPIClient, BackendAPIClient
 from paper_pull import PaperPullService
 from AIgnite.data.docset import DocSet
+from AIgnite.recommendation import GeminiRerankerPDF
 
 
 def load_orchestrator_config(config_file: Optional[str] = None) -> Dict[str, Any]:
@@ -264,6 +265,11 @@ class PaperIgnitionOrchestrator:
         """
         all_users = self.backend_client.get_all_users()
         logging.info(f"✅ 共获取到 {len(all_users)} 个用户")
+        customized_rerank = self.orch_config["user_recommendation"].get("customized_recommendation", False)
+        if customized_rerank:
+            customized_reranker = GeminiRerankerPDF()
+        else:
+            customized_reranker = None
         for user in all_users:
             username = user.get("username")
             if username == "BlogBot@gmail.com": continue
@@ -325,8 +331,23 @@ class PaperIgnitionOrchestrator:
                 )
                 
                 # 从结果中取前 top_k 作为推荐
-                papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
-                
+                if customized_rerank:
+                    pdf_paths_dict = {p.doc_id:p.pdf_path for p in all_search_results if p.pdf_path is not None}
+                    candidate_ids = [p.doc_id for p in all_search_results]
+                    # TODO: display thought summary to users
+                    reranked_ids, thought_summary = customized_reranker.rerank(
+                        query=query,
+                        pdf_paths_dict=pdf_paths_dict,
+                        retrieve_ids=candidate_ids,
+                        top_k=top_k
+                    )
+                    papers = []
+                    for p in all_search_results:
+                        if p.doc_id in reranked_ids:
+                            papers.append(p)
+                else:
+                    papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
+
                 # 如果需要保存检索结果
                 if retrieve_result and retrieve_k:
                     retrieve_ids = [p.doc_id for p in all_search_results]
@@ -349,7 +370,7 @@ class PaperIgnitionOrchestrator:
                         logging.warning(f"⚠️ Failed to save retrieve result for query '{query}'")
                 
                 all_papers.extend(papers)
-
+            
             # 添加去重逻辑：确保论文ID不重复
             seen_paper_ids = set()
             unique_papers = []
