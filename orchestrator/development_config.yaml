@@ -44,8 +44,11 @@ blog_generation:
 # User Recommendation Configuration
 user_recommendation:
   top_k: 5  # Number of top results to return from similarity search
-  similarity_cutoff: 1.5  # Minimum similarity score threshold
-  search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
+  retrieve_k: 20
+  retrieve_result: true
+  similarity_cutoff: 0  # Minimum similarity score threshold
+  search_strategy: "tf-idf"  # Options: "vector", "tf-idf", "bm25"
+  customized_recommendation: false
 
 # Job Execution Configuration
 job_execution:

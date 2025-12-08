@@ -35,16 +35,16 @@ index_service:
 # Pipeline Stages - Enable/disable each stage
 stages:
   fetch_daily_papers: true  # Fetch new papers from arXiv
-  generate_all_papers_blog: true  # Generate blogs for all fetched papers
+  generate_all_papers_blog: false  # Generate blogs for all fetched papers
   generate_per_user_blogs: true  # Generate personalized blogs for each user
 
 # Paper Pull Service Configuration
 paper_pull:
   extractor_type: "html"  # Options: "html", "pdf"
-  max_workers: 3  # Number of parallel workers for fetching papers
-  time_slots_count: 3  # Number of time slots to divide the day into
+  max_workers: 1  # Number of parallel workers for fetching papers
+  time_slots_count: 1  # Number of time slots to divide the day into
   location: "Asia/Shanghai"  # Timezone for time calculations
-  count_delay: 1  # Days to delay from current date
+  count_delay: 2  # Days to delay from current date
   max_papers: null  # Maximum number of papers to fetch (null for unlimited)
 
 # Blog Generation Configuration
@@ -55,11 +55,13 @@ blog_generation:
 
 # User Recommendation Configuration
 user_recommendation:
-  top_k: 15  # Number of top results to return from similarity search
-  retrieve_k: 100
+  top_k: 5  # Number of top results to return from similarity search
+  retrieve_k: 20
+  retrieve_result: true
   similarity_cutoff: 1.5  # Minimum similarity score threshold
   search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
   user_retrieve_result: true  # Whether to save user retrieve result
+  customized_recommendation: true # Whether to use customized recommendation reranker
 
 # Job Execution Configuration
 job_execution:
