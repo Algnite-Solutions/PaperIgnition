@@ -16,4 +16,4 @@ export http_proxy="http://127.0.0.1:7890"
 export https_proxy="http://127.0.0.1:7890"
 
 # 运行orchestrator
-python orchestrator.py production_config.yaml
+python /data3/guofang/peirongcan/PaperIgnition/orchestrator/orchestrator.py production_config.yaml
