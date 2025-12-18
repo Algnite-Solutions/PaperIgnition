@@ -44,7 +44,7 @@ paper_pull:
   max_workers: 1  # Number of parallel workers for fetching papers
   time_slots_count: 1  # Number of time slots to divide the day into
   location: "Asia/Shanghai"  # Timezone for time calculations
-  count_delay: 2  # Days to delay from current date
+  count_delay: 3  # Days to delay from current date
   max_papers: null  # Maximum number of papers to fetch (null for unlimited)
 
 # Blog Generation Configuration
