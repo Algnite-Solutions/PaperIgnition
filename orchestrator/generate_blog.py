@@ -1,5 +1,5 @@
 import requests
-from AIgnite.generation.generator import GeminiBlogGenerator_default, GeminiBlogGenerator_recommend, AsyncvLLMGenerator
+from AIgnite.generation.generator import GeminiBlogGenerator_default, GeminiBlogGenerator_recommend, AsyncvLLMGenerator, AsyncvLLMGenerator_default, format_blog_prompt
 from AIgnite.data.docset import DocSet
 import os
 import json
@@ -61,8 +61,13 @@ def get_user_interest(username: str):
 
 # Use this
 def run_Gemini_blog_generation_default(papers, output_path="./blogByGemini"):
-    generator = GeminiBlogGenerator_default(
+    '''generator = GeminiBlogGenerator_default(
         data_path="./imgs/", 
+        output_path=output_path)'''
+    generator = AsyncvLLMGenerator_default(
+        model_name=config['BLOG_GENERATION']['model_name'], 
+        api_base=config['BLOG_GENERATION']['api_base'],
+        data_path="./imgs/",
         output_path=output_path)
     blog = generator.generate_digest(papers)
 
@@ -74,39 +79,17 @@ def run_Gemini_blog_generation_recommend(papers, output_path="./blogByGemini"):
 
 
 async def run_batch_generation(papers, output_path="./blogs"):
-    generator = AsyncvLLMGenerator(
-        model_name=config['BLOG_GENERATION']['model_name'], 
-        api_base=config['BLOG_GENERATION']['api_base'],
-        data_path=config['BLOG_GENERATION']['data_path'], 
-        output_path=output_path)
-    
-    prompt_config_path = os.path.join(os.path.dirname(__file__), "./config/prompt.yaml")
-    with open(prompt_config_path, "r") as f:
-        prompt_config = yaml.safe_load(f)
-
-    system_prompt = prompt_config['prompts']['blog_generation']['system_prompt']
-    user_prompt_template = prompt_config['prompts']['blog_generation']['user_prompt_template']
-
-    prompts = []
-    for paper in papers:
-        # 准备图片路径
-        image_path = generator.data_path
-        
-        prompt = user_prompt_template.format(
-            title=paper.title, 
-            authors=paper.authors, 
-            abstract=paper.abstract, 
-            text_chunks=paper.text_chunks,
-            image_path=image_path,
-            arxiv_id=paper.doc_id,
-            table_chunks=paper.table_chunks,
-        )
-        if len(paper.text_chunks) > 10000:
-            prompt = prompt[:10000]
-        prompts.append(prompt)
+    generator = AsyncvLLMGenerator_default(
+        model_name="Qwen3-235B-A22B-Instruct-2507-FP8",
+        api_base="http://localhost:5667/v1",
+        data_path="./imgs/",
+        output_path=output_path,
+        input_format="pdf"
+    )
     try:
-        blog = await generator.batch_generate(prompts=prompts, system_prompts=system_prompt, max_tokens=config['BLOG_GENERATION']['max_tokens'], papers=papers)
-        return blog
+        # 使用generate_digest批量生成博客
+        blogs = await generator.generate_digest(papers, input_format="text")
+        return blogs
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -146,7 +129,6 @@ async def run_batch_generation_abs(papers):
     except Exception as e:
         print(f"Error: {e}")
         return None
-
 
 async def run_batch_generation_title(papers):
     generator = AsyncvLLMGenerator(
