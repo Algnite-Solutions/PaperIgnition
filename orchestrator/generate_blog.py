@@ -5,8 +5,12 @@ import os
 import json
 import yaml
 import asyncio
+from typing import Optional
 #from backend.index_service import index_papers, find_similar
 #from backend.user_service import get_all_users, get_user_interest
+
+# Import storage utilities
+from storage_util import LocalStorageManager, create_local_storage_manager
 
 # 加载配置文件
 def load_config():
@@ -111,7 +115,14 @@ async def run_batch_generation(papers, output_path="./blogs"):
         print(f"Error: {e}")
         return None
 
-async def run_batch_generation_abs(papers):
+async def run_batch_generation_abs(papers, storage_manager: Optional[LocalStorageManager] = None):
+    """
+    Generate blog abstracts for papers.
+    
+    Args:
+        papers: List of DocSet objects
+        storage_manager: Optional LocalStorageManager for reading blog files
+    """
     generator = AsyncvLLMGenerator(
         model_name=config['BLOG_GENERATION']['model_name'], 
         api_base=config['BLOG_GENERATION']['api_base'],
@@ -127,11 +138,20 @@ async def run_batch_generation_abs(papers):
 
     prompts = []
     for paper in papers:  # 遍历 papers 而不是 blogs
-        try:
-            # 从磁盘读取博客文件
-            with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
-                blog_content = file.read()
-        except FileNotFoundError:
+        blog_content = None
+        
+        if storage_manager:
+            # Use storage_manager to read blog
+            blog_content = storage_manager.read_blog(paper.doc_id)
+        else:
+            # Fallback to direct file reading (legacy behavior)
+            try:
+                with open(f"./orchestrator/blogs/{paper.doc_id}.md", encoding="utf-8") as file:
+                    blog_content = file.read()
+            except FileNotFoundError:
+                pass
+        
+        if blog_content is None:
             print(f"❌ Blog file not found for {paper.doc_id}")
             continue
         
@@ -177,19 +197,27 @@ async def run_batch_generation_title(papers):
         return None
 
 async def main():
-    papers = []
-    json_folder = config['PAPER_STORAGE']['json_folder'] or "/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"
-    for file in os.listdir(json_folder):
-        if len(papers) >= 2:
-            break
-        with open(f"{json_folder}/{file}", "r") as f:
-            data = json.load(f)
-            papers.append(DocSet(**data))
-            print(file)
+    # Create storage manager for main execution
+    base_dir = os.path.dirname(__file__)
+    storage_manager = create_local_storage_manager(base_dir)
+    
+    # Load papers using storage_manager
+    papers = storage_manager.load_all_paper_docsets()[:2]  # Limit to 2 papers for testing
+    
+    if not papers:
+        # Fallback to legacy method
+        json_folder = config['PAPER_STORAGE']['json_folder'] or "/data3/guofang/peirongcan/PaperIgnition/orchestrator/jsons"
+        for file in os.listdir(json_folder):
+            if len(papers) >= 2:
+                break
+            with open(f"{json_folder}/{file}", "r") as f:
+                data = json.load(f)
+                papers.append(DocSet(**data))
+                print(file)
     
     blog = await run_batch_generation(papers)
     
-    #abs = await run_batch_generation_abs(papers)
+    #abs = await run_batch_generation_abs(papers, storage_manager=storage_manager)
     #print("摘要：",abs)
     #titles = await run_batch_generation_title(papers)
     #print("标题：",titles)
