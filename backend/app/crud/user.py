@@ -42,24 +42,3 @@ async def create_user_email(db: AsyncSession, user_in: auth_schemas.UserCreateEm
     await db.commit()
     await db.refresh(db_user)
     return db_user
-
-async def create_user_wechat(db: AsyncSession, openid: str, nickname: Optional[str] = None, avatar_url: Optional[str] = None) -> User:
-    """
-    创建微信用户 (如果不存在)
-    """
-    # For WeChat users, username might be initially set to openid or a generated unique value
-    # Or, it could be prompted for after first login.
-    # For simplicity here, if wx_openid is unique, username can be derived or also set to wx_openid initially.
-    # The current User model has username as unique and not nullable if email/password is not used.
-    # Let's assume wx_openid can serve as a unique username if a dedicated one isn't provided.
-    db_user = User(
-        wx_openid=openid,
-        username=openid, # Using openid as username for WeChat users if no other username is provided
-        wx_nickname=nickname,
-        wx_avatar_url=avatar_url,
-        is_verified=True # WeChat users are implicitly verified by WeChat
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user 

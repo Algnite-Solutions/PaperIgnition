@@ -16,17 +16,10 @@ class UserCreateEmail(BaseModel):
     password: str
     username: str
     
-class UserLogin(BaseModel):
-    username: str
-    password: str
-    
 class UserLoginEmail(BaseModel):
     email: EmailStr
     password: str
-    
-class WechatLogin(BaseModel):
-    code: str
-    
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -57,10 +50,6 @@ class UserInfo(BaseModel):
     username: str
 
 class EmailLoginResponse(Token):
-    needs_interest_setup: bool = Field(False, description="Indicates if the user needs to set up their research interests.")
-    user_info: UserInfo
-
-class WechatLoginResponse(Token):
     needs_interest_setup: bool = Field(False, description="Indicates if the user needs to set up their research interests.")
     user_info: UserInfo
 
