@@ -260,14 +260,18 @@ def store_images(indexer: PaperIndexer, docsets: List[DocSet], indexing_status: 
         # Check if image_db is available
         if indexer.image_db is None:
             raise RuntimeError("Image database is not initialized")
-        
+
+        # 暂时注释掉MinIO图片存储逻辑，改用新的阿里云OSS上传脚本
         # Call the indexer's store_images method
-        updated_indexing_status = indexer.store_images(
-            papers=docsets,
-            indexing_status=indexing_status,
-            keep_temp_image=keep_temp_image
-        )
-        
+        # updated_indexing_status = indexer.store_images(
+        #     papers=docsets,
+        #     indexing_status=indexing_status,
+        #     keep_temp_image=keep_temp_image
+        # )
+
+        # 返回空的索引状态（图片已通过脚本上传到OSS）
+        updated_indexing_status = indexing_status if indexing_status else {}
+ 
         return updated_indexing_status
         
     except Exception as e:

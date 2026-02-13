@@ -255,7 +255,7 @@ async def process_markdown_images(markdown_content: str) -> str:
     
     def replace_image_path(match):
         filename = match.group(1)  # 提取文件名
-        new_url = f"http://www.paperignition.com/files/aignite-papers-new/{filename}"
+        new_url = f"https://oss.paperignition.com/imgs/{filename}"
         return f"({new_url})"
     
     # 处理四种格式的图片路径（使用非贪婪匹配来支持包含括号的文件名）
@@ -270,8 +270,9 @@ async def process_markdown_images(markdown_content: str) -> str:
     result = re.sub(pattern3, replace_image_path, result)
     result = re.sub(pattern4, replace_image_path, result)
 
-    result = await validate_and_fix_image_urls(result)
-    
+    # 暂时注释掉图片验证逻辑
+    # result = await validate_and_fix_image_urls(result)
+
     return result
 
 @router.get("/blog_content/{paper_id}/{username}")
