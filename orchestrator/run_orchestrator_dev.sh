@@ -12,11 +12,12 @@ conda activate prc_aignite
 # 设置环境变量
 export VOLCENGINE_AK="YOUR_VOLCENGINE_ACCESS_KEY"
 export VOLCENGINE_SK="YOUR_VOLCENGINE_SECRET_KEY"
+
 export http_proxy="http://127.0.0.1:7890" 
 export https_proxy="http://127.0.0.1:7890"
 
 # 运行orchestrator
-python /data3/guofang/peirongcan/PaperIgnition/orchestrator/orchestrator.py production_config.yaml
+python /data3/guofang/peirongcan/PaperIgnition/orchestrator/orchestrator.py development_config.yaml
 
 # Orchestrator执行完成后，上传图片到阿里云OSS
 echo "=========================================="

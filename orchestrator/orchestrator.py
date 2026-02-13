@@ -19,6 +19,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from job_util import JobLogger
 from api_clients import IndexAPIClient, BackendAPIClient
 from paper_pull import PaperPullService
+from storage_util import (
+    LocalStorageManager, StorageConfig, create_local_storage_manager,
+    AliyunStorageManager, AliyunOSSConfig
+)
 from AIgnite.data.docset import DocSet
 from AIgnite.recommendation import GeminiRerankerPDF
 
@@ -77,13 +81,63 @@ class PaperIgnitionOrchestrator:
         base_dir = os.path.join(self.project_root, "orchestrator")
         paper_config = self.orch_config["paper_pull"]
 
+        # Initialize storage manager first (before paper_service)
+        # Get blog output path from config
+        blog_output_path = self.orch_config["blog_generation"]["output_path"]
+        if not os.path.isabs(blog_output_path):
+            blog_output_path = os.path.join(self.project_root, blog_output_path)
+        
+        # All paths are now absolute for consistency and clarity
+        storage_config = StorageConfig(
+            base_dir=base_dir,
+            blogs_dir=blog_output_path,                    # Absolute path from config
+            jsons_dir=os.path.join(base_dir, "jsons"),     # Absolute path
+            htmls_dir=os.path.join(base_dir, "htmls"),     # Absolute path
+            pdfs_dir=os.path.join(base_dir, "pdfs"),       # Absolute path
+            imgs_dir=os.path.join(base_dir, "imgs"),       # Absolute path
+            # Cleanup options from config (default to keep all)
+            keep_blogs=self.orch_config.get("storage", {}).get("keep_blogs", True),
+            keep_jsons=self.orch_config.get("storage", {}).get("keep_jsons", True),
+            keep_htmls=self.orch_config.get("storage", {}).get("keep_htmls", True),
+            keep_pdfs=self.orch_config.get("storage", {}).get("keep_pdfs", True),
+            keep_imgs=self.orch_config.get("storage", {}).get("keep_imgs", True),
+        )
+        self.storage_manager = LocalStorageManager(storage_config)
+        logging.info(f"Initialized LocalStorageManager with base_dir: {base_dir}")
+        
+        # Initialize Aliyun OSS storage manager (optional, for cloud backup)
+        self.cloud_storage_manager = None
+        aliyun_config = self.orch_config.get("aliyun_oss", {})
+        if aliyun_config.get("enabled", False):
+            try:
+                oss_config = AliyunOSSConfig(
+                    access_key_id=aliyun_config.get("access_key_id", os.getenv("ALIYUN_ACCESS_KEY_ID", "")),
+                    access_key_secret=aliyun_config.get("access_key_secret", os.getenv("ALIYUN_ACCESS_KEY_SECRET", "")),
+                    endpoint=aliyun_config.get("endpoint", os.getenv("ALIYUN_OSS_ENDPOINT", "oss-cn-beijing.aliyuncs.com")),
+                    bucket_name=aliyun_config.get("bucket_name", os.getenv("ALIYUN_OSS_BUCKET", "paperignition")),
+                    blogs_prefix=aliyun_config.get("blogs_prefix", "blogs/"),
+                )
+                self.cloud_storage_manager = AliyunStorageManager(storage_config, oss_config)
+                
+                # Test connection
+                if self.cloud_storage_manager.test_connection():
+                    logging.info(f"Initialized AliyunStorageManager: bucket={oss_config.bucket_name}")
+                else:
+                    logging.warning("Aliyun OSS connection test failed, cloud storage disabled")
+                    self.cloud_storage_manager = None
+            except Exception as e:
+                logging.warning(f"Failed to initialize AliyunStorageManager: {e}, cloud storage disabled")
+                self.cloud_storage_manager = None
+
+        # Initialize paper pull service with config and storage_manager
         self.paper_service = PaperPullService(
             base_dir=base_dir,
             max_workers=paper_config["max_workers"],
             time_slots_count=paper_config["time_slots_count"],
             location=paper_config["location"],
             count_delay=paper_config["count_delay"],
-            max_papers=paper_config.get("max_papers")
+            max_papers=paper_config.get("max_papers"),
+            storage_manager=self.storage_manager
         )
 
         # Initialize job logger with orchestrator config
@@ -122,6 +176,65 @@ class PaperIgnitionOrchestrator:
         self.project_root = str(Path(__file__).parent.parent)
         os.environ['PYTHONPATH'] = self.project_root
         os.chdir(self.project_root)
+
+    def sync_blog_to_cloud(self, doc_id: str, content: str) -> bool:
+        """
+        同步博客内容到阿里云OSS
+        
+        Args:
+            doc_id: 文档ID
+            content: 博客内容
+            
+        Returns:
+            bool: 上传是否成功
+        """
+        if self.cloud_storage_manager is None:
+            return False
+        
+        try:
+            success = self.cloud_storage_manager.save_blog(doc_id, content)
+            if success:
+                logging.debug(f"☁️ Synced blog to cloud: {doc_id}")
+            else:
+                logging.warning(f"⚠️ Failed to sync blog to cloud: {doc_id}")
+            return success
+        except Exception as e:
+            logging.error(f"❌ Error syncing blog to cloud {doc_id}: {e}")
+            return False
+    
+    def sync_blogs_batch_to_cloud(self, paper_infos: List[Dict[str, Any]]) -> Dict[str, int]:
+        """
+        批量同步博客到阿里云OSS
+        
+        Args:
+            paper_infos: 论文信息列表，每个包含 paper_id 和 blog 字段
+            
+        Returns:
+            Dict: {"success": count, "failed": count}
+        """
+        if self.cloud_storage_manager is None:
+            return {"success": 0, "failed": 0, "skipped": len(paper_infos)}
+        
+        results = {"success": 0, "failed": 0}
+        
+        for paper_info in paper_infos:
+            paper_id = paper_info.get("paper_id")
+            blog_content = paper_info.get("blog")
+            
+            if not paper_id or not blog_content:
+                continue
+            
+            if self.sync_blog_to_cloud(paper_id, blog_content):
+                results["success"] += 1
+            else:
+                results["failed"] += 1
+        
+        if results["success"] > 0:
+            logging.info(f"☁️ Synced {results['success']} blogs to Aliyun OSS")
+        if results["failed"] > 0:
+            logging.warning(f"⚠️ Failed to sync {results['failed']} blogs to Aliyun OSS")
+        
+        return results
 
     async def run_fetch_daily_papers(self) -> List[DocSet]:
         """Fetch daily papers using paper_pull module"""
@@ -198,10 +311,7 @@ class PaperIgnitionOrchestrator:
             
             try:
                 # 生成当前批次的博客
-                output_path = self.orch_config["blog_generation"]["output_path"]
-                # Convert to absolute path based on project root
-                if not os.path.isabs(output_path):
-                    output_path = os.path.join(self.project_root, output_path)
+                output_path = str(self.storage_manager.config.blogs_path)
                 run_Gemini_blog_generation_default(batch_papers, output_path=output_path)
             
                 logging.info(f"✅ Blog generation completed for batch {batch_start//batch_size + 1}")
@@ -209,13 +319,8 @@ class PaperIgnitionOrchestrator:
                 # 立即处理并保存当前批次的论文
                 paper_infos = []
                 for paper in batch_papers:
-                    try:
-                        # 使用绝对路径，基于当前脚本所在目录
-                        blog_path = os.path.join(output_path, f"{paper.doc_id}.md")
-                        with open(blog_path, encoding="utf-8") as file:
-                            blog = file.read()
-                    except FileNotFoundError:
-                        blog = None
+                    # 使用 storage_manager 读取博客
+                    blog = self.storage_manager.read_blog(paper.doc_id)
 
                     paper_infos.append({
                         "paper_id": paper.doc_id,
@@ -242,6 +347,11 @@ class PaperIgnitionOrchestrator:
                 ]
                 if papers_blog_data:
                     self.index_client.update_papers_blog(papers_blog_data)
+                
+                # Sync blogs to Aliyun OSS (if enabled)
+                if self.cloud_storage_manager:
+                    self.sync_blogs_batch_to_cloud(paper_infos)
+                
                 processed_count += len(batch_papers)
                 logging.info(f"📊 Progress: {processed_count}/{total_papers} papers processed")
                 
@@ -388,10 +498,7 @@ class PaperIgnitionOrchestrator:
             # 4. Generate blog digests for users
             logging.info("Generating blog digests for users...")
             if all_papers:
-                output_path = self.orch_config["blog_generation"]["output_path"]
-                # Convert to absolute path based on project root
-                if not os.path.isabs(output_path):
-                    output_path = os.path.join(self.project_root, output_path)
+                output_path = str(self.storage_manager.config.blogs_path)
                 
                 blog = run_Gemini_blog_generation_recommend(all_papers, output_path=output_path)
                 logging.info("Digest generation complete.")
@@ -404,16 +511,8 @@ class PaperIgnitionOrchestrator:
                 
                 paper_infos = []
                 for i, paper in enumerate(all_papers):
-                    try:
-                        # Use the configured output_path
-                        output_path = self.orch_config["blog_generation"]["output_path"]
-                        if not os.path.isabs(output_path):
-                            output_path = os.path.join(self.project_root, output_path)
-                        blog_path = os.path.join(output_path, f"{paper.doc_id}.md")
-                        with open(blog_path, encoding="utf-8") as file:
-                            blog = file.read()
-                    except FileNotFoundError:
-                        blog = None  # Blog file not found, will be skipped by API
+                    # 使用 storage_manager 读取博客
+                    blog = self.storage_manager.read_blog(paper.doc_id)
                     
                     # 获取对应的博客摘要和标题
                     blog_abs_content = blog_abs[i] if blog_abs and i < len(blog_abs) else None
@@ -434,7 +533,11 @@ class PaperIgnitionOrchestrator:
                         "submitted": paper.published_date,
                     })
 
-                # 5. Write recommendations
+                # 5. Sync blogs to Aliyun OSS (if enabled)
+                if self.cloud_storage_manager:
+                    self.sync_blogs_batch_to_cloud(paper_infos)
+                
+                # 6. Write recommendations
                 self.backend_client.recommend_papers_batch(username, paper_infos)
                 await self.job_logger.complete_job_log(job_id=job_id, details=f"Recommended {len(paper_infos)} papers.")
             else:

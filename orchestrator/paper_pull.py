@@ -8,8 +8,11 @@ import os
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, TYPE_CHECKING
 from enum import Enum
+
+if TYPE_CHECKING:
+    from storage_util import LocalStorageManager
 
 
 class PaperPullService:
@@ -26,7 +29,8 @@ class PaperPullService:
         time_slots_count: int = 3,
         location: str = "Asia/Shanghai",
         count_delay: int = 1,
-        max_papers: Optional[int] = None
+        max_papers: Optional[int] = None,
+        storage_manager: Optional["LocalStorageManager"] = None
     ):
         """
         Initialize PaperPullService
@@ -38,6 +42,7 @@ class PaperPullService:
             location: Timezone location for time calculations
             count_delay: Days to delay from current date
             max_papers: Maximum number of papers to fetch (None for unlimited)
+            storage_manager: Optional LocalStorageManager instance for file operations
         """
         self.logger = logging.getLogger(self.__class__.__name__)
         self.max_workers = max_workers
@@ -45,16 +50,25 @@ class PaperPullService:
         self.location = location
         self.count_delay = count_delay
         self.max_papers = max_papers
+        self.storage_manager = storage_manager
 
         # Setup directories
         if base_dir is None:
             base_dir = os.path.dirname(__file__)
         self.base_dir = Path(base_dir)
 
-        self.html_text_folder = self.base_dir / "htmls"
-        self.pdf_folder_path = self.base_dir / "pdfs"
-        self.image_folder_path = self.base_dir / "imgs"
-        self.json_output_path = self.base_dir / "jsons"
+        # If storage_manager is provided, use its paths; otherwise use defaults
+        if storage_manager:
+            self.html_text_folder = storage_manager.config.htmls_path
+            self.pdf_folder_path = storage_manager.config.pdfs_path
+            self.image_folder_path = storage_manager.config.imgs_path
+            self.json_output_path = storage_manager.config.jsons_path
+        else:
+            self.html_text_folder = self.base_dir / "htmls"
+            self.pdf_folder_path = self.base_dir / "pdfs"
+            self.image_folder_path = self.base_dir / "imgs"
+            self.json_output_path = self.base_dir / "jsons"
+        
         self.arxiv_pool_path = self.base_dir / "html_url_storage" / "html_urls.txt"
 
         # Get credentials from environment
@@ -218,17 +232,27 @@ class PaperPullService:
 
         # Load newly fetched papers from JSON
         new_docs = []
-        for json_file in self.json_output_path.glob("*.json"):
-            file_name = json_file.stem
-            if file_name in newly_fetched_ids:
-                try:
-                    with open(json_file, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        docset = DocSet(**data)
-                        new_docs.append(docset)
-                        self.logger.info(f"✅ Loaded: {docset.doc_id} - {docset.title}")
-                except Exception as e:
-                    self.logger.error(f"Failed to parse {json_file.name}: {e}")
+        
+        if self.storage_manager:
+            # Use storage_manager for loading papers
+            for doc_id in newly_fetched_ids:
+                docset = self.storage_manager.load_paper_docset(doc_id)
+                if docset:
+                    new_docs.append(docset)
+                    self.logger.info(f"✅ Loaded: {docset.doc_id} - {docset.title}")
+        else:
+            # Fallback to direct file reading (legacy behavior)
+            for json_file in self.json_output_path.glob("*.json"):
+                file_name = json_file.stem
+                if file_name in newly_fetched_ids:
+                    try:
+                        with open(json_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            docset = DocSet(**data)
+                            new_docs.append(docset)
+                            self.logger.info(f"✅ Loaded: {docset.doc_id} - {docset.title}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to parse {json_file.name}: {e}")
 
         self.logger.info(f"📊 Total newly fetched papers: {len(new_docs)}")
         return new_docs
