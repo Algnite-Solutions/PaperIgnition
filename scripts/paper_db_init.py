@@ -1,3 +1,21 @@
+"""
+DEPRECATED: This script has been superseded by scripts/init_all_tables.py
+
+This script is maintained for backward compatibility only.
+For new installations or database initialization, please use:
+
+    python scripts/init_all_tables.py --init-metadata-db
+
+The init_all_tables.py script provides:
+- Unified initialization for both user and metadata databases
+- Better error handling and logging
+- CLI arguments for selective initialization
+- Support for both local and production configurations
+
+Last updated: 2025-02-12
+Status: DEPRECATED - Use init_all_tables.py instead
+"""
+
 from typing import Tuple, Dict, Any, Optional
 from pathlib import Path
 from sqlalchemy import create_engine, inspect

@@ -1,3 +1,21 @@
+"""
+DEPRECATED: This script has been superseded by scripts/init_all_tables.py
+
+This script is maintained for backward compatibility only.
+For new installations or database initialization, please use:
+
+    python scripts/init_all_tables.py --init-user-db
+
+The init_all_tables.py script provides:
+- Unified initialization for both user and metadata databases
+- Better error handling and logging
+- CLI arguments for selective initialization
+- Schema printing functionality
+
+Last updated: 2025-02-12
+Status: DEPRECATED - Use init_all_tables.py instead
+"""
+
 import asyncio
 import os
 import sys

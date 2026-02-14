@@ -1,39 +1,15 @@
-import yaml
 from pathlib import Path
 import os
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from ..index_service.db_utils import load_config as load_index_service_config
 from typing import AsyncGenerator
 
+# Import shared configuration loader
+from backend.shared.config_utils import load_config as shared_load_config
 
-def load_config(config_path: str | None = None) -> dict:
-    """
-    加载 USER_DB 和 INDEX_SERVICE 两部分配置，返回 {'USER_DB': ..., 'INDEX_SERVICE': ...}
-    优先从 config_path 或环境变量指定的 app_config.yaml 读取
-    """
-    LOCAL_MODE = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
-    if not config_path:
-        config = "configs/test_config.yaml" if LOCAL_MODE else "configs/app_config.yaml"
-        config_path = os.environ.get(
-            "PAPERIGNITION_CONFIG",
-            str(Path(__file__).resolve().parent.parent / config),
-        )
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-    if "USER_DB" not in config:
-        raise ValueError(f"Missing 'USER_DB' section in {config_path}")
-    if "INDEX_SERVICE" not in config:
-        raise ValueError(f"Missing 'INDEX_SERVICE' section in {config_path}")
-    return {
-        "USER_DB": config["USER_DB"],
-        "INDEX_SERVICE": config["INDEX_SERVICE"],
-        "APP_SERVICE": config["APP_SERVICE"],
-        "OPENAI_SERVICE": config.get("OPENAI_SERVICE", {}),
-    }
+# Keep backward compatibility alias
+load_config = shared_load_config
 
 # 声明基类
 Base = declarative_base()
