@@ -197,7 +197,18 @@ orchestrator/imgs
 orchestrator/jsons
 orchestrator/html_url_storage
 orchestrator/tem_blog
+orchestrator/blogsByGemini/
 vector_db
+
+# Generated content and test files
+orchestrator/test_blog_generation.py
+backend/API_Documentation.md
+
+# Test and debug files
+test_rewrite.py
+tests/test_user_db_endpoints.py
+beta_frontend/api_test.sh
+beta_frontend/debug.txt
 backend/app/db_utils.py
 beta_frontend/docker-build-and-push.bat
 beta_frontend/docker-build-and-push.sh
