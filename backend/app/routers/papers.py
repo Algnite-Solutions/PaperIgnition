@@ -259,7 +259,7 @@ async def process_markdown_images(markdown_content: str) -> str:
     
     def replace_image_path(match):
         filename = match.group(1)  # 提取文件名
-        new_url = f"https://oss.paperignition.com/imgs/{filename}"
+        new_url = f"http://oss.paperignition.com/imgs/{filename}"
         return f"({new_url})"
     
     # 处理四种格式的图片路径（使用非贪婪匹配来支持包含括号的文件名）

@@ -301,7 +301,7 @@ async function searchPapersAPI(query) {
     }
 }
 
-async function loadPapers(append = false) {
+async function loadPapers() {
     // This function is now used primarily for search functionality
     if (!window.AuthService || !window.AuthService.isLoggedIn()) {
         await loadSamplePapers();
@@ -465,7 +465,7 @@ function createPaperCard(paper) {
                     ${viewedIndicator}
                 </div>
             </div>
-            <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
+            <p class="paper-authors">${formatAuthors(paper.authors)}</p>
             <p class="paper-abstract">${paper.abstract}</p>
             <div class="paper-meta">
                 <span>Publish Time: ${paper.publishDate ? new Date(paper.publishDate).toLocaleDateString() : "Recent"}</span>
@@ -726,209 +726,6 @@ async function handleFavoriteAction(paperId, btn) {
     }
 }
 
-async function toggleBookmark(paperId, event) {
-    event.stopPropagation();
-    
-    const button = event.target;
-    const isLoggedIn = window.AuthService && window.AuthService.isLoggedIn();
-    
-    if (!isLoggedIn) {
-        // 未登录用户使用localStorage
-    if (bookmarkedPapers.has(paperId)) {
-        bookmarkedPapers.delete(paperId);
-    } else {
-        bookmarkedPapers.add(paperId);
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-    
-    // Update UI
-    const isBookmarked = bookmarkedPapers.has(paperId);
-    button.className = `bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`;
-    button.textContent = isBookmarked ? '★ Saved' : '☆ Save';
-        
-        return;
-    }
-    
-    // 以下是登录用户的API调用逻辑
-    const isCurrentlyFavorited = userFavorites.has(paperId);
-    
-    // Find the paper data
-    const paper = currentPapers.find(p => p.id === paperId);
-    if (!paper) {
-        console.error('Paper not found:', paperId);
-        return;
-    }
-    
-    // Show loading state
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = isCurrentlyFavorited ? 'Removing...' : 'Adding...';
-    button.style.opacity = '0.6';
-    
-    try {
-        const token = window.AuthService.getToken();
-        console.log('User logged in:', window.AuthService.isLoggedIn());
-        console.log('Token available:', !!token);
-        
-        if (!token) {
-            throw new Error('No authentication token available');
-        }
-        
-        if (isCurrentlyFavorited) {
-            // Remove from favorites
-            const response = await fetch(`/api/favorites/remove/${encodeURIComponent(paperId)}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-            }
-            
-            // Update local state
-            userFavorites.delete(paperId);
-            bookmarkedPapers.delete(paperId);
-            
-            // Update UI
-            button.className = 'bookmark-btn';
-            button.textContent = '☆ Save';
-            
-            showSuccessMessage('Removed from favorites');
-            
-        } else {
-            // Add to favorites
-            const authorsStr = Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors;
-            
-            // 清理和验证数据
-            const cleanAbstract = (paper.abstract || '')
-                .replace(/\r\n/g, '\n')  // 统一换行符
-                .replace(/[""]/g, '"')   // 替换特殊引号
-                .replace(/['']/g, "'")   // 替换特殊单引号  
-                .replace(/…/g, '...')    // 替换省略号
-                .trim();
-            
-            const favoriteData = {
-                paper_id: String(paper.id).substring(0, 50), // 确保是字符串并限制长度
-                title: String(paper.title).substring(0, 255),
-                authors: String(authorsStr).substring(0, 255),
-                abstract: cleanAbstract
-            };
-            // 仅在存在且是有效URL时才发送url字段
-            if (paper.url && /^https?:\/\//i.test(String(paper.url))) {
-                favoriteData.url = String(paper.url).substring(0, 255);
-            }
-            
-            console.log('Sending favorite data:', favoriteData);
-            console.log('JSON body:', JSON.stringify(favoriteData));
-            console.log('Token:', token ? 'Token exists' : 'No token');
-            
-            const response = await fetch(`/api/favorites/add`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(favoriteData)
-            });
-            
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                let errorMessage = `HTTP ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    console.log('Error response data:', errorData);
-                    console.log('Error detail array:', errorData.detail);
-                    
-                    if (response.status === 400 && errorData.detail?.includes('已在收藏')) {
-                        // Paper already favorited
-                        userFavorites.add(paperId);
-                        bookmarkedPapers.add(paperId);
-                        button.className = 'bookmark-btn bookmarked';
-                        button.textContent = '★ Saved';
-                        showSuccessMessage('Already in favorites');
-                        return;
-                    }
-                    
-                    // Handle different error response formats
-                    if (errorData.detail) {
-                        if (Array.isArray(errorData.detail)) {
-                            // FastAPI validation errors return an array
-                            errorMessage = errorData.detail.map(err => {
-                                if (err.loc && err.msg) {
-                                    return `${err.loc.join('.')}: ${err.msg}`;
-                                }
-                                return err.msg || JSON.stringify(err);
-                            }).join('; ');
-                        } else {
-                            errorMessage = errorData.detail;
-                        }
-                    } else if (errorData.message) {
-                        errorMessage = errorData.message;
-                    } else if (typeof errorData === 'string') {
-                        errorMessage = errorData;
-                    } else {
-                        errorMessage = JSON.stringify(errorData);
-                    }
-                } catch (parseError) {
-                    console.error('Failed to parse error response:', parseError);
-                    const responseText = await response.text();
-                    console.log('Raw error response:', responseText);
-                    errorMessage = responseText || `HTTP error! status: ${response.status}`;
-                }
-                
-                throw new Error(errorMessage);
-            }
-            
-            // Update local state
-            userFavorites.add(paperId);
-            bookmarkedPapers.add(paperId);
-            
-            // Update UI
-            button.className = 'bookmark-btn bookmarked';
-            button.textContent = '★ Saved';
-            
-            showSuccessMessage('Added to favorites');
-        }
-        
-        // Update localStorage for backward compatibility
-        localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-        
-    } catch (error) {
-        console.error('Error toggling favorite:', error);
-        console.error('Error type:', typeof error);
-        console.error('Error constructor:', error.constructor.name);
-        
-        // Restore original state
-        button.textContent = originalText;
-        
-        // Show error message with better error handling
-        let errorMessage = 'Unknown error';
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === 'string') {
-            errorMessage = error;
-        } else if (error && error.toString) {
-            errorMessage = error.toString();
-        } else if (error) {
-            errorMessage = JSON.stringify(error);
-        }
-        
-        showErrorMessage(`Failed to ${isCurrentlyFavorited ? 'remove from' : 'add to'} favorites: ${errorMessage}`);
-        
-    } finally {
-        // Restore button state
-        button.disabled = false;
-        button.style.opacity = '1';
-    }
-}
-
 async function loadUserFavorites() {
     // Load user's favorites from backend to sync state
     if (!window.AuthService || !window.AuthService.isLoggedIn()) {
@@ -1139,12 +936,12 @@ function debounce(func, wait) {
 
 // API service functions (similar to the original services)
 class PaperService {
-    static async getPapers(page = 1, search = '') {
+    static async getPapers() {
         try {
             // In a real implementation, this would make an HTTP request
             // const response = await fetch(`${API_BASE_URL}/papers?page=${page}&search=${search}`);
             // return await response.json();
-            
+
             // For demo, return sample data
             return {
                 papers: samplePapers,
@@ -1169,11 +966,11 @@ class PaperService {
         }
     }
     
-    static async getPaperContent(paperId) {
+    static async getPaperContent() {
         try {
             // const response = await fetch(`${API_BASE_URL}/papers/${paperId}/content`);
             // return await response.json();
-            
+
             // Return sample content (TigerVector content from the original service)
             return {
                 content: `
@@ -1238,7 +1035,7 @@ function handleProfileNavigation() {
 function updateNavigation() {
     const profileLink = document.getElementById('profileLink');
     if (!profileLink) return;
-    
+
     if (window.AuthService && window.AuthService.isLoggedIn()) {
         const user = window.AuthService.getCurrentUser();
         profileLink.textContent = user?.username || 'Profile';
@@ -1247,4 +1044,25 @@ function updateNavigation() {
         profileLink.textContent = 'Login';
         profileLink.href = 'login.html';
     }
+}
+
+/**
+ * Format authors list - max 6 authors, then "et al"
+ * @param {Array|string} authors - Authors array or string
+ * @returns {string} Formatted authors string
+ */
+function formatAuthors(authors) {
+    if (!authors) return 'Unknown authors';
+
+    // Convert to array if string
+    const authorsArray = Array.isArray(authors) ? authors : authors.split(', ');
+
+    // Show max 6 authors
+    const maxAuthors = 6;
+    if (authorsArray.length <= maxAuthors) {
+        return authorsArray.join(', ');
+    }
+
+    // Show first 6 + "et al"
+    return authorsArray.slice(0, maxAuthors).join(', ') + ', et al.';
 }
