@@ -2,23 +2,23 @@ INDEX_SERVICE:
   host: "http://localhost:8002"
 
   metadata_db:
-    db_url: "postgresql://paperignition:Paperignition111@pgm-bp1xv040n53x75ai6o.pg.rds.aliyuncs.com:5432/paperignition"
+    db_url: "${METADATA_DB_URL}"
     # Aliyun RDS - Production metadata database
 
 APP_SERVICE:
-  host: "http://localhost:8080"
+  host: "${APP_SERVICE_HOST}"
 
 USER_DB:
-  db_user: paperignition
-  db_password: "Paperignition111"
-  db_host: pgm-bp1xv040n53x75ai6o.pg.rds.aliyuncs.com
-  db_port: "5432"
-  db_name: paperignition_user
+  db_user: "${USER_DB_USER}"
+  db_password: "${USER_DB_PASSWORD}"
+  db_host: "${USER_DB_HOST}"
+  db_port: "${USER_DB_PORT}"
+  db_name: "${USER_DB_NAME}"
   # Aliyun RDS - Production user database
 
 PAPER_STORAGE:
-  json_folder: ""
+  json_folder: "${PAPER_STORAGE_JSON_FOLDER}"
 
 OPENAI_SERVICE:
-  base_url: "https://api.deepseek.com"
-  api_key: "sk-7d1b4bfa589c45f9a352d3e22623eec1"
+  base_url: "${OPENAI_BASE_URL}"
+  api_key: "${OPENAI_API_KEY}"

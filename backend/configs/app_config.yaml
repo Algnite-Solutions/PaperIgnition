@@ -1,37 +1,24 @@
 INDEX_SERVICE:
-  host: "http://10.0.1.226:8002"
-
-  vector_db:
-    model_name: "GritLM/GritLM-7B"
-    vector_dim: 4096
-    #db_path: "vector_db/test_db"
-    db_path: "/data3/guofang/AIgnite-Solutions/PaperIgnition/vector_db/paperignition_db"
+  host: "http://localhost:8002"
 
   metadata_db:
-    db_url: "postgresql://postgres:11111@localhost:5432/paperignition"
-    # db_url: "postgresql://postgres:ch20031021@10.0.1.226/AIgnite"
-
-  minio_db:
-    endpoint: 10.0.1.226:9081
-    access_key: XOrv2wfoWfPypp2zGIae
-    secret_key: k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3
-    bucket_name: aignite-papers-new
-    secure: false
+    db_url: "${METADATA_DB_URL}"
+    # Aliyun RDS - Production metadata database
 
 APP_SERVICE:
-  host: "http://10.0.1.226:8888"
-  
-  
+  host: "${APP_SERVICE_HOST}"
+
 USER_DB:
-  db_user: postgres
-  db_password: "11111"
-  db_host: localhost
-  db_port: "5432"
-  db_name: paperignition_user
+  db_user: "${USER_DB_USER}"
+  db_password: "${USER_DB_PASSWORD}"
+  db_host: "${USER_DB_HOST}"
+  db_port: "${USER_DB_PORT}"
+  db_name: "${USER_DB_NAME}"
+  # Aliyun RDS - Production user database
 
 PAPER_STORAGE:
-  json_folder: ""
+  json_folder: "${PAPER_STORAGE_JSON_FOLDER}"
 
 OPENAI_SERVICE:
-  base_url: "https://api.deepseek.com"
-  api_key: 
+  base_url: "${OPENAI_BASE_URL}"
+  api_key: "${OPENAI_API_KEY}"
