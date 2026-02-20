@@ -66,12 +66,6 @@ The following environment variables are used in the configuration files:
 | `OPENAI_BASE_URL` | Base URL for LLM API | `https://api.deepseek.com` |
 | `OPENAI_API_KEY` | API key for LLM service | `sk-xxxxx` |
 
-#### Storage
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PAPER_STORAGE_JSON_FOLDER` | Path to paper JSON files | `` (empty) |
-
 ### How It Works
 
 1. **YAML files use `${VARIABLE}` syntax** to reference environment variables
