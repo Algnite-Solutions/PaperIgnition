@@ -512,6 +512,10 @@
                 currentPaper = JSON.parse(storedPaper);
                 return;
             }
+
+            // Get PDF URL from share parameters if available
+            const pdfUrlFromShare = urlParams.get('pdfUrl');
+
             response = await fetch(`/get_metadata/${encodeURIComponent(paperId)}`);
             if (response.ok) {
                 const text = await response.text();
@@ -521,16 +525,16 @@
                     title: metadata.title || 'Unknown Title',
                     authors: metadata.authors || [],
                     publishDate: metadata.published_date || '',
-                    url: metadata.url || ''
+                    url: metadata.url || pdfUrlFromShare || ''  // Use PDF from metadata or share URL
                 };
             } else {
-                // Fallback to minimal paper object
+                // Fallback to minimal paper object with PDF URL from share
                 currentPaper = {
                     id: paperId,
                     title: 'Loading...',
                     authors: [],
                     publishDate: '',
-                    url: '',
+                    url: pdfUrlFromShare || '',  // Use PDF URL from share if available
                 };
             }
         }
@@ -586,7 +590,7 @@
             paperDetail.innerHTML = `
                 <div class="paper-header">
                     <h1 class="paper-title">${currentPaper.title}</h1>
-                    <p class="paper-authors">${Array.isArray(currentPaper.authors) ? currentPaper.authors.join(', ') : currentPaper.authors || 'Unknown authors'}</p>
+                    <p class="paper-authors">${formatAuthors(currentPaper.authors)}</p>
                     <div class="paper-meta">
                         <span>Publish Time: ${currentPaper.publishDate ? new Date(currentPaper.publishDate).toLocaleDateString() : "Recent"}</span>
                         <span>Recommend Time: ${currentPaper.recommendationDate ? new Date(currentPaper.recommendationDate).toLocaleDateString() : "Recent"}</span>
@@ -604,7 +608,7 @@
                         <button class="action-btn" onclick="sharePaper()">Share</button>
                     </div>
                 </div>
-                
+
                 <div class="paper-content">
                     <div class="content" id="paperContentDiv">${formatMarkdown(paperContent)}</div>
                 </div>
@@ -868,14 +872,21 @@
         }
 
         async function sharePaper() {
-            const pageUrl = window.location.href;
+            // Build share URL with PDF URL included
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareUrl = new URL(window.location.href);
+
+            // Add PDF URL to parameters if available
+            if (currentPaper.url) {
+                shareUrl.searchParams.set('pdfUrl', currentPaper.url);
+            }
 
             try {
-                // Copy the current page URL to clipboard
-                await navigator.clipboard.writeText(pageUrl);
+                // Copy the share URL to clipboard
+                await navigator.clipboard.writeText(shareUrl.href);
 
                 // Show success message popup with the link
-                showShareSuccessMessage(pageUrl);
+                showShareSuccessMessage(shareUrl.href);
             } catch (error) {
                 console.error('Error copying to clipboard:', error);
 
@@ -932,6 +943,27 @@
                 <p style="color: var(--accent-red);">${message}</p>
                 <a href="index.html" class="action-btn">← Back to Papers</a>
             `;
+        }
+
+        /**
+         * Format authors list - max 6 authors, then "et al"
+         * @param {Array|string} authors - Authors array or string
+         * @returns {string} Formatted authors string
+         */
+        function formatAuthors(authors) {
+            if (!authors) return 'Unknown authors';
+
+            // Convert to array if string
+            const authorsArray = Array.isArray(authors) ? authors : authors.split(', ');
+
+            // Show max 6 authors
+            const maxAuthors = 6;
+            if (authorsArray.length <= maxAuthors) {
+                return authorsArray.join(', ');
+            }
+
+            // Show first 6 + "et al"
+            return authorsArray.slice(0, maxAuthors).join(', ') + ', et al.';
         }
     </script>
     <script type="module" src="./js/auth.js"></script>

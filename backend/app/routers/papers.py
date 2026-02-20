@@ -14,8 +14,8 @@ from ..models.users import User, UserPaperRecommendation, UserRetrieveResult
 from ..models.papers import PaperBase, PaperRecommendation, FeedbackRequest, RetrieveResultSave
 from ..db_utils import get_db, get_index_service_url
 from ..auth.utils import get_current_user
-from minio import Minio
-from minio.error import S3Error
+# from minio import Minio  # Removed: MinIO dependency removed for Aliyun RDS migration
+# from minio.error import S3Error  # Removed: MinIO dependency removed for Aliyun RDS migration
 from fastapi.responses import Response
 
 # 设置日志
@@ -24,25 +24,29 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/digests", tags=["digests"])
 
 def get_minio_client():
-    """获取MinIO客户端 - 使用硬编码配置"""
-    try:
-        # 硬编码的MinIO配置
-        minio_config = {
-            'endpoint': '10.0.1.226:9081',
-            'access_key': 'XOrv2wfoWfPypp2zGIae',  # 移除多余的文本
-            'secret_key': 'k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3',
-            'secure': False
-        }
-        
-        return Minio(
-            minio_config['endpoint'],
-            access_key=minio_config['access_key'],
-            secret_key=minio_config['secret_key'],
-            secure=minio_config['secure']
-        )
-    except Exception as e:
-        logger.error(f"Failed to create MinIO client: {e}")
-        raise HTTPException(status_code=500, detail="MinIO client initialization error")
+    """获取MinIO客户端 - 使用硬编码配置
+
+    DISABLED: MinIO dependency removed for Aliyun RDS migration
+    """
+    raise HTTPException(status_code=501, detail="MinIO file serving disabled for Aliyun RDS migration")
+    # try:
+    #     # 硬编码的MinIO配置
+    #     minio_config = {
+    #         'endpoint': '10.0.1.226:9081',
+    #         'access_key': 'XOrv2wfoWfPypp2zGIae',  # 移除多余的文本
+    #         'secret_key': 'k9agaJuX2ZidOtaBxdc9Q2Hz5GnNKncNBnEZIoK3',
+    #         'secure': False
+    #     }
+    #
+    #     return Minio(
+    #         minio_config['endpoint'],
+    #         access_key=minio_config['access_key'],
+    #         secret_key=minio_config['secret_key'],
+    #         secure=minio_config['secure']
+    #     )
+    # except Exception as e:
+    #     logger.error(f"Failed to create MinIO client: {e}")
+    #     raise HTTPException(status_code=500, detail="MinIO client initialization error")
 
 
 @router.get("/recommendations/{username}", response_model=List[PaperBase])
@@ -255,7 +259,7 @@ async def process_markdown_images(markdown_content: str) -> str:
     
     def replace_image_path(match):
         filename = match.group(1)  # 提取文件名
-        new_url = f"https://oss.paperignition.com/imgs/{filename}"
+        new_url = f"http://oss.paperignition.com/imgs/{filename}"
         return f"({new_url})"
     
     # 处理四种格式的图片路径（使用非贪婪匹配来支持包含括号的文件名）

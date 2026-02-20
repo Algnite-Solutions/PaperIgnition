@@ -16,6 +16,7 @@ from pathlib import Path
 import logging
 import os
 import yaml
+import re
 
 
 # Set up logging
@@ -24,6 +25,39 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+
+def _substitute_env_vars(value: Any) -> Any:
+    """
+    Recursively substitute environment variables in configuration values.
+
+    Supports ${VAR_NAME} syntax in YAML values.
+
+    Args:
+        value: Configuration value (string, dict, list, or other type)
+
+    Returns:
+        Value with environment variables substituted
+    """
+    if isinstance(value, str):
+        # Replace ${VAR_NAME} with environment variable value
+        def replace_env_var(match):
+            env_var = match.group(1)
+            env_value = os.environ.get(env_var)
+            if env_value is None:
+                logger.warning(f"Environment variable '{env_var}' not found, keeping placeholder")
+                return match.group(0)  # Keep the ${VAR_NAME} if not found
+            return env_value
+
+        # Use regex to find and replace ${VAR_NAME} patterns
+        return re.sub(r'\$\{([^}]+)\}', replace_env_var, value)
+
+    elif isinstance(value, dict):
+        return {k: _substitute_env_vars(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [_substitute_env_vars(item) for item in value]
+    else:
+        return value
 
 
 def load_config(
@@ -77,6 +111,9 @@ def load_config(
     try:
         with open(config_path, 'r') as f:
             full_config = yaml.safe_load(f)
+
+        # Substitute environment variables in the entire config
+        full_config = _substitute_env_vars(full_config)
 
         # Load based on service type
         if service == "backend":

@@ -608,7 +608,7 @@
                 </div>
                 <div class="paper-content">
                     <h2 class="paper-title">${paper.title}</h2>
-                    <p class="paper-authors">${Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
+                    <p class="paper-authors">${formatAuthors(paper.authors)}</p>
                     <p class="paper-abstract">${paper.abstract}</p>
                     <div class="paper-meta">
                         <span>${paper.publishDate}</span>
@@ -882,6 +882,27 @@
             }
         `;
         document.head.appendChild(style);
+
+        /**
+         * Format authors list - max 6 authors, then "et al"
+         * @param {Array|string} authors - Authors array or string
+         * @returns {string} Formatted authors string
+         */
+        function formatAuthors(authors) {
+            if (!authors) return 'Unknown authors';
+
+            // Convert to array if string
+            const authorsArray = Array.isArray(authors) ? authors : authors.split(', ');
+
+            // Show max 6 authors
+            const maxAuthors = 6;
+            if (authorsArray.length <= maxAuthors) {
+                return authorsArray.join(', ');
+            }
+
+            // Show first 6 + "et al"
+            return authorsArray.slice(0, maxAuthors).join(', ') + ', et al.';
+        }
     </script>
 </body>
 </html> 

@@ -42,3 +42,14 @@ async def create_user_email(db: AsyncSession, user_in: auth_schemas.UserCreateEm
     await db.commit()
     await db.refresh(db_user)
     return db_user
+
+async def delete_user_by_email(db: AsyncSession, email: str) -> bool:
+    """
+    通过邮箱删除用户（用于测试环境清理）
+    """
+    user = await get_user_by_email(db, email)
+    if not user:
+        return False
+    await db.delete(user)
+    await db.commit()
+    return True

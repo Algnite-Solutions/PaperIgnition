@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.users import User
 from ..db_utils import get_db
 
 from ..auth import schemas as auth_schemas # aliased for clarity
-from ..auth.utils import verify_password, create_access_token # get_password_hash is used in crud
+from ..auth.utils import verify_password, create_access_token, get_current_user # get_password_hash is used in crud
 from ..crud import user as crud_user # aliased for clarity
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,11 +54,50 @@ async def login_email(user_in: auth_schemas.UserLoginEmail, db: AsyncSession = D
     needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
     
     return {
-        "access_token": access_token, 
+        "access_token": access_token,
         "token_type": "bearer",
         "needs_interest_setup": needs_interest_setup,
         "user_info": {
             "email": user.email,
             "username": user.username
         }
+    }
+
+@router.delete("/users/{email:path}")
+async def delete_user(
+    email: str,
+    db: AsyncSession = Depends(get_db),
+    x_test_mode: str = Header(None)
+):
+    """
+    Delete a user by email.
+
+    **WARNING**: This endpoint is for testing purposes only!
+    Requires either:
+    - Valid authentication token, OR
+    - X-Test-Mode header (for automated testing)
+
+    This will permanently delete the user and all associated data.
+    """
+    # Allow deletion if authenticated OR in test mode
+    # Test mode can be enabled by passing X-Test-Mode: true header
+    if x_test_mode != "true":
+        # Require authentication in production
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required or test mode not enabled"
+        )
+
+    # Delete the user
+    deleted = await crud_user.delete_user_by_email(db, email)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email {email} not found"
+        )
+
+    return {
+        "message": f"User {email} deleted successfully",
+        "email": email
     }
