@@ -16,9 +16,6 @@ USER_DB:
   db_name: "${USER_DB_NAME}"
   # Aliyun RDS - Production user database
 
-PAPER_STORAGE:
-  json_folder: "${PAPER_STORAGE_JSON_FOLDER}"
-
 OPENAI_SERVICE:
   base_url: "${OPENAI_BASE_URL}"
   api_key: "${OPENAI_API_KEY}"
