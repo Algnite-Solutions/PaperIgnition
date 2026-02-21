@@ -1,0 +1,109 @@
+# ===========================================
+# PaperIgnition 迁移配置文件
+# ===========================================
+# 用于 scripts 目录下的迁移脚本统一配置
+#
+# 使用方法:
+#   python scripts/migrate_to_aliyun_rds.py --config scripts/migration_config.yaml
+#   python scripts/imgs2aliyun.py --config scripts/migration_config.yaml
+#   python scripts/migrate_embeddings_to_pgvector.py --config scripts/migration_config.yaml
+#
+# 注意: 请将占位符替换为实际值，或使用环境变量
+# ===========================================
+
+# ==================== 本地数据库配置 ====================
+local_database:
+  # Paper 数据库 (papers, text_chunks 等表)
+  paper_db:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "${LOCAL_DB_PASSWORD:YOUR_PASSWORD}"
+    database: "paperignition"
+
+  # User 数据库 (users, favorite_papers, paper_recommendations 等表)
+  user_db:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "${LOCAL_DB_PASSWORD:YOUR_PASSWORD}"
+    database: "paperignition_user"
+
+# ==================== 阿里云 RDS PostgreSQL 配置 ====================
+aliyun_rds:
+  enabled: true
+
+  # 连接信息
+  db_host: "${ALIYUN_RDS_HOST:your-rds-host.pg.rds.aliyuncs.com}"
+  db_port: "5432"
+  db_user: "${ALIYUN_RDS_USER:YOUR_DB_USER}"
+  db_password: "${ALIYUN_RDS_PASSWORD:YOUR_DB_PASSWORD}"
+
+  # 数据库名称
+  db_name_paper: "paperignition"      # Paper 数据库名
+  db_name_user: "paperignition_user"  # User 数据库名
+
+# ==================== 阿里云 OSS 配置 ====================
+aliyun_oss:
+  # OSS 凭证
+  access_key_id: "${ALIYUN_OSS_ACCESS_KEY_ID:YOUR_ACCESS_KEY_ID}"
+  access_key_secret: "${ALIYUN_OSS_ACCESS_KEY_SECRET:YOUR_ACCESS_KEY_SECRET}"
+
+  # OSS 端点和 Bucket
+  endpoint: "${ALIYUN_OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}"
+  bucket_name: "${ALIYUN_OSS_BUCKET:your-bucket-name}"
+
+  # 上传配置
+  upload_prefix: "imgs/"              # OSS 中的文件前缀
+  max_retries: 3                      # 上传失败重试次数
+  connect_timeout: 60                 # 连接超时时间（秒）
+
+# ==================== MinIO 配置 ====================
+minio:
+  # MinIO 连接信息
+  endpoint: "${MINIO_ENDPOINT:your-minio-endpoint:9000}"
+  access_key: "${MINIO_ACCESS_KEY:YOUR_ACCESS_KEY}"
+  secret_key: "${MINIO_SECRET_KEY:YOUR_SECRET_KEY}"
+  secure: false
+
+  # Bucket 配置
+  bucket_name: "${MINIO_BUCKET:your-bucket-name}"
+
+# ==================== 本地文件路径配置 ====================
+local_paths:
+  # 本地图片文件夹
+  imgs_folder: "${LOCAL_IMGS_FOLDER:/path/to/your/imgs}"
+
+# ==================== 阿里云百炼 Embedding 配置 ====================
+dashscope:
+  # API 配置
+  api_key: "${DASHSCOPE_API_KEY:YOUR_API_KEY}"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+  # Embedding 模型配置
+  embedding_model: "text-embedding-v4"
+  embedding_dimension: 2048  # 可选: 64, 128, 256, 512, 768, 1024, 1536, 2048
+  batch_size: 10  # 每批次处理的文本数量 (API 限制)
+
+# ==================== pgvector 迁移配置 ====================
+pgvector_migration:
+  # 向量表名称
+  paper_embedding_table: "paper_embeddings"
+  user_embedding_table: "user_interest_embeddings"
+
+  # 处理配置
+  max_papers: null      # null 表示处理所有论文
+  max_users: null       # null 表示处理所有用户
+  delay_between_batches: 0.5  # 批次之间的延迟（秒），避免 API 限流
+  skip_existing: true   # 跳过已存在的记录（去重）
+
+# ==================== 迁移配置 ====================
+migration:
+  # 默认批处理大小
+  default_batch_size: 1000
+
+  # 是否在迁移前确认（交互模式）
+  confirm_before_migrate: true
+
+  # 是否显示详细日志
+  verbose: true
