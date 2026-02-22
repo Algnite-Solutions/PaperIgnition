@@ -5,10 +5,11 @@ Converts daily_task.sh into a comprehensive Python orchestrator
 
 import asyncio
 import os
+import oss2
 import sys
 import logging
 import yaml
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from generate_blog import run_Gemini_blog_generation_default, run_Gemini_blog_generation_recommend, run_batch_generation_abs, run_batch_generation_title
@@ -21,7 +22,9 @@ from api_clients import IndexAPIClient, BackendAPIClient
 from paper_pull import PaperPullService
 from storage_util import (
     LocalStorageManager, StorageConfig, create_local_storage_manager,
-    AliyunStorageManager, AliyunOSSConfig
+    RDSDBManager, RDSConfig, EmbeddingClient,
+    AliyunOSSStorageManager, AliyunOSSConfig,
+    create_rds_db_manager, create_oss_storage_manager
 )
 from AIgnite.data.docset import DocSet
 from AIgnite.recommendation import GeminiRerankerPDF
@@ -86,7 +89,7 @@ class PaperIgnitionOrchestrator:
         blog_output_path = self.orch_config["blog_generation"]["output_path"]
         if not os.path.isabs(blog_output_path):
             blog_output_path = os.path.join(self.project_root, blog_output_path)
-        
+
         # All paths are now absolute for consistency and clarity
         storage_config = StorageConfig(
             base_dir=base_dir,
@@ -104,30 +107,6 @@ class PaperIgnitionOrchestrator:
         )
         self.storage_manager = LocalStorageManager(storage_config)
         logging.info(f"Initialized LocalStorageManager with base_dir: {base_dir}")
-        
-        # Initialize Aliyun OSS storage manager (optional, for cloud backup)
-        self.cloud_storage_manager = None
-        aliyun_config = self.orch_config.get("aliyun_oss", {})
-        if aliyun_config.get("enabled", False):
-            try:
-                oss_config = AliyunOSSConfig(
-                    access_key_id=aliyun_config.get("access_key_id", os.getenv("ALIYUN_ACCESS_KEY_ID", "")),
-                    access_key_secret=aliyun_config.get("access_key_secret", os.getenv("ALIYUN_ACCESS_KEY_SECRET", "")),
-                    endpoint=aliyun_config.get("endpoint", os.getenv("ALIYUN_OSS_ENDPOINT", "oss-cn-beijing.aliyuncs.com")),
-                    bucket_name=aliyun_config.get("bucket_name", os.getenv("ALIYUN_OSS_BUCKET", "paperignition")),
-                    blogs_prefix=aliyun_config.get("blogs_prefix", "blogs/"),
-                )
-                self.cloud_storage_manager = AliyunStorageManager(storage_config, oss_config)
-                
-                # Test connection
-                if self.cloud_storage_manager.test_connection():
-                    logging.info(f"Initialized AliyunStorageManager: bucket={oss_config.bucket_name}")
-                else:
-                    logging.warning("Aliyun OSS connection test failed, cloud storage disabled")
-                    self.cloud_storage_manager = None
-            except Exception as e:
-                logging.warning(f"Failed to initialize AliyunStorageManager: {e}, cloud storage disabled")
-                self.cloud_storage_manager = None
 
         # Initialize paper pull service with config and storage_manager
         self.paper_service = PaperPullService(
@@ -142,6 +121,68 @@ class PaperIgnitionOrchestrator:
 
         # Initialize job logger with orchestrator config
         self.job_logger = JobLogger(config=self.orch_config)
+
+        # ==================== New Components for RDS/OSS Decoupling ====================
+
+        # Initialize RDS DB Manager (if enabled)
+        self.rds_db_manager = None
+        self.embedding_client = None
+        aliyun_rds_config = self.orch_config.get("aliyun_rds", {})
+        dashscope_config = self.orch_config.get("dashscope", {})
+
+        if aliyun_rds_config.get("enabled", False) and dashscope_config.get("api_key"):
+            try:
+                # Initialize Embedding Client
+                self.embedding_client = EmbeddingClient(
+                    api_key=dashscope_config.get("api_key", ""),
+                    base_url=dashscope_config.get("base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+                    model=dashscope_config.get("embedding_model", "text-embedding-v4"),
+                    dimension=dashscope_config.get("embedding_dimension", 2048)
+                )
+                logging.info(f"Initialized EmbeddingClient with model: {dashscope_config.get('embedding_model', 'text-embedding-v4')}")
+
+                # Initialize RDS DB Manager
+                rds_config = RDSConfig(
+                    host=aliyun_rds_config.get("db_host", "localhost"),
+                    port=int(aliyun_rds_config.get("db_port", 5432)),
+                    database=aliyun_rds_config.get("db_name_paper", "paperignition"),
+                    user=aliyun_rds_config.get("db_user", "postgres"),
+                    password=aliyun_rds_config.get("db_password", ""),
+                    sslmode=aliyun_rds_config.get("sslmode", "prefer")
+                )
+                self.rds_db_manager = RDSDBManager(rds_config, self.embedding_client)
+                logging.info(f"Initialized RDSDBManager for {rds_config.host}:{rds_config.port}/{rds_config.database}")
+
+            except Exception as e:
+                logging.warning(f"Failed to initialize RDS/Embedding components: {e}. Falling back to Index Service.")
+                self.rds_db_manager = None
+                self.embedding_client = None
+
+        # Initialize OSS Storage Manager (if enabled)
+        self.oss_storage_manager = None
+        aliyun_oss_config = self.orch_config.get("aliyun_oss", {})
+
+        if aliyun_oss_config.get("enabled", False):
+            try:
+                self.oss_storage_manager = create_oss_storage_manager(
+                    base_dir=base_dir,
+                    oss_config=aliyun_oss_config,
+                    storage_options={
+                        "blogs_dir": blog_output_path,
+                        "jsons_dir": os.path.join(base_dir, "jsons"),
+                        "htmls_dir": os.path.join(base_dir, "htmls"),
+                        "pdfs_dir": os.path.join(base_dir, "pdfs"),
+                        "imgs_dir": os.path.join(base_dir, "imgs"),
+                    }
+                )
+                logging.info(f"Initialized AliyunOSSStorageManager for bucket: {aliyun_oss_config.get('bucket_name')}")
+            except Exception as e:
+                logging.warning(f"Failed to initialize OSS Storage Manager: {e}. Falling back to local storage.")
+                self.oss_storage_manager = None
+
+        # Determine search mode
+        self.use_direct_rds_search = self.rds_db_manager is not None
+        logging.info(f"Search mode: {'Direct RDS (pgvector)' if self.use_direct_rds_search else 'Index Service'}")
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -177,65 +218,6 @@ class PaperIgnitionOrchestrator:
         os.environ['PYTHONPATH'] = self.project_root
         os.chdir(self.project_root)
 
-    def sync_blog_to_cloud(self, doc_id: str, content: str) -> bool:
-        """
-        同步博客内容到阿里云OSS
-        
-        Args:
-            doc_id: 文档ID
-            content: 博客内容
-            
-        Returns:
-            bool: 上传是否成功
-        """
-        if self.cloud_storage_manager is None:
-            return False
-        
-        try:
-            success = self.cloud_storage_manager.save_blog(doc_id, content)
-            if success:
-                logging.debug(f"☁️ Synced blog to cloud: {doc_id}")
-            else:
-                logging.warning(f"⚠️ Failed to sync blog to cloud: {doc_id}")
-            return success
-        except Exception as e:
-            logging.error(f"❌ Error syncing blog to cloud {doc_id}: {e}")
-            return False
-    
-    def sync_blogs_batch_to_cloud(self, paper_infos: List[Dict[str, Any]]) -> Dict[str, int]:
-        """
-        批量同步博客到阿里云OSS
-        
-        Args:
-            paper_infos: 论文信息列表，每个包含 paper_id 和 blog 字段
-            
-        Returns:
-            Dict: {"success": count, "failed": count}
-        """
-        if self.cloud_storage_manager is None:
-            return {"success": 0, "failed": 0, "skipped": len(paper_infos)}
-        
-        results = {"success": 0, "failed": 0}
-        
-        for paper_info in paper_infos:
-            paper_id = paper_info.get("paper_id")
-            blog_content = paper_info.get("blog")
-            
-            if not paper_id or not blog_content:
-                continue
-            
-            if self.sync_blog_to_cloud(paper_id, blog_content):
-                results["success"] += 1
-            else:
-                results["failed"] += 1
-        
-        if results["success"] > 0:
-            logging.info(f"☁️ Synced {results['success']} blogs to Aliyun OSS")
-        if results["failed"] > 0:
-            logging.warning(f"⚠️ Failed to sync {results['failed']} blogs to Aliyun OSS")
-        
-        return results
-
     async def run_fetch_daily_papers(self) -> List[DocSet]:
         """Fetch daily papers using paper_pull module"""
         logging.info("Starting daily paper fetch...")
@@ -244,19 +226,62 @@ class PaperIgnitionOrchestrator:
         success = False
         papers = []
         try:
-            # 1. Check connection health before indexing
-            if not self.index_client.is_healthy():
-                logging.error("Index service not healthy or not ready")
-                await self.job_logger.complete_job_log(job_id, status="failed", details={"message": "Index service not healthy"})
-                return papers
-
-            # 2. Fetch daily papers using PaperPullService
+            # 1. Fetch daily papers using PaperPullService
             papers = self.paper_service.fetch_daily_papers()
             logging.info(f"Fetched {len(papers)} papers from arXiv")
 
-            # 3. Index papers
+            # 2. Index/store papers
             if papers:
-                self.index_client.index_papers(papers, store_images=self.orch_config["constants"]["store_images_on_index"])
+                if self.rds_db_manager is not None:
+                    # New path: Store directly to RDS + generate embeddings
+                    logging.info("Storing papers directly to RDS...")
+
+                    stored_count = 0
+                    for paper in papers:
+                        # 2a. Store metadata to papers table
+                        if self.rds_db_manager.insert_paper(paper):
+                            stored_count += 1
+
+                            # 2b. Store text chunks to text_chunks table
+                            if paper.text_chunks:
+                                self.rds_db_manager.insert_text_chunks(paper.doc_id, paper.text_chunks)
+
+                    logging.info(f"Stored {stored_count}/{len(papers)} papers to RDS")
+
+                    # 2c. Batch generate and store embeddings
+                    if self.embedding_client:
+                        paper_texts = [f"{p.title}. {p.abstract}" for p in papers]
+                        embeddings = self.embedding_client.get_embeddings(
+                            paper_texts,
+                            batch_size=self.orch_config.get("dashscope", {}).get("batch_size", 10),
+                            delay=self.orch_config.get("dashscope", {}).get("delay_between_batches", 0.5)
+                        )
+                        paper_data = [
+                            {"doc_id": p.doc_id, "title": p.title, "abstract": p.abstract}
+                            for p in papers
+                        ]
+                        success_emb, failed_emb = self.rds_db_manager.batch_insert_embeddings(paper_data, embeddings)
+                        logging.info(f"Embeddings: {success_emb} succeeded, {failed_emb} failed")
+
+                    # 2d. Upload images to OSS (if enabled)
+                    if self.oss_storage_manager and self.orch_config["constants"]["store_images_on_index"]:
+                        for paper in papers:
+                            if paper.figure_chunks:
+                                results = self.oss_storage_manager.upload_images_from_docset(paper)
+                                success_imgs = sum(1 for v in results.values() if v)
+                                logging.debug(f"Uploaded {success_imgs} images for paper {paper.doc_id}")
+
+                else:
+                    # Legacy path: Use Index Service
+                    logging.info("Storing papers via Index Service...")
+
+                    # Check connection health before indexing
+                    if not self.index_client.is_healthy():
+                        logging.error("Index service not healthy or not ready")
+                        await self.job_logger.complete_job_log(job_id, status="failed", details={"message": "Index service not healthy"})
+                        return []
+
+                    self.index_client.index_papers(papers, store_images=self.orch_config["constants"]["store_images_on_index"])
 
             success = len(papers) > 0
             logging.info(f"Daily paper fetch complete. Fetched {len(papers)} papers.")
@@ -340,18 +365,20 @@ class PaperIgnitionOrchestrator:
                 # Uncomment next line if you want to save all blog to BlogBot
                 # self.backend_client.recommend_papers_batch(username, paper_infos)
 
-                # Update papers blog field in index service
+                # Update papers blog field in index service or RDS
                 papers_blog_data = [
                     {"paper_id": p["paper_id"], "blog_content": p["blog"]}
                     for p in paper_infos if p.get("paper_id") and p.get("blog")
                 ]
                 if papers_blog_data:
-                    self.index_client.update_papers_blog(papers_blog_data)
-                
-                # Sync blogs to Aliyun OSS (if enabled)
-                if self.cloud_storage_manager:
-                    self.sync_blogs_batch_to_cloud(paper_infos)
-                
+                    if self.rds_db_manager is not None:
+                        # 新路径：直接更新 RDS
+                        success_count, failed_count = self.rds_db_manager.batch_update_papers_blog(papers_blog_data)
+                        logging.info(f"Updated blog in RDS: {success_count} succeeded, {failed_count} failed")
+                    else:
+                        # 旧路径：使用 Index Service
+                        self.index_client.update_papers_blog(papers_blog_data)
+              
                 processed_count += len(batch_papers)
                 logging.info(f"📊 Progress: {processed_count}/{total_papers} papers processed")
                 
@@ -401,12 +428,12 @@ class PaperIgnitionOrchestrator:
             
             for query in interests:
                 logging.info(f"[VECTOR] 用户 {username} 兴趣: {query}")
-                
-                # 构建过滤器，排除用户已有的论文ID，同时只包含最近3天的论文
-                from datetime import datetime, timedelta
-                end_date = datetime.now().strftime('%Y-%m-%d')
+
+                # 构建过滤器，排除用户已有的论文ID，同时只包含最近5天的论文
+                from datetime import datetime, timedelta, timezone
+                end_date = datetime.now(timezone.utc).strftime('%Y-%m-%d 23:59:59+00:00')
                 # arxiv API has two day delay, so we extend to 5 days for recent 3 days
-                start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+                start_date = (datetime.now(timezone.utc) - timedelta(days=5)).strftime('%Y-%m-%d 00:00:00+00:00')
 
                  # 构建过滤器，排除用户已有的论文ID
                 filter_params = None
@@ -429,16 +456,26 @@ class PaperIgnitionOrchestrator:
                 retrieve_result = user_rec_config.get("retrieve_result", False)
                 print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
 
-                
-                # 调用 find_similar，使用 search_k 作为搜索数量
-                all_search_results = self.index_client.find_similar(
-                    query=query,
-                    search_k=retrieve_k,  # 使用 search_k（retrieve_k 或 top_k）
-                    search_strategy=user_rec_config["search_strategy"],
-                    similarity_cutoff=user_rec_config["similarity_cutoff"],
-                    filters=filter_params,
-                    result_types=["metadata", "text_chunks"]  # 获取元数据和文本内容
-                )
+
+                # 根据配置选择搜索方式
+                if self.use_direct_rds_search:
+                    # 新路径：直接通过后端 find_similar API (使用 pgvector)
+                    all_search_results = self.backend_client.find_similar(
+                        query=query,
+                        top_k=retrieve_k,
+                        similarity_cutoff=user_rec_config["similarity_cutoff"],
+                        filters=filter_params
+                    )
+                else:
+                    # 旧路径：使用 Index Service
+                    all_search_results = self.index_client.find_similar(
+                        query=query,
+                        search_k=retrieve_k,
+                        search_strategy=user_rec_config["search_strategy"],
+                        similarity_cutoff=user_rec_config["similarity_cutoff"],
+                        filters=filter_params,
+                        result_types=["metadata", "text_chunks"]  # 获取元数据和文本内容
+                    )
                 
                 # 从结果中取前 top_k 作为推荐
                 if customized_rerank:
@@ -532,10 +569,6 @@ class PaperIgnitionOrchestrator:
                         "blog_title": blog_title_content,
                         "submitted": paper.published_date,
                     })
-
-                # 5. Sync blogs to Aliyun OSS (if enabled)
-                if self.cloud_storage_manager:
-                    self.sync_blogs_batch_to_cloud(paper_infos)
                 
                 # 6. Write recommendations
                 self.backend_client.recommend_papers_batch(username, paper_infos)
