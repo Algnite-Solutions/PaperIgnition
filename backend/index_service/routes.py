@@ -24,45 +24,6 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "indexer_ready": paper_indexer is not None}
 
-@router.post("/init_database")
-async def init_database_route(
-    request: InitDatabaseRequest,
-    recreate_databases: bool = Query(False, description="Whether to recreate databases from scratch")
-) -> Dict[str, str]:
-    """Initialize or reinitialize the databases and indexer using AIgnite's architecture.
-    
-    This endpoint initializes the three-database architecture:
-    - MetadataDB (PostgreSQL): For paper metadata and full-text search
-    - VectorDB (FAISS): For semantic vector search
-    - MinioImageDB (MinIO): For image storage
-    
-    Args:
-        request: Configuration for database initialization
-        recreate_databases: If True, drops and recreates all databases
-        
-    Returns:
-        Success message indicating database initialization status
-    """
-    try:
-        # Use provided config or load default config
-        config = request.config if request.config else load_config()
-        
-        # Initialize databases
-        vector_db, metadata_db, image_db = init_databases(config)
-        
-        # Set databases in the global indexer
-        paper_indexer.set_databases(vector_db, metadata_db, image_db)
-        
-        # Set default search strategy
-        #paper_indexer.set_search_strategy([("tf-idf", 0.1)])  # 使用正确的元组列表格式
-        
-        action = "reinitialized" if recreate_databases else "initialized"
-        return {"message": f"Database {action} and indexer creation successful"}
-        
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Database initialization failed: {str(e)}")
-
 @router.post("/index_papers/")
 async def index_papers_route(request: IndexPapersRequest) -> Dict[str, str]:
     """Index a list of papers using AIgnite's parallel storage architecture.

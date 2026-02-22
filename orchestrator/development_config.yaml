@@ -1,27 +1,36 @@
-# Development Configuration for PaperIgnition Orchestrator
-# This configuration is used for local development and testing
-
-# Environment
-environment:
-  local_mode: true
+# Production Configuration for PaperIgnition Orchestrator
+# This configuration is used for production deployment
 
 # Backend Service Configuration
 backend_service:
-  host: "http://localhost:8000"
+  host: 
 
   user_db:
-    db_user: test_user
-    db_password: "11111"
-    db_host: localhost
-    db_port: "5432"
-    db_name: test_user_db
+    db_user: 
+    db_password: 
+    db_host: 
+    db_port: 
+    db_name: 
+
 
 # Index Service Configuration
 index_service:
-  host: "http://localhost:8002"
+  host: 
+
+  vector_db:
+    model_name: 
+    vector_dim: 
+    db_path: 
 
   metadata_db:
-    db_url: "postgresql://test_user:11111@localhost:5432/test_metadata_db"
+    db_url: 
+
+  minio_db:
+    endpoint: 
+    access_key: 
+    secret_key: 
+    bucket_name: 
+    secure: false
 
 # Pipeline Stages - Enable/disable each stage
 stages:
@@ -31,26 +40,27 @@ stages:
 
 # Paper Pull Service Configuration
 paper_pull:
+  extractor_type: "html"  # Options: "html", "pdf"
   max_workers: 3  # Number of parallel workers for fetching papers
-  time_slots_count: 1  # Number of time slots to divide the day into
+  time_slots_count: 3  # Number of time slots to divide the day into
   location: "Asia/Shanghai"  # Timezone for time calculations
-  count_delay: 1  # Days to delay from current date
-  max_papers: 10  # Maximum number of papers to fetch
+  count_delay: 2  # Days to delay from current date
+  max_papers: 1  # Maximum number of papers to fetch (null for unlimited)
 
 # Blog Generation Configuration
 blog_generation:
   batch_size: 50  # Number of papers to process in each batch
-  output_path: "orchestrator/blogsByGemini"  # Blog output path for development (relative to project root)
+  output_path: "/data3/guofang/peirongcan/PaperIgnition/orchestrator/blogs"  # Blog output path for production
   generation_model: "Gemini"  # Options: "Gemini", "vLLM", "OpenAI"
 
 # User Recommendation Configuration
 user_recommendation:
   top_k: 5  # Number of top results to return from similarity search
   retrieve_k: 20
-  retrieve_result: true
-  similarity_cutoff: 0  # Minimum similarity score threshold
-  search_strategy: "tf-idf"  # Options: "vector", "tf-idf", "bm25"
-  customized_recommendation: false
+  similarity_cutoff: 0.0  # Minimum similarity score threshold
+  search_strategy: "vector"  # Options: "vector", "tf-idf", "bm25"
+  user_retrieve_result: true  # Whether to save user retrieve result
+  customized_recommendation: true # Whether to use customized recommendation reranker
 
 # Job Execution Configuration
 job_execution:
@@ -61,12 +71,32 @@ constants:
   blogbot_email: "BlogBot@gmail.com"  # Special user for all papers blog generation
   store_images_on_index: true  # Store images when indexing papers
 
+# DashScope Configuration (for embedding generation)
+dashscope:
+  api_key: 
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  embedding_model: "text-embedding-v4"
+  embedding_dimension: 1536  # HNSW 索引限制 2000 维度
+  batch_size: 10
+  delay_between_batches: 0.5
+
 # Aliyun OSS Configuration (for cloud blog storage)
-# Disabled by default for development
 aliyun_oss:
   enabled: true  # Set to true to enable cloud backup of blogs
-  access_key_id: ""  # Or use env var ALIYUN_ACCESS_KEY_ID
-  access_key_secret: ""  # Or use env var ALIYUN_ACCESS_KEY_SECRET
-  endpoint: "oss-cn-beijing.aliyuncs.com"  # OSS endpoint
-  bucket_name: "paperignition"  # OSS bucket name
+  access_key_id: 
+  access_key_secret: 
+  endpoint: "oss-cn-hangzhou.aliyuncs.com"  # OSS endpoint
+  bucket_name: 
   blogs_prefix: "blogs/"  # Prefix for blog files in OSS
+  upload_prefix: "imgs/"  # Prefix for image files in OSS
+
+# Aliyun RDS PostgreSQL Configuration (for cloud database)
+aliyun_rds:
+  enabled: true  # Set to true to use Aliyun RDS instead of local database
+  db_host: 
+  db_port: "5432"  # PostgreSQL port
+  db_user: 
+  db_password: 
+  db_name_paper: "paperignition"  # Database name
+  db_name_user: "paperignition_user"  # User database name
+  sslmode: "prefer"  # SSL mode: require, prefer, or disable
