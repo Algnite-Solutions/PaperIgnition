@@ -1,3 +1,7 @@
+# ==================== Test Configuration ====================
+# For local development with environment variables
+
+# ==================== Index Service Configuration ====================
 INDEX_SERVICE:
   host: "http://localhost:8002"
 
@@ -5,9 +9,11 @@ INDEX_SERVICE:
     db_url: "${METADATA_DB_URL}"
     # Aliyun RDS - Production metadata database
 
+# ==================== App Service Configuration ====================
 APP_SERVICE:
   host: "${APP_SERVICE_HOST}"
 
+# ==================== User Database Configuration ====================
 USER_DB:
   db_user: "${USER_DB_USER}"
   db_password: "${USER_DB_PASSWORD}"
@@ -16,9 +22,41 @@ USER_DB:
   db_name: "${USER_DB_NAME}"
   # Aliyun RDS - Production user database
 
+# ==================== Paper Storage Configuration ====================
 PAPER_STORAGE:
   json_folder: "${PAPER_STORAGE_JSON_FOLDER}"
 
+# ==================== OpenAI Service Configuration ====================
 OPENAI_SERVICE:
   base_url: "${OPENAI_BASE_URL}"
   api_key: "${OPENAI_API_KEY}"
+
+# ==================== DashScope Embedding Configuration ====================
+# Used by backend find_similar endpoint for generating query embeddings
+dashscope:
+  api_key: "${DASHSCOPE_API_KEY}"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  embedding_model: "text-embedding-v4"
+  embedding_dimension: 1536  # HNSW 索引限制 2000 维度
+
+# ==================== Aliyun RDS PostgreSQL Configuration ====================
+# For direct database access (pgvector support)
+aliyun_rds:
+  enabled: false
+  db_host: "${ALIYUN_RDS_HOST}"
+  db_port: "5432"
+  db_user: "${ALIYUN_RDS_USER}"
+  db_password: "${ALIYUN_RDS_PASSWORD}"
+  db_name_paper: "paperignition"
+  db_name_user: "paperignition_user"
+  sslmode: "prefer"
+
+# ==================== Aliyun OSS Configuration ====================
+# For cloud storage of images and files
+aliyun_oss:
+  enabled: false
+  access_key_id: "${ALIYUN_ACCESS_KEY_ID}"
+  access_key_secret: "${ALIYUN_ACCESS_KEY_SECRET}"
+  endpoint: "https://oss-cn-hangzhou.aliyuncs.com"
+  bucket_name: "paperignition1"
+  upload_prefix: "imgs/"

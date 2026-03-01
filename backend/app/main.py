@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.users import ResearchDomain
 
-from backend.app.db_utils import get_db, DatabaseManager, set_database_manager, load_config
+from backend.app.db_utils import get_db, DatabaseManager, set_database_manager, set_paper_database_manager, load_config
 from backend.app.routers.papers import file_router
 from backend.app.routers import auth, users, papers, static
 from backend.app.routers import favorites
@@ -28,16 +28,41 @@ async def lifespan(app: FastAPI):
     config = load_config(config_path)
     db_config = config.get("USER_DB", {})
 
-    # Create and initialize database manager
+    # Create and initialize database manager (user DB)
     db_manager = DatabaseManager(db_config=db_config)
     await db_manager.initialize()
 
     # Set global database manager
     set_database_manager(db_manager)
 
+    # Create and initialize paper database manager (for pgvector)
+    aliyun_rds_config = config.get("aliyun_rds", {})
+    if aliyun_rds_config.get("enabled", False):
+        paper_db_config = {
+            "db_user": aliyun_rds_config.get("db_user", "paperignition"),
+            "db_password": aliyun_rds_config.get("db_password", ""),
+            "db_host": aliyun_rds_config.get("db_host", "localhost"),
+            "db_port": aliyun_rds_config.get("db_port", "5432"),
+            "db_name": aliyun_rds_config.get("db_name_paper", "paperignition")
+        }
+        paper_db_manager = DatabaseManager(db_config=paper_db_config)
+        await paper_db_manager.initialize()
+        set_paper_database_manager(paper_db_manager)
+        print(f"✅ Paper DB Manager initialized (pgvector enabled)")
+    else:
+        print("⚠️ Aliyun RDS not enabled, paper DB manager not initialized")
+
     # Store in app state for additional access if needed
     app.state.db_manager = db_manager
     app.state.index_service_url = config.get("INDEX_SERVICE", {}).get("host", "http://localhost:8002")
+    app.state.config = config  # Store full config for embedding client access
+
+    # Log dashscope configuration if available
+    dashscope_config = config.get("dashscope", {})
+    if dashscope_config.get("api_key"):
+        print(f"📡 DashScope embedding enabled: model={dashscope_config.get('embedding_model', 'text-embedding-v4')}")
+    else:
+        print("⚠️ DashScope API key not configured, find_similar may not work")
 
     print("✅ FastAPI app startup complete")
 
@@ -46,6 +71,13 @@ async def lifespan(app: FastAPI):
     # Shutdown: Clean up resources
     print("🛑 FastAPI app shutting down...")
     await db_manager.close()
+
+    # Close paper database manager if initialized
+    from backend.app.db_utils import get_paper_database_manager
+    paper_db_mgr = get_paper_database_manager()
+    if paper_db_mgr:
+        await paper_db_mgr.close()
+
     print("✅ FastAPI app shutdown complete")
 
 

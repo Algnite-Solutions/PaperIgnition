@@ -18,10 +18,3 @@ export https_proxy="http://127.0.0.1:7890"
 
 # 运行orchestrator
 python /data3/guofang/peirongcan/PaperIgnition/orchestrator/orchestrator.py development_config.yaml
-
-# Orchestrator执行完成后，上传图片到阿里云OSS
-echo "=========================================="
-echo "开始上传图片到阿里云OSS..."
-python /data3/guofang/peirongcan/PaperIgnition/scripts/imgs2aliyun.py
-echo "图片上传完成！"
-echo "=========================================="

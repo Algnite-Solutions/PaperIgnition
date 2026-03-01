@@ -6,6 +6,7 @@ This script migrates data from local PostgreSQL to Aliyun RDS.
 
 Usage:
     python scripts/migrate_to_aliyun_rds.py
+    python scripts/migrate_to_aliyun_rds.py --config scripts/migration_config.yaml
     python scripts/migrate_to_aliyun_rds.py --batch-size 1000
     python scripts/migrate_to_aliyun_rds.py --skip-papers  # Skip papers table
     python scripts/migrate_to_aliyun_rds.py --skip-chunks  # Skip text_chunks table
@@ -15,14 +16,22 @@ import sys
 import logging
 import argparse
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Generator
 import time
-import json
 
-import yaml
 import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import execute_batch, Json
+
+# 添加脚本目录到路径
+sys.path.insert(0, str(Path(__file__).parent))
+
+from migration_utils import (
+    load_migration_config,
+    get_local_paper_db_config,
+    build_aliyun_paper_db_config,
+    get_aliyun_rds_config,
+    print_config_summary
+)
 
 
 # Set up logging
@@ -31,54 +40,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
-# Local database configuration
-LOCAL_DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "user": "postgres",
-    "password": "11111",
-    "database": "paperignition"
-}
-
-
-def load_aliyun_config(config_path: str = None) -> dict:
-    """Load Aliyun RDS configuration from config file."""
-    if config_path is None:
-        possible_paths = [
-            "orchestrator/production_config.yaml",
-            "orchestrator/development_config.yaml",
-            "../orchestrator/production_config.yaml",
-            "../orchestrator/development_config.yaml",
-        ]
-        for path in possible_paths:
-            full_path = Path(__file__).parent.parent / path
-            if full_path.exists():
-                config_path = str(full_path)
-                break
-
-        if config_path is None:
-            raise FileNotFoundError("Config file not found")
-
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-
-    if 'aliyun_rds' not in config:
-        raise ValueError("'aliyun_rds' section not found in config")
-
-    return config['aliyun_rds']
-
-
-def build_aliyun_db_config(aliyun_config: dict) -> dict:
-    """Build PostgreSQL connection config for Aliyun RDS."""
-    return {
-        "host": aliyun_config.get('db_host', 'localhost'),
-        "port": int(aliyun_config.get('db_port', '5432')),
-        "user": aliyun_config.get('db_user', 'postgres'),
-        "password": aliyun_config.get('db_password', ''),
-        "database": aliyun_config.get('db_name_paper', 'paperignition')
-    }
 
 
 def connect_to_db(db_config: dict) -> psycopg2.extensions.connection:
@@ -97,7 +58,7 @@ def get_row_count(conn, table_name: str) -> int:
 
 def fetch_papers_data(conn, batch_size: int = 1000) -> Generator[list, None, None]:
     """Fetch papers data in batches (excluding pdf_data to reduce transfer size)."""
-    cursor = conn.cursor(name="papers_cursor")  # Named cursor for server-side cursor
+    cursor = conn.cursor(name="papers_cursor")
     cursor.itersize = batch_size
 
     cursor.execute("""
@@ -119,7 +80,7 @@ def fetch_papers_data(conn, batch_size: int = 1000) -> Generator[list, None, Non
 
 def fetch_text_chunks_data(conn, batch_size: int = 1000) -> Generator[list, None, None]:
     """Fetch text_chunks data in batches."""
-    cursor = conn.cursor(name="chunks_cursor")  # Named cursor for server-side cursor
+    cursor = conn.cursor(name="chunks_cursor")
     cursor.itersize = batch_size
 
     cursor.execute("""
@@ -144,7 +105,6 @@ def migrate_papers(local_conn, remote_conn, batch_size: int = 1000) -> int:
     logger.info("Note: pdf_data field is excluded to reduce transfer size")
     logger.info("="*60)
 
-    # Get row counts
     local_count = get_row_count(local_conn, "papers")
     remote_count_before = get_row_count(remote_conn, "papers")
 
@@ -160,7 +120,6 @@ def migrate_papers(local_conn, remote_conn, batch_size: int = 1000) -> int:
 
     cursor = remote_conn.cursor()
 
-    # Prepare insert statement (excluding pdf_data to reduce transfer size)
     insert_sql = """
         INSERT INTO papers (id, doc_id, title, abstract, authors, categories, published_date,
                            chunk_ids, figure_ids, image_storage, table_ids,
@@ -188,15 +147,9 @@ def migrate_papers(local_conn, remote_conn, batch_size: int = 1000) -> int:
 
     try:
         for batch in fetch_papers_data(local_conn, batch_size):
-            # Convert dict fields to Json for psycopg2
             processed_batch = []
             for row in batch:
                 processed_row = list(row)
-                # JSON field indices (based on SELECT order):
-                # 0:id, 1:doc_id, 2:title, 3:abstract
-                # 4:authors, 5:categories, 6:published_date, 7:chunk_ids,
-                # 8:figure_ids, 9:image_storage, 10:table_ids, 11:extra_metadata
-                # 12:pdf_path, 13:HTML_path, 14:blog, 15:comments
                 json_indices = [4, 5, 7, 8, 9, 10, 11]
                 for idx in json_indices:
                     if processed_row[idx] is not None:
@@ -213,7 +166,6 @@ def migrate_papers(local_conn, remote_conn, batch_size: int = 1000) -> int:
 
             logger.info(f"Progress: {total_migrated}/{local_count} ({progress:.1f}%) - Speed: {speed:.1f} rows/sec")
 
-        # Sync sequence
         logger.info("Syncing sequence...")
         cursor.execute("SELECT MAX(id) FROM papers")
         max_id = cursor.fetchone()[0]
@@ -248,7 +200,6 @@ def migrate_text_chunks(local_conn, remote_conn, batch_size: int = 1000) -> int:
     logger.info("Starting text_chunks table migration...")
     logger.info("="*60)
 
-    # Get row counts
     local_count = get_row_count(local_conn, "text_chunks")
     remote_count_before = get_row_count(remote_conn, "text_chunks")
 
@@ -264,7 +215,6 @@ def migrate_text_chunks(local_conn, remote_conn, batch_size: int = 1000) -> int:
 
     cursor = remote_conn.cursor()
 
-    # Prepare insert statement
     insert_sql = """
         INSERT INTO text_chunks (id, doc_id, chunk_id, text_content, chunk_order, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -320,7 +270,7 @@ def main():
         '--config',
         type=str,
         default=None,
-        help='Path to config file (default: auto-detect)'
+        help='配置文件路径 (默认: scripts/migration_config.yaml)'
     )
     parser.add_argument(
         '--batch-size',
@@ -345,30 +295,36 @@ def main():
     remote_conn = None
 
     try:
-        # Load Aliyun config
-        logger.info("Loading Aliyun RDS configuration...")
-        aliyun_config = load_aliyun_config(args.config)
-        remote_db_config = build_aliyun_db_config(aliyun_config)
+        # 加载配置
+        logger.info("Loading configuration...")
+        config = load_migration_config(args.config)
 
-        logger.info(f"Local DB: {LOCAL_DB_CONFIG['database']} at {LOCAL_DB_CONFIG['host']}")
+        # 获取数据库配置
+        local_db_config = get_local_paper_db_config(config)
+        remote_db_config = build_aliyun_paper_db_config(config)
+
+        # 打印配置摘要
+        print_config_summary(config)
+
+        logger.info(f"Local DB: {local_db_config['database']} at {local_db_config['host']}")
         logger.info(f"Remote DB: {remote_db_config['database']} at {remote_db_config['host']}")
 
-        # Connect to databases
+        # 连接数据库
         logger.info("Connecting to local database...")
-        local_conn = connect_to_db(LOCAL_DB_CONFIG)
-        logger.info("✓ Connected to local database")
+        local_conn = connect_to_db(local_db_config)
+        logger.info("Connected to local database")
 
         logger.info("Connecting to Aliyun RDS...")
         remote_conn = connect_to_db(remote_db_config)
-        logger.info("✓ Connected to Aliyun RDS")
+        logger.info("Connected to Aliyun RDS")
 
-        # Migrate papers table
+        # 迁移 papers 表
         if not args.skip_papers:
             migrate_papers(local_conn, remote_conn, args.batch_size)
         else:
             logger.info("Skipping papers table migration (--skip-papers)")
 
-        # Migrate text_chunks table
+        # 迁移 text_chunks 表
         if not args.skip_chunks:
             migrate_text_chunks(local_conn, remote_conn, args.batch_size)
         else:
