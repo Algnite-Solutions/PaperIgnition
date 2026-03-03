@@ -137,7 +137,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+.env*
 .venv
 env/
 venv/
@@ -214,3 +214,5 @@ beta_frontend/docker-build-and-push.bat
 beta_frontend/docker-build-and-push.sh
 blogs
 backend/models/
+.env.app
+.env.test
