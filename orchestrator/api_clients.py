@@ -604,3 +604,91 @@ class BackendAPIClient(BaseAPIClient):
 
         self.logger.info(f"📊 Batch complete: {success_count} succeeded, {failed_count} failed")
         return success_count, failed_count
+
+    def find_similar(
+        self,
+        query: str,
+        top_k: int = 10,
+        similarity_cutoff: float = 0.0,
+        filters: Optional[Dict] = None,
+        result_include_types: Optional[List[str]] = None,
+        timeout: float = 60.0
+    ) -> List[DocSet]:
+        """
+        Find similar papers using the backend find_similar API (pgvector)
+
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+            similarity_cutoff: Minimum similarity score threshold (default 0.0)
+            filters: Optional filters (e.g., exclude doc_ids)
+            result_include_types: Types of data to include in results
+            timeout: Request timeout in seconds
+
+        Returns:
+            List[DocSet]: List of similar papers as DocSet objects
+
+        Raises:
+            APIClientError: If search fails
+        """
+        if result_include_types is None:
+            result_include_types = ["metadata", "search_parameters"]
+
+        payload = {
+            "query": query,
+            "top_k": top_k,
+            "similarity_cutoff": similarity_cutoff,
+            "search_strategies": [["vector", 0.1]],
+            "filters": filters,
+            "result_include_types": result_include_types
+        }
+
+        try:
+            # Debug: print request payload
+            # import json
+            # self.logger.info(f"📤 Request payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+
+            self.logger.info(
+                f"🔍 Searching via backend (pgvector): '{query}' "
+                f"(top_k: {top_k}, cutoff: {similarity_cutoff})"
+            )
+
+            response = self.post("/api/digests/find_similar", json_data=payload, timeout=timeout)
+
+            # Convert results to DocSet objects
+            results = response.get("results", [])
+            docsets = self._convert_find_similar_results_to_docsets(results)
+
+            self.logger.info(f"✅ Found {len(docsets)} papers via backend")
+            return docsets
+
+        except Exception as e:
+            self.logger.error(f"❌ Backend search failed for query '{query}': {e}")
+            raise
+
+    def _convert_find_similar_results_to_docsets(self, results: List[Dict]) -> List[DocSet]:
+        """Convert find_similar API results to DocSet objects"""
+        docsets = []
+
+        for r in results:
+            try:
+                docset_data = {
+                    'doc_id': r.get('doc_id'),
+                    'title': r.get('title', 'Unknown Title'),
+                    'authors': r.get('authors', []),
+                    'categories': r.get('categories', []),
+                    'published_date': r.get('published_date', ''),
+                    'abstract': r.get('abstract', ''),
+                    'pdf_path': r.get('pdf_path', ''),
+                    'HTML_path': r.get('html_path'),
+                    'text_chunks': [],
+                    'figure_chunks': [],
+                    'table_chunks': [],
+                    'metadata': r,
+                }
+                docsets.append(DocSet(**docset_data))
+            except Exception as e:
+                self.logger.warning(f"Failed to create DocSet for {r.get('doc_id')}: {e}")
+                continue
+
+        return docsets

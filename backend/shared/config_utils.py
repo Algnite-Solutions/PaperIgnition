@@ -153,12 +153,30 @@ def _load_backend_config(full_config: Dict[str, Any], config_path: str) -> Dict[
         if section not in full_config:
             raise ValueError(f"Missing required section '{section}' in {config_path}")
 
-    return {
+    config = {
         "USER_DB": full_config["USER_DB"],
         "INDEX_SERVICE": full_config["INDEX_SERVICE"],
         "APP_SERVICE": full_config["APP_SERVICE"],
         "OPENAI_SERVICE": full_config.get("OPENAI_SERVICE", {}),
+        # New sections for RDS decoupling
+        "dashscope": full_config.get("dashscope", {}),
+        "aliyun_rds": full_config.get("aliyun_rds", {}),
+        "aliyun_oss": full_config.get("aliyun_oss", {}),
     }
+
+    # Set dashscope environment variables if available
+    dashscope_config = config.get("dashscope", {})
+    if dashscope_config:
+        if "api_key" in dashscope_config:
+            os.environ["DASHSCOPE_API_KEY"] = str(dashscope_config["api_key"])
+        if "base_url" in dashscope_config:
+            os.environ["DASHSCOPE_BASE_URL"] = str(dashscope_config["base_url"])
+        if "embedding_model" in dashscope_config:
+            os.environ["DASHSCOPE_EMBEDDING_MODEL"] = str(dashscope_config["embedding_model"])
+        if "embedding_dimension" in dashscope_config:
+            os.environ["DASHSCOPE_EMBEDDING_DIMENSION"] = str(dashscope_config["embedding_dimension"])
+
+    return config
 
 
 def _load_index_config(full_config: Dict[str, Any], config_path: str) -> Dict[str, Any]:

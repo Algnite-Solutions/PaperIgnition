@@ -90,6 +90,8 @@ class DatabaseManager:
 
 # Global database manager instance (will be set by FastAPI lifespan)
 _db_manager: DatabaseManager = None
+# Paper database manager (for paperignition database with pgvector)
+_paper_db_manager: DatabaseManager = None
 
 
 def get_database_manager() -> DatabaseManager:
@@ -103,6 +105,17 @@ def set_database_manager(db_manager: DatabaseManager):
     _db_manager = db_manager
 
 
+def get_paper_database_manager() -> DatabaseManager:
+    """Get the paper database manager instance (paperignition database)"""
+    return _paper_db_manager
+
+
+def set_paper_database_manager(db_manager: DatabaseManager):
+    """Set the paper database manager instance"""
+    global _paper_db_manager
+    _paper_db_manager = db_manager
+
+
 # 获取数据库会话的依赖函数
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
@@ -111,6 +124,23 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     db_manager = get_database_manager()
     if not db_manager:
         raise RuntimeError("DatabaseManager not initialized. Make sure FastAPI app uses lifespan context manager.")
+
+    async with db_manager.get_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_paper_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    获取 Paper 数据库会话的依赖函数 (paperignition 数据库，包含 pgvector)
+    """
+    db_manager = get_paper_database_manager()
+    if not db_manager:
+        raise RuntimeError("Paper DatabaseManager not initialized. Make sure FastAPI app uses lifespan context manager.")
 
     async with db_manager.get_session() as session:
         try:

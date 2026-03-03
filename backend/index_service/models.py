@@ -10,7 +10,7 @@ from AIgnite.data.docset import DocSet, TextChunk, FigureChunk, TableChunk, Chun
 class IndexPapersRequest(BaseModel):
     docsets: DocSetList = Field(..., description="List of DocSet objects containing paper information")
     store_images: bool = Field(default=False, description="Whether to store images to MinIO (default: False)")
-    keep_temp_image: bool = Field(default=False, description="If False, delete temporary image files after successful storage (default: False)")
+    keep_temp_image: bool = Field(default=True, description="If False, delete temporary image files after successful storage (default: False)")
 
 class CustomerQuery(BaseModel):
     query: str = Field(..., description="Search query string")
