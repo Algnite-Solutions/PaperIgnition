@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text, Float, Index
-from sqlalchemy.dialects.postgresql import ARRAY, TEXT, JSON
+from sqlalchemy.dialects.postgresql import ARRAY, TEXT, JSON, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -37,7 +37,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     # 关联关系
-    interests_description = Column(ARRAY(TEXT), nullable=True)  # 用户研究兴趣关键词数组
+    personalized_profile = Column(JSONB, nullable=True)  # 用户的个性化配置文件结构
     research_interests_text = Column(Text, nullable=True)  # 用户主观研究兴趣描述文本
     rewrite_interest = Column(Text, nullable=True)  # LLM重写后的兴趣描述
     research_domains = relationship("ResearchDomain", secondary=user_domain_association, back_populates="users")

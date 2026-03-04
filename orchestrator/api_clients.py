@@ -384,24 +384,29 @@ class BackendAPIClient(BaseAPIClient):
             self.logger.error(f"❌ Failed to fetch user {email}: {e}")
             raise
 
-    def get_user_interests(self, email: str) -> List[str]:
+    def get_user_search_context(self, email: str) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
-        Get user's research interests
+        Get user's search context, including rewrite query and personalized profile details.
 
         Args:
             email: User email address
 
         Returns:
-            List of interest keywords
+            Tuple of (query, profile). Profile is None if not set or empty.
         """
         try:
             user = self.get_user_by_email(email)
-            interests = user.get("interests_description", [])
-            self.logger.debug(f"User {email} interests: {interests}")
-            return interests
+            profile = user.get("personalized_profile")
+            if not profile:  # Make sure empty dicts also become None
+                profile = None
+                
+            query = user.get("rewrite_interest") or user.get("research_interests_text")
+            
+            self.logger.debug(f"User {email} search context - query: {query}, profile: {profile}")
+            return query, profile
         except Exception as e:
-            self.logger.warning(f"Failed to get interests for {email}: {e}")
-            return []
+            self.logger.warning(f"Failed to get search context for {email}: {e}")
+            return None, None
 
     def get_user_papers(self, username: str) -> List[Dict[str, Any]]:
         """

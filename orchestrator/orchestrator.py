@@ -412,10 +412,11 @@ class PaperIgnitionOrchestrator:
             if username == "BlogBot@gmail.com": continue
             job_id = await self.job_logger.start_job_log(job_type="daily_blog_generation", username=username)
 
-            interests = self.backend_client.get_user_interests(username)
-            logging.info(f"\n=== 用户: {username}，兴趣: {interests} ===")
-            if not interests:
-                logging.warning(f"用户 {username} 无兴趣关键词，跳过推荐。")
+            query, profile = self.backend_client.get_user_search_context(username)
+
+            logging.info(f"\n=== 用户: {username}，Profile: {profile}, Query: {query} ===")
+            if not query:
+                logging.warning(f"用户 {username} 无研究兴趣，跳过推荐。")
                 continue
 
             # 获取用户已有的论文推荐，用于过滤
@@ -426,97 +427,97 @@ class PaperIgnitionOrchestrator:
             
             all_papers = []
             
-            for query in interests:
-                logging.info(f"[VECTOR] 用户 {username} 兴趣: {query}")
+            logging.info(f"[VECTOR] 用户 {username} 模型检索 Query 构建完毕: {query}")
 
-                # 构建过滤器，排除用户已有的论文ID，同时只包含最近5天的论文
-                from datetime import datetime, timedelta, timezone
-                end_date = datetime.now(timezone.utc).strftime('%Y-%m-%d 23:59:59+00:00')
-                # arxiv API has two day delay, so we extend to 5 days for recent 3 days
-                start_date = (datetime.now(timezone.utc) - timedelta(days=5)).strftime('%Y-%m-%d 00:00:00+00:00')
+            # 构建过滤器，排除用户已有的论文ID，同时只包含最近5天的论文
+            from datetime import datetime, timedelta, timezone
+            end_date = datetime.now(timezone.utc).strftime('%Y-%m-%d 23:59:59+00:00')
+            # arxiv API has two day delay, so we extend to 5 days for recent 3 days
+            start_date = (datetime.now(timezone.utc) - timedelta(days=5)).strftime('%Y-%m-%d 00:00:00+00:00')
 
-                 # 构建过滤器，排除用户已有的论文ID
-                filter_params = None
-                if existing_paper_ids:
-                    filter_params = {
-                        "include": {
-                        "published_date": [start_date, end_date]
-                        },
-                        "exclude": {
-                            "doc_ids": existing_paper_ids
-                        }
+             # 构建过滤器，排除用户已有的论文ID
+            filter_params = None
+            if existing_paper_ids:
+                filter_params = {
+                    "include": {
+                    "published_date": [start_date, end_date]
+                    },
+                    "exclude": {
+                        "doc_ids": existing_paper_ids
                     }
-                    logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
+                }
+                logging.info(f"应用过滤器，排除 {len(existing_paper_ids)} 个已有论文ID")
 
-                # Search for papers matching the query
-                user_rec_config = self.orch_config["user_recommendation"]
-                top_k = user_rec_config["top_k"]
-                # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
-                retrieve_k = user_rec_config.get("retrieve_k", top_k)
-                retrieve_result = user_rec_config.get("retrieve_result", False)
-                print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
+            # Search for papers matching the query
+            user_rec_config = self.orch_config["user_recommendation"]
+            top_k = user_rec_config["top_k"]
+            # 确定搜索数量：如果有 retrieve_k，使用它；否则使用 top_k
+            retrieve_k = user_rec_config.get("retrieve_k", top_k)
+            retrieve_result = user_rec_config.get("retrieve_result", False)
+            print(f"similarity_cutoff: {user_rec_config['similarity_cutoff']}")
 
 
-                # 根据配置选择搜索方式
-                if self.use_direct_rds_search:
-                    # 新路径：直接通过后端 find_similar API (使用 pgvector)
-                    all_search_results = self.backend_client.find_similar(
-                        query=query,
-                        top_k=retrieve_k,
-                        similarity_cutoff=user_rec_config["similarity_cutoff"],
-                        filters=filter_params
+            # 根据配置选择搜索方式
+            if self.use_direct_rds_search:
+                # 新路径：直接通过后端 find_similar API (使用 pgvector)
+                all_search_results = self.backend_client.find_similar(
+                    query=query,
+                    top_k=retrieve_k,
+                    similarity_cutoff=user_rec_config["similarity_cutoff"],
+                    filters=filter_params
+                )
+            else:
+                # 旧路径：使用 Index Service
+                all_search_results = self.index_client.find_similar(
+                    query=query,
+                    search_k=retrieve_k,
+                    search_strategy=user_rec_config["search_strategy"],
+                    similarity_cutoff=user_rec_config["similarity_cutoff"],
+                    filters=filter_params,
+                    result_types=["metadata", "text_chunks"]  # 获取元数据和文本内容
+                )
+            
+            # 从结果中取前 top_k 作为推荐
+            if customized_rerank:
+                pdf_paths_dict = {p.doc_id:p.pdf_path for p in all_search_results if p.pdf_path is not None}
+                candidate_ids = [p.doc_id for p in all_search_results]
+                # TODO: display thought summary to users
+                reranked_ids, thought_summary = customized_reranker.rerank(
+                    query=query,
+                    pdf_paths_dict=pdf_paths_dict,
+                    retrieve_ids=candidate_ids,
+                    top_k=top_k,
+                    user_profile=profile
+                )
+                papers = []
+                for p in all_search_results:
+                    if p.doc_id in reranked_ids:
+                        papers.append(p)
+            else:
+                papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
+
+            # 如果需要保存检索结果
+            if retrieve_result and retrieve_k:
+                retrieve_ids = [p.doc_id for p in all_search_results]
+                top_k_ids = [p.doc_id for p in papers]
+                
+                save_success = self.backend_client.save_retrieve_result(
+                    username=username,
+                    query=query,
+                    search_strategy=user_rec_config["search_strategy"],
+                    retrieve_ids=retrieve_ids,
+                    top_k_ids=top_k_ids
+                )
+                
+                if save_success:
+                    logging.info(
+                        f"✅ Saved retrieve result: {len(retrieve_ids)} retrieve papers, "
+                        f"{len(top_k_ids)} top_k papers for query '{query}'"
                     )
                 else:
-                    # 旧路径：使用 Index Service
-                    all_search_results = self.index_client.find_similar(
-                        query=query,
-                        search_k=retrieve_k,
-                        search_strategy=user_rec_config["search_strategy"],
-                        similarity_cutoff=user_rec_config["similarity_cutoff"],
-                        filters=filter_params,
-                        result_types=["metadata", "text_chunks"]  # 获取元数据和文本内容
-                    )
-                
-                # 从结果中取前 top_k 作为推荐
-                if customized_rerank:
-                    pdf_paths_dict = {p.doc_id:p.pdf_path for p in all_search_results if p.pdf_path is not None}
-                    candidate_ids = [p.doc_id for p in all_search_results]
-                    # TODO: display thought summary to users
-                    reranked_ids, thought_summary = customized_reranker.rerank(
-                        query=query,
-                        pdf_paths_dict=pdf_paths_dict,
-                        retrieve_ids=candidate_ids,
-                        top_k=top_k
-                    )
-                    papers = []
-                    for p in all_search_results:
-                        if p.doc_id in reranked_ids:
-                            papers.append(p)
-                else:
-                    papers = all_search_results[:top_k] if len(all_search_results) > top_k else all_search_results
-
-                # 如果需要保存检索结果
-                if retrieve_result and retrieve_k:
-                    retrieve_ids = [p.doc_id for p in all_search_results]
-                    top_k_ids = [p.doc_id for p in papers]
-                    
-                    save_success = self.backend_client.save_retrieve_result(
-                        username=username,
-                        query=query,
-                        search_strategy=user_rec_config["search_strategy"],
-                        retrieve_ids=retrieve_ids,
-                        top_k_ids=top_k_ids
-                    )
-                    
-                    if save_success:
-                        logging.info(
-                            f"✅ Saved retrieve result: {len(retrieve_ids)} retrieve papers, "
-                            f"{len(top_k_ids)} top_k papers for query '{query}'"
-                        )
-                    else:
-                        logging.warning(f"⚠️ Failed to save retrieve result for query '{query}'")
-                
-                all_papers.extend(papers)
+                    logging.warning(f"⚠️ Failed to save retrieve result for query '{query}'")
+            
+            all_papers.extend(papers)
             
             # 添加去重逻辑：确保论文ID不重复
             seen_paper_ids = set()
