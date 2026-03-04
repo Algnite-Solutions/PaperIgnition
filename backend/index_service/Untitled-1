@@ -1,0 +1,25 @@
+server {
+    # 将原有 listen 80 修改为 listen 80 改为 listen 443 ssl
+    listen 443 ssl;
+    # 原有 server_name，可继续新增更多当前证书支持的域名
+    server_name paperignition.com www.paperignition.com;
+    
+    # ======================= 证书配置开始 =======================
+    # 指定证书文件（中间证书可以拼接至该pem文件中），请将 /etc/ssl/cert/ssl.pem 替换为您实际使用的证书文件的绝对路径
+    ssl_certificate /root/www.paperignition.com.pem;
+    # 指定私钥文档，请将 /etc/ssl/cert/ssl.key 替换为您实际使用的私钥文件的绝对路径
+    ssl_certificate_key /root/www.paperignition.com.key;
+    # 配置 SSL 会话缓存，提高性能
+    ssl_session_cache shared:SSL:1m;
+    # 设置 SSL 会话超时时间
+    ssl_session_timeout 5m;
+    # 自定义设置使用的TLS协议的类型以及加密套件（以下为配置示例，请您自行评估是否需要配置）
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+    # 指定允许的 TLS 协议版本，TLS协议版本越高，HTTPS通信的安全性越高，但是相较于低版本TLS协议，高版本TLS协议对浏览器的兼容性较差
+    ssl_protocols TLSv1.2 TLSv1.3;
+    # 优先使用服务端指定的加密套件
+    ssl_prefer_server_ciphers on;
+    # ======================= 证书配置结束 =======================
+   
+    # 其它配置
+}

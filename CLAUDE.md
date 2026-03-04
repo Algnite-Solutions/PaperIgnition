@@ -352,3 +352,4 @@ Startup order matters:
 - `orchestrator/{htmls,jsons,imgs}` - Scraped paper data
 - `scripts/` - Database initialization and utility scripts
 - `tests/` - API and integration tests
+- when you write a test, you should also let me know whether usage in beta_frontend is all tested, also test it your self.
