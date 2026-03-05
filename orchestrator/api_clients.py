@@ -658,7 +658,7 @@ class BackendAPIClient(BaseAPIClient):
                 f"(top_k: {top_k}, cutoff: {similarity_cutoff})"
             )
 
-            response = self.post("/api/digests/find_similar", json_data=payload, timeout=timeout)
+            response = self.post("/api/papers/find_similar", json_data=payload, timeout=timeout)
 
             # Convert results to DocSet objects
             results = response.get("results", [])
