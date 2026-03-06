@@ -18,9 +18,13 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize database manager
 
     # Determine config path based on environment
-    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
-    config_file = "test_config.yaml" if local_mode else "app_config.yaml"
-    config_path = os.path.join(os.path.dirname(__file__), "..", "configs", config_file)
+    config_path = os.environ.get("PAPERIGNITION_CONFIG")
+    if not config_path:
+        local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
+        config_file = "test_config.yaml" if local_mode else "app_config.yaml"
+        config_path = os.path.join(os.path.dirname(__file__), "..", "configs", config_file)
+    else:
+        local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
 
     print(f"🚀 Starting FastAPI app with config: {config_path} (LOCAL_MODE: {local_mode})")
 

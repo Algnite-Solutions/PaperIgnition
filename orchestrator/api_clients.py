@@ -396,10 +396,8 @@ class BackendAPIClient(BaseAPIClient):
         """
         try:
             user = self.get_user_by_email(email)
-            profile = user.get("personalized_profile")
-            if not profile:  # Make sure empty dicts also become None
-                profile = None
-                
+            #profile = user.get("personalized_profile", None)
+            profile = None
             query = user.get("rewrite_interest") or user.get("research_interests_text")
             
             self.logger.debug(f"User {email} search context - query: {query}, profile: {profile}")

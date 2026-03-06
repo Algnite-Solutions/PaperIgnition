@@ -63,10 +63,10 @@ async function initializeApp() {
 function setupEventListeners() {
     // Search functionality
     searchInput.addEventListener('input', debounce(handleSearch, 300));
-    
+
     // Infinite scroll
     window.addEventListener('scroll', handleScroll);
-    
+
     // Theme toggle (if implemented)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'd' && e.ctrlKey) {
@@ -77,17 +77,17 @@ function setupEventListeners() {
 
 async function loadUserRecommendations() {
     if (isLoading) return;
-    
+
     const currentUser = window.AuthService.getCurrentUser();
     if (!currentUser || !currentUser.username) {
         console.error('No user information available');
         showLoginPrompt();
         return;
     }
-    
+
     isLoading = true;
     showLoading();
-    
+
     try {
         // Call the backend recommendations API
         const username = currentUser.username;
@@ -98,11 +98,11 @@ async function loadUserRecommendations() {
                 'Authorization': `Bearer ${window.AuthService.getToken()}`
             }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const papers = await response.json();
 
         // Transform backend data to match frontend format
@@ -136,7 +136,7 @@ async function loadUserRecommendations() {
 
         // 批量检查并同步当前论文的收藏状态
         await syncCurrentPapersFavoriteStatus();
-        
+
     } catch (error) {
         console.error('Error loading recommendations:', error);
         // Fallback to demo papers on error
@@ -279,21 +279,21 @@ async function searchPapersAPI(query) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const results = await response.json();
-        console.log('Search API results:', results);
+        const data = await response.json();
+        console.log('Search API results:', data);
 
         // Transform API results to match frontend format
-        return results.map(result => ({
+        return (data.results || []).map(result => ({
             id: result.doc_id || result.id,
-            title: result.metadata?.title || 'Untitled',
-            authors: result.metadata?.authors || [],
-            abstract: result.metadata?.abstract || '',
-            url: result.metadata?.url || '',
-            publishDate: result.metadata?.published_date || '',
+            title: result.title || result.metadata?.title || 'Untitled',
+            authors: result.authors || result.metadata?.authors || [],
+            abstract: result.abstract || result.metadata?.abstract || '',
+            url: result.url || result.metadata?.url || '',
+            publishDate: result.published_date || result.metadata?.published_date || '',
             thumbnail: 'Paper',
             viewed: false,
             recommendationDate: null,
-            relevanceScore: result.similarity_score || result.score
+            relevanceScore: result.similarity_score || result.similarity || result.score
         }));
     } catch (error) {
         console.error('Error calling search API:', error);
@@ -731,7 +731,7 @@ async function loadUserFavorites() {
     if (!window.AuthService || !window.AuthService.isLoggedIn()) {
         return;
     }
-    
+
     try {
         const token = window.AuthService.getToken();
         const response = await fetch(`/api/favorites/list`, {
@@ -741,25 +741,25 @@ async function loadUserFavorites() {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
+
         if (response.ok) {
             const favorites = await response.json(); // 完整的收藏数据
-            
+
             // Update local favorite state
             userFavorites.clear();
             bookmarkedPapers.clear();
-            
+
             favorites.forEach(fav => {
                 userFavorites.add(fav.paper_id);
                 bookmarkedPapers.add(fav.paper_id);
             });
-            
+
             // Update localStorage
             localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
-            
+
             console.log('Favorites loaded:', favorites.length, 'papers');
             console.log('User favorites updated:', [...userFavorites]);
-            
+
             // Re-render papers to update bookmark states
             if (currentPapers.length > 0) {
                 console.log('Re-rendering papers with updated favorite states');
@@ -795,9 +795,9 @@ function showSuccessMessage(message) {
         animation: slideInRight 0.3s ease;
     `;
     successDiv.textContent = message;
-    
+
     document.body.appendChild(successDiv);
-    
+
     setTimeout(() => {
         successDiv.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => {
@@ -824,9 +824,9 @@ function showErrorMessage(message) {
         animation: slideInRight 0.3s ease;
     `;
     errorDiv.textContent = message;
-    
+
     document.body.appendChild(errorDiv);
-    
+
     setTimeout(() => {
         errorDiv.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => {
@@ -916,7 +916,7 @@ function toggleTheme() {
     const body = document.body;
     const currentTheme = body.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
+
     body.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
 }
@@ -953,19 +953,19 @@ class PaperService {
             throw error;
         }
     }
-    
+
     static async getPaperDetail(paperId) {
         try {
             // const response = await fetch(`${API_BASE_URL}/papers/${paperId}`);
             // return await response.json();
-            
+
             return samplePapers.find(p => p.id === paperId);
         } catch (error) {
             console.error('Error fetching paper detail:', error);
             throw error;
         }
     }
-    
+
     static async getPaperContent() {
         try {
             // const response = await fetch(`${API_BASE_URL}/papers/${paperId}/content`);
@@ -999,21 +999,21 @@ Enter VectorGraphRAG, a promising hybrid approach that combines the power of vec
 // Setup authentication-based navigation
 function setupAuthNavigation() {
     const profileLink = document.getElementById('profileLink');
-    
+
     if (profileLink) {
         profileLink.addEventListener('click', (e) => {
             e.preventDefault();
             handleProfileNavigation();
         });
     }
-    
+
     // Update navigation based on auth state
     updateNavigation();
-    
+
     // Listen for auth state changes
     window.addEventListener('authStateChanged', (event) => {
         updateNavigation();
-        
+
         // Reload papers when auth state changes
         if (event.detail.isLoggedIn) {
             loadUserRecommendations();
