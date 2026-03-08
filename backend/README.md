@@ -108,8 +108,7 @@ backend/
 │   ├── main.py            # Index service entry point
 │   ├── routes.py          # Index API endpoints
 │   └── service.py         # Paper indexing logic
-├── shared/                # Shared utilities
-│   └── config_utils.py    # Configuration loader with env var support
+├── config_utils.py        # Configuration loader with env var support
 ├── configs/               # Configuration files
 │   ├── app_config.yaml    # Production config (uses ${VAR} syntax)
 │   └── test_config.yaml   # Test config (uses ${VAR} syntax)

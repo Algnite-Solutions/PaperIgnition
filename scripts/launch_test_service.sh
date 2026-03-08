@@ -3,7 +3,7 @@ cd "$(dirname "$0")/.."
 
 # Set test environment configuration
 
-#export PAPERIGNITION_CONFIG="backend/configs/app_config.yaml"
+export PAPERIGNITION_CONFIG="backend/configs/app_config.yaml"
 source .env.app
 export PAPERIGNITION_ENV="testing"
 export PAPERIGNITION_LOCAL_MODE="true"

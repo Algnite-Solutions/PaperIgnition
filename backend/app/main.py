@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.users import ResearchDomain
 
 from backend.app.db_utils import get_db, DatabaseManager, set_database_manager, set_paper_database_manager, load_config
-from backend.app.routers.papers import file_router
 from backend.app.routers import auth, users, papers, digests, static
 from backend.app.routers import favorites
 
@@ -105,8 +104,6 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(papers.router, prefix="/api")      # /api/papers/...
 app.include_router(digests.router, prefix="/api")      # /api/digests/...
-# 文件服务路由不需要/api前缀，直接注册
-app.include_router(file_router)
 app.include_router(favorites.router, prefix="/api")
 app.include_router(static.router, prefix="/api")
 

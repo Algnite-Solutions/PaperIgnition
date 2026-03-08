@@ -4,10 +4,13 @@ Unified Configuration Loading Utility for PaperIgnition
 This module provides a centralized configuration loading mechanism
 that supports both YAML files and environment variables.
 
+Location: backend/config_utils.py
 Shared between:
 - Backend Service (backend/app/)
+- Index Service (backend/index_service/)
+- Utility scripts (scripts/)
 
-Last updated: 2026-03-05
+Last updated: 2026-03-07
 """
 
 from typing import Dict, Any, Optional
