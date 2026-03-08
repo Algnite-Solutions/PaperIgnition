@@ -398,10 +398,17 @@ class PaperIgnitionOrchestrator:
 
     async def blog_generation_for_all_users(self):
         """
-        Generate blog digests for all users based on their interests
+        Generate blog digests for all users based on their interests.
+        仅对最近 7 天内有阅读（viewed）行为的用户进行推荐，7 天不活跃用户跳过。
         """
         all_users = self.backend_client.get_all_users()
         logging.info(f"✅ 共获取到 {len(all_users)} 个用户")
+
+        # 7 天内不活跃则不推荐：只保留最近 7 天内有已读推荐记录的用户
+        active_usernames = await self.job_logger.get_active_usernames_last_7_days()
+        all_users = [u for u in all_users if u.get("username") in active_usernames]
+        logging.info(f"📌 7 天内有阅读行为的用户数: {len(active_usernames)}，本次将为其推荐的用户数: {len(all_users)}")
+
         customized_rerank = self.orch_config["user_recommendation"].get("customized_recommendation", False)
         if customized_rerank:
             customized_reranker = GeminiRerankerPDF()

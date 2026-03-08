@@ -10,8 +10,9 @@ from typing import List, Dict, Any, Optional
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from sqlalchemy.future import select
+from sqlalchemy import and_, func
 from backend.app.db_utils import DatabaseManager
-from backend.app.models.users import JobLog
+from backend.app.models.users import JobLog, UserPaperRecommendation
 
 
 class JobLogger:
@@ -244,6 +245,38 @@ class JobLogger:
                 await session.rollback()
                 print(f"❌ Error logging job result {job_id}: {e}")
                 return job_id  # Return the ID anyway for tracking
+
+    async def get_active_usernames_last_7_days(self) -> set:
+        """
+        查询表中推荐时间的「最新 7 天」内有阅读（viewed=True）的用户名集合。
+        以表中最大 recommendation_date 为终点往前推 7 天作为窗口，而非当前时间减 7 天。
+
+        Returns:
+            set: 在上述最新 7 天窗口内有至少一条已读推荐的 username 集合
+        """
+        await self._ensure_initialized()
+        async with await self.get_session() as session:
+            # 表中推荐时间的最大值（最新一天）
+            max_date_result = await session.execute(
+                select(func.max(UserPaperRecommendation.recommendation_date))
+            )
+            max_date = max_date_result.scalar()
+            if max_date is None:
+                return set()
+            # 以表中最新日期为终点，往前推 7 天作为窗口
+            cutoff = max_date - timedelta(days=7)
+            result = await session.execute(
+                select(UserPaperRecommendation.username)
+                .where(
+                    and_(
+                        UserPaperRecommendation.viewed == True,
+                        UserPaperRecommendation.recommendation_date >= cutoff,
+                    )
+                )
+                .distinct()
+            )
+            rows = result.scalars().all()
+        return {r for r in rows if r}
 
     async def close(self):
         """Close database connections"""
