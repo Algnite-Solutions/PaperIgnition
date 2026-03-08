@@ -5,11 +5,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from typing import AsyncGenerator
 
-# Import shared configuration loader
-from backend.shared.config_utils import load_config as shared_load_config
-
-# Keep backward compatibility alias
-load_config = shared_load_config
+# Import configuration loader
+from backend.config_utils import load_config
 
 # 声明基类
 Base = declarative_base()

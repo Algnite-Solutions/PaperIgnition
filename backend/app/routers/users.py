@@ -104,7 +104,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
         "username": current_user.username,
         "email": current_user.email,
         "is_active": current_user.is_active,
-        "interests_description": current_user.interests_description or [],
+        # "interests_description": current_user.interests_description or [],
         "research_interests_text": current_user.research_interests_text,
         "research_domain_ids": research_domain_ids,
         "activity_data": {

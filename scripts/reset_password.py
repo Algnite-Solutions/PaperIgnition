@@ -17,7 +17,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from backend.shared.config_utils import load_config
+from backend.config_utils import load_config
 from backend.app.db_utils import DatabaseManager
 from backend.app.crud import user as crud_user
 from backend.app.auth.utils import get_password_hash

@@ -21,8 +21,6 @@ from datetime import datetime, timezone
 
 from ..db_utils import get_paper_db, get_index_service_url
 from ..auth.utils import get_current_user
-from minio.error import S3Error  # Required for MinIO error handling
-from fastapi.responses import Response
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -376,88 +374,8 @@ async def get_paper_metadata(
 
 
 # ==================== MinIO / Image Endpoints ====================
-
-def get_minio_client():
-    """获取MinIO客户端 - 使用硬编码配置
-
-    DISABLED: MinIO dependency removed for Aliyun RDS migration
-    """
-    raise HTTPException(status_code=501, detail="MinIO file serving disabled for Aliyun RDS migration")
-
-
-# 文件服务路由 - 需要在主应用中注册，不在papers前缀下
-file_router = APIRouter(tags=["files"])
-
-@file_router.get("/files/{bucket}/{key:path}")
-async def serve_file(bucket: str, key: str):
-    """
-    处理文件请求，直接代理文件内容并设置正确的响应头
-    """
-    try:
-        logger.info(f"Serving file request: {bucket}/{key}")
-
-        # 获取MinIO客户端
-        minio_client = get_minio_client()
-
-        # 验证对象是否存在
-        try:
-            stat = minio_client.stat_object(bucket, key)
-            logger.debug(f"File found: {bucket}/{key}, size: {stat.size}")
-        except S3Error as e:
-            if e.code == 'NoSuchKey':
-                logger.warning(f"File not found: {bucket}/{key}")
-                raise HTTPException(status_code=404, detail=f"File not found: {bucket}/{key}")
-            else:
-                logger.error(f"MinIO error for {bucket}/{key}: {e}")
-                raise HTTPException(status_code=500, detail=f"MinIO error: {str(e)}")
-
-        # 获取文件内容
-        try:
-            response = minio_client.get_object(bucket, key)
-            file_data = response.read()
-            response.close()
-            response.release_conn()
-        except Exception as e:
-            logger.error(f"Error reading file {bucket}/{key}: {e}")
-            raise HTTPException(status_code=500, detail="Error reading file")
-
-        # 根据文件类型设置响应头
-        if key.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-            # 图片文件，设置为预览模式
-            media_type = "image/png"
-            if key.lower().endswith('.jpg') or key.lower().endswith('.jpeg'):
-                media_type = "image/jpeg"
-            elif key.lower().endswith('.gif'):
-                media_type = "image/gif"
-            elif key.lower().endswith('.webp'):
-                media_type = "image/webp"
-
-            return Response(
-                content=file_data,
-                media_type=media_type,
-                headers={
-                    "Cache-Control": "public, max-age=3600",  # 缓存1小时
-                    "Content-Length": str(len(file_data))
-                }
-            )
-        else:
-            # 其他文件，设置为下载模式
-            return Response(
-                content=file_data,
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f"attachment; filename=\"{key}\"",
-                    "Content-Length": str(len(file_data))
-                }
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error serving file {bucket}/{key}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error serving file: {str(e)}")
-
-
+# Note: MinIO file serving disabled for Aliyun RDS migration
+# Images are now served directly from Aliyun OSS via http://oss.paperignition.com/imgs/
 @router.get("/image/{image_id}")
 async def get_paper_image(
     image_id: str,

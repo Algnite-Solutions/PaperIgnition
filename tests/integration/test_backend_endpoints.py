@@ -34,7 +34,7 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from backend.shared.config_utils import load_config
+from backend.config_utils import load_config
 
 
 # Load test configuration

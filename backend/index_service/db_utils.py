@@ -10,8 +10,8 @@ from AIgnite.db.image_db import MinioImageDB
 from minio import Minio
 from minio.error import S3Error
 
-# Import shared configuration loader
-from backend.shared.config_utils import load_config as shared_load_config
+# Import configuration loader
+from backend.config_utils import load_config as shared_load_config
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -30,13 +30,13 @@ _vector_db_instance: Optional[VectorDB] = None
 
 #DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "configs/app_config.yaml"
 
-# Keep backward compatibility alias - use shared load_config with service="index"
+# Keep backward compatibility alias - use unified load_config with service="index"
 def load_config(config_path: Optional[str] = None, set_env: bool = True, display_storage_info: bool = False) -> Dict[str, Any]:
     """
     Load index service configuration.
 
-    This is a wrapper around the shared config loader for backward compatibility.
-    For new code, consider using backend.shared.config_utils.load_config directly.
+    This is a wrapper around the unified config loader for backward compatibility.
+    For new code, consider using backend.config_utils.load_config directly.
     """
     return shared_load_config(config_path, service="index", set_env=set_env, display_storage_info=display_storage_info)
 
