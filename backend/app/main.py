@@ -7,8 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.users import ResearchDomain
 
 from backend.app.db_utils import get_db, DatabaseManager, set_database_manager, set_paper_database_manager, load_config
-from backend.app.routers.papers import file_router
-from backend.app.routers import auth, users, papers, static
+from backend.app.routers import auth, users, papers, digests, static
 from backend.app.routers import favorites
 
 
@@ -18,9 +17,13 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize database manager
 
     # Determine config path based on environment
-    local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
-    config_file = "test_config.yaml" if local_mode else "app_config.yaml"
-    config_path = os.path.join(os.path.dirname(__file__), "..", "configs", config_file)
+    config_path = os.environ.get("PAPERIGNITION_CONFIG")
+    if not config_path:
+        local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
+        config_file = "test_config.yaml" if local_mode else "app_config.yaml"
+        config_path = os.path.join(os.path.dirname(__file__), "..", "configs", config_file)
+    else:
+        local_mode = os.getenv("PAPERIGNITION_LOCAL_MODE", "false").lower() == "true"
 
     print(f"🚀 Starting FastAPI app with config: {config_path} (LOCAL_MODE: {local_mode})")
 
@@ -99,11 +102,52 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
-app.include_router(papers.router, prefix="/api")
-# 文件服务路由不需要/api前缀，直接注册
-app.include_router(file_router)
+app.include_router(papers.router, prefix="/api")      # /api/papers/...
+app.include_router(digests.router, prefix="/api")      # /api/digests/...
 app.include_router(favorites.router, prefix="/api")
 app.include_router(static.router, prefix="/api")
+
+
+# ==================== Compatibility Routes ====================
+# The frontend (via nginx) calls these paths WITHOUT the /api/papers prefix.
+# These aliases forward to the new canonical endpoints.
+
+from backend.app.routers.papers import (
+    FindSimilarRequest, FindSimilarResponse,
+    get_paper_content, get_paper_metadata, find_similar_papers,
+    get_paper_db, get_embedding_client
+)
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@app.post("/find_similar/", response_model=FindSimilarResponse)
+async def compat_find_similar(
+    request_body: FindSimilarRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_paper_db)
+):
+    """Compatibility: /find_similar/ -> /api/papers/find_similar"""
+    return await find_similar_papers(request_body, request, db)
+
+
+@app.get("/paper_content/{paper_id}")
+async def compat_paper_content(
+    paper_id: str,
+    db: AsyncSession = Depends(get_paper_db)
+):
+    """Compatibility: /paper_content/{id} -> /api/papers/content/{id}"""
+    return await get_paper_content(paper_id, db)
+
+
+@app.get("/get_metadata/{doc_id}")
+async def compat_get_metadata(
+    doc_id: str,
+    db: AsyncSession = Depends(get_paper_db)
+):
+    """Compatibility: /get_metadata/{id} -> /api/papers/metadata/{id}"""
+    return await get_paper_metadata(doc_id, db)
+
 
 @app.get("/")
 async def root():

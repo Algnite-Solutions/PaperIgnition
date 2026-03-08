@@ -25,12 +25,12 @@ async def register_email(user_in: auth_schemas.UserCreateEmail, db: AsyncSession
     access_token = create_access_token(data={"sub": created_user.email})
 
     # Check if user needs interest setup (new users always do)
-    needs_interest_setup = not created_user.interests_description or len(created_user.interests_description) == 0
+    # needs_interest_setup = not created_user.interests_description or len(created_user.interests_description) == 0
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "needs_interest_setup": needs_interest_setup,
+        "needs_interest_setup": False,
         "user_info": {
             "email": created_user.email,
             "username": created_user.username
@@ -51,12 +51,12 @@ async def login_email(user_in: auth_schemas.UserLoginEmail, db: AsyncSession = D
     
     # 检查用户是否设置了研究兴趣
     # 恢复到原始逻辑，移除所有DEBUG打印
-    needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
+    # needs_interest_setup = not user.interests_description or len(user.interests_description) == 0
     
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "needs_interest_setup": needs_interest_setup,
+        "needs_interest_setup": False,
         "user_info": {
             "email": user.email,
             "username": user.username
